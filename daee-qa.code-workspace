@@ -1,0 +1,23 @@
+{
+    "folders": [
+      {
+        "name": "🤖 Automation Platform",
+        "path": "."
+      },
+      {
+        "name": "💻 Web App Source (Context)",
+        "path": "../web_app"
+      }
+    ],
+    "settings": {
+      "files.exclude": {
+        "**/.next": true,
+        "**/node_modules": true,
+        "**/.git": true
+      },
+      // Help Cursor identify context boundaries
+      "search.exclude": {
+        "**/package-lock.json": true
+      }
+    }
+  }

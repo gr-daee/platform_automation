@@ -1,0 +1,50 @@
+{
+  "name": "daee-platform-automation",
+  "version": "1.0.0",
+  "description": "End-to-end test automation framework for DAEE SaaS ERP platform",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:report": "playwright show-report",
+    "bdd:generate": "bddgen",
+    "prebdd:generate": "echo 'Generating BDD step files...'",
+    "pretest": "npm run bdd:generate",
+    "verify:db": "node scripts/verify-db-connection.js",
+    "test:regression": "TEST_EXECUTION_MODE=production playwright test",
+    "test:smoke": "TEST_EXECUTION_MODE=production playwright test --grep '@smoke'",
+    "test:critical": "TEST_EXECUTION_MODE=production playwright test --grep '@critical'",
+    "test:weekly": "TEST_EXECUTION_MODE=production playwright test",
+    "test:debug": "TEST_EXECUTION_MODE=debug TEST_WORKERS=1 playwright test",
+    "test:debug:headed": "TEST_EXECUTION_MODE=debug TEST_WORKERS=1 TEST_HEADED=true playwright test",
+    "test:dev": "TEST_EXECUTION_MODE=development TEST_WORKERS=1 TEST_HEADED=true playwright test",
+    "test:dev:module": "TEST_EXECUTION_MODE=development TEST_WORKERS=1 TEST_HEADED=true playwright test",
+    "test:feature": "playwright test",
+    "test:scenario": "playwright test --grep",
+    "test:tc": "playwright test --grep",
+    "test:headed": "TEST_HEADED=true playwright test",
+    "test:ui": "playwright test --ui",
+    "test:login": "playwright test login"
+  },
+  "keywords": [
+    "playwright",
+    "bdd",
+    "automation",
+    "testing",
+    "e2e"
+  ],
+  "author": "DAEE QA Team",
+  "license": "ISC",
+  "dependencies": {
+    "@playwright/test": "^1.48.0",
+    "playwright-bdd": "^7.5.0",
+    "monocart-reporter": "^2.9.8",
+    "otpauth": "^9.3.4",
+    "pg": "^8.13.1",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "typescript": "^5.8.0"
+  }
+}
