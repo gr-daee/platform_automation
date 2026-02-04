@@ -1,0 +1,718 @@
+---
+description: Process workflows, documentation standards, and quality gates
+globs: docs/**/*.md, e2e/**/*
+alwaysApply: false
+---
+
+# Framework Workflows & Documentation Standards
+
+This rule defines processes for test creation, documentation maintenance, and quality assurance.
+
+---
+
+## 1. Pre-Implementation Checklist
+
+Before generating ANY test code, you MUST complete this checklist:
+
+### Module Knowledge (REQUIRED)
+- [ ] Read `docs/modules/[module]/knowledge.md` - Understand business rules and UI patterns
+- [ ] Read `docs/modules/[module]/test-cases.md` - Check for existing tests (avoid duplicates)
+- [ ] Read `docs/modules/[module]/README.md` - Module overview
+
+**Purpose**: Understand domain context before writing code.
+
+### Source Code Analysis (REQUIRED)
+- [ ] Read `../web_app/src/app/[module]/page.tsx` - Main page component
+- [ ] Read all components in `../web_app/src/app/[module]/components/*.tsx`
+- [ ] Understand component structure, props, and state management
+- [ ] Identify all interactive elements (inputs, buttons, dropdowns, dialogs)
+
+**Purpose**: Understand actual UI structure for accurate locators.
+
+### Existing Test Review (REQUIRED)
+- [ ] Check `e2e/features/[module]/` for existing feature files
+- [ ] Review `e2e/src/pages/[module]/` for existing Page Objects
+- [ ] Review `e2e/src/steps/` for existing step definitions
+- [ ] Understand established patterns and conventions
+
+**Purpose**: Follow existing patterns and avoid duplication.
+
+### Knowledge Base (OPTIONAL - for complex modules)
+- [ ] Read `docs/knowledge-base/database-schema.md` - Database structure
+- [ ] Read `docs/knowledge-base/business-rules.md` - Business logic
+- [ ] Read `docs/knowledge-base/api-endpoints.md` - API documentation
+
+**Purpose**: Understand cross-module dependencies.
+
+---
+
+## 2. Test Creation Workflow
+
+### Step 1: Create Feature File
+
+**File**: `e2e/features/[module]/[feature].feature`
+
+```gherkin
+Feature: [Feature Name]
+
+  As a [user role]
+  I want to [perform action]
+  So that [achieve goal]
+
+  Background:
+    Given I am authenticated as an admin user
+    And I am on the [module] page
+
+  @[MODULE]-[FEATURE]-TC-001 @smoke @critical
+  Scenario: [Positive scenario - happy path]
+    Given [precondition]
+    When [user action]
+    Then [expected outcome]
+    And [additional verification]
+
+  @[MODULE]-[FEATURE]-TC-002 @regression
+  Scenario: [Negative scenario - validation]
+    Given [precondition]
+    When [invalid action]
+    Then [error message displayed]
+    And [state unchanged]
+
+  @[MODULE]-[FEATURE]-TC-003 @regression
+  Scenario: [Edge case scenario]
+    Given [edge case setup]
+    When [action under edge conditions]
+    Then [proper handling verified]
+```
+
+**Guidelines**:
+- Scenario must be independent (can run in any order)
+- Use consistent Given/When/Then structure
+- Tag with test case ID (@MODULE-FEATURE-TC-###)
+- Tag with test type (@smoke, @critical, @regression)
+- Write from user perspective (no technical details)
+
+### Step 2: Create Page Object Model
+
+**File**: `e2e/src/pages/[module]/[Page]Page.ts`
+
+**Template**: See `automation-patterns.mdc` section "Page Object Model Patterns"
+
+**Requirements**:
+- Inherit from `BasePage`
+- Use component library for ShadCN/Radix
+- Follow semantic locator strategy
+- Create high-level action methods
+- Document source file location
+
+### Step 3: Create Step Definitions
+
+**File**: `e2e/src/steps/[module]/[feature]-steps.ts`
+
+**Template**:
+```typescript
+import { Given, When, Then } from '@cucumber/cucumber';
+import { expect } from '@playwright/test';
+import { [Module]Page } from '../../pages/[module]/[Page]Page';
+
+let [module]Page: [Module]Page;
+
+Given('I am on the [module] page', async function ({ page }) {
+  [module]Page = new [Module]Page(page);
+  await [module]Page.goto();
+});
+
+When('I perform action', async function ({ page }) {
+  // Implement Sandwich Method if database verification needed
+  await [module]Page.performAction();
+});
+
+Then('I should see expected outcome', async function ({ page }) {
+  await [module]Page.verifyOutcome();
+});
+```
+
+**Requirements**:
+- Use Sandwich Method for database verifications
+- Reuse shared steps when possible
+- Use TestDataLocator for stable data
+- Handle errors gracefully
+
+### Step 4: Update Test Registry
+
+**File**: `docs/modules/[module]/test-cases.md`
+
+```markdown
+## @[MODULE]-[FEATURE]-TC-001 - [Scenario Name]
+
+- **Feature File**: `e2e/features/[module]/[feature].feature`
+- **Scenario**: [Scenario name from feature file]
+- **Coverage**: [What this test verifies]
+- **Status**: ✅ Automated
+- **Tags**: @smoke, @critical
+- **Last Updated**: [Date]
+
+**Test Steps**:
+1. [Given] Navigate to [module] page
+2. [When] Perform [action]
+3. [Then] Verify [outcome]
+
+**Prerequisites**:
+- [Required data or state]
+
+**Test Data**:
+- Uses TestDataLocator for [data type]
+- Creates AUTO_QA_ prefixed data
+```
+
+### Step 5: Generate BDD Files
+
+```bash
+npm run bdd:generate
+```
+
+### Step 6: Run Test in Development Mode
+
+```bash
+npm run test:dev -- e2e/features/[module]/[feature].feature
+```
+
+### Step 7: Verify & Document
+
+- [ ] Test passes consistently
+- [ ] Documentation updated (test-cases.md, knowledge.md)
+- [ ] No linter errors
+- [ ] Follows all patterns from automation-patterns.mdc
+
+---
+
+## 3. Documentation Standards
+
+### Module Knowledge Template
+
+**File**: `docs/modules/[module]/knowledge.md`
+
+```markdown
+# [Module Name] - Application Knowledge
+
+## Overview
+Brief description of the module and its purpose in the DAEE platform.
+
+## Key Components
+
+### [Component Name]
+- **Location**: `../web_app/src/app/[module]/components/ComponentName.tsx`
+- **Purpose**: [What it does]
+- **Key Behavior**: 
+  - [Behavior 1]
+  - [Behavior 2]
+- **Props**: `prop1`, `prop2`, `prop3`
+- **State Management**: [How state is managed]
+
+## Business Rules
+
+### [Rule Name]
+- **Description**: [What the rule enforces]
+- **Impact**: [How it affects behavior]
+- **Validation**: [Where validation happens - client/server]
+- **Error Handling**: [What happens on violation]
+
+## Testing Context
+
+### UI Interactions
+- **Primary Actions**: [List buttons, links with roles/names]
+  - Submit: Button (role="button", name="Submit Order")
+  - Cancel: Link (role="link", name="Cancel")
+- **Success Feedback**: Toast message "Order created successfully"
+- **Error Feedback**: Toast message "Failed to create order: [reason]"
+
+### Form Behavior
+- **Validation**: Client-side (Zod) + server-side
+- **Error Display**: Messages appear under fields (role="alert")
+- **Submit State**: Button disables and shows "Saving..." text
+- **Required Fields**: 
+  - Name (min 3 chars)
+  - Email (valid email format)
+  - Category (must select from dropdown)
+
+### Modal/Dialog Patterns
+- **Open Trigger**: Button with name="Add Product"
+- **Close Actions**: X button, backdrop click, or Cancel button
+- **Animation**: 200ms fade-in (wait for visibility before interaction)
+- **Scrolling**: Modal content scrollable, backdrop fixed
+
+### Select/Dropdown Patterns
+- **Component Type**: Radix Select (shadcn/ui)
+- **Interaction**: Click trigger (role="combobox") → select option (role="option")
+- **Common Dropdowns**:
+  - Category: ["Electronics", "Furniture", "Clothing"]
+  - Status: ["Draft", "Active", "Archived"]
+  - Priority: ["Low", "Medium", "High"]
+
+### Data Dependencies
+- **Prerequisite Data**: [What must exist before tests run]
+  - Active dealers (use TestDataLocator.getStableDealer())
+  - Product categories (use TestDataLocator.getStableCategory())
+- **Test Data Pattern**: Use AUTO_QA_${Date.now()}_ prefix
+- **Cleanup**: Not required (read-only database)
+
+## Database Schema
+
+### [table_name]
+- **Purpose**: [What this table stores]
+- **Key Fields**:
+  - `id`: UUID (primary key)
+  - `name`: Text (unique, not null)
+  - `status`: Enum ('draft', 'active', 'archived')
+  - `created_at`: Timestamp with timezone
+- **Relationships**:
+  - Links to `other_table` via `foreign_key_id`
+- **Constraints**:
+  - Unique constraint on (`tenant_id`, `name`)
+  - Check constraint: `quantity > 0`
+
+## API Endpoints
+
+### POST /api/[module]/[action]
+- **Purpose**: [What this endpoint does]
+- **Request Body**:
+  ```json
+  {
+    "field1": "string",
+    "field2": 123,
+    "field3": ["array", "of", "values"]
+  }
+  ```
+- **Response Success** (200):
+  ```json
+  {
+    "success": true,
+    "data": { "id": "uuid", "name": "string" }
+  }
+  ```
+- **Response Error** (400):
+  ```json
+  {
+    "success": false,
+    "error": "Error message"
+  }
+  ```
+- **Error Cases**:
+  - 400: Validation failed
+  - 401: Unauthorized
+  - 403: Forbidden (permission denied)
+  - 500: Server error
+
+## Test Patterns
+
+### [Pattern Name]
+**When to use**: [Scenario description]
+
+**Implementation**:
+```typescript
+// Example code showing pattern usage
+await page.doSomething();
+await expect(page.locator('...')).toBeVisible();
+```
+
+## Related Modules
+- [Module Name](docs/modules/[module]/README.md) - [Relationship description]
+
+## Known Issues / Gaps
+- [Issue 1]: [Description and workaround]
+- [Issue 2]: [Description and impact on testing]
+
+## Test Coverage
+- ✅ [Scenario 1] - Automated (@MODULE-FEATURE-TC-001)
+- ✅ [Scenario 2] - Automated (@MODULE-FEATURE-TC-002)
+- ⏳ [Scenario 3] - Pending
+- ❌ [Scenario 4] - Not covered (reason)
+```
+
+### Test Case Documentation Template
+
+**File**: `docs/modules/[module]/test-cases.md`
+
+```markdown
+# [Module] Test Cases
+
+## Overview
+Summary of test coverage for [module].
+
+## Automated Tests
+
+### @[MODULE]-[FEATURE]-TC-001 - [Test Name]
+
+- **Feature File**: `e2e/features/[module]/[feature].feature`
+- **Scenario**: [Exact scenario name from feature file]
+- **Coverage**: [What this test verifies]
+- **Status**: ✅ Automated | ⏳ Pending | ❌ Failed
+- **Tags**: @smoke, @critical
+- **Last Updated**: [YYYY-MM-DD]
+
+**Gherkin**:
+```gherkin
+Scenario: [Scenario name]
+  Given [precondition]
+  When [action]
+  Then [verification]
+```
+
+**Prerequisites**:
+- [Required data or system state]
+
+**Test Data**:
+- Uses TestDataLocator for [data type]
+- Creates: `AUTO_QA_${timestamp}_[Entity]`
+
+**Database Verification**:
+- Checks [table_name] for [field] changes
+- Sandwich Method: Before/After comparison
+
+**Notes**:
+- [Any special considerations]
+- [Known flakiness and workarounds]
+
+---
+
+## Test Coverage Summary
+
+| Feature | Total Scenarios | Automated | Pending | Coverage % |
+|---------|----------------|-----------|---------|------------|
+| [Feature 1] | 5 | 4 | 1 | 80% |
+| [Feature 2] | 3 | 3 | 0 | 100% |
+| **Total** | **8** | **7** | **1** | **87.5%** |
+
+## Gaps & Future Tests
+
+### High Priority
+- [ ] [Test scenario description] - [Why it's needed]
+
+### Medium Priority
+- [ ] [Test scenario description] - [Why it's needed]
+
+### Low Priority
+- [ ] [Test scenario description] - [Why it's needed]
+```
+
+### Markdown Standards
+
+#### Required Elements
+
+1. **Headers**: Use proper hierarchy (H1 for title, H2 for sections, H3 for subsections)
+2. **Links**: Use relative paths for internal links
+   - ✅ `[Link Text](docs/modules/o2c/knowledge.md)`
+   - ❌ `[Link Text](/absolute/path.md)`
+3. **Code Blocks**: Always specify language
+   - ✅ ` ```typescript`
+   - ❌ ` ``` ` (no language)
+4. **Lists**: Use consistent formatting (- for unordered, 1. for ordered)
+5. **Tables**: For structured data (align headers, use pipes)
+6. **Examples**: Include code examples where helpful
+
+#### Link Formats
+
+- **Internal docs**: `[Text](docs/path/to/file.md)`
+- **Source code**: `[Text](../web_app/src/app/path/to/file.tsx)`
+- **Test files**: `[Text](e2e/features/path/to/file.feature)`
+- **External**: `[Text](https://external-url.com)`
+
+---
+
+## 4. Debugging Workflow
+
+### When Test Fails
+
+#### Step 1: Gather Information
+```bash
+# Check test results directory
+ls -la test-results/
+
+# Look for latest failure
+# - Screenshots: *.png
+# - Videos: *.webm
+# - Traces: *.zip
+```
+
+#### Step 2: Analyze Failure
+
+**Check Screenshot**:
+- What was the page state when it failed?
+- Was the expected element visible?
+- Any error messages or toasts?
+
+**Review Trace** (if available):
+```bash
+npx playwright show-trace test-results/[test-name]/trace.zip
+```
+
+**Check Console Logs**:
+- Look for JavaScript errors
+- API call failures
+- Network timeout errors
+
+#### Step 3: Reproduce Locally
+
+```bash
+# Run in development mode (headed, visible browser)
+npm run test:dev -- --grep "[failing test name]"
+
+# Or debug mode with screenshots at every step
+DEBUG_MODE=true npm run test:debug -- --grep "[test-name]"
+```
+
+#### Step 4: Identify Root Cause
+
+Common failure patterns:
+
+**Locator Not Found**:
+- Component structure changed in source code
+- Selector too specific or too generic
+- Element inside iframe (not supported)
+- Element requires scroll to be visible
+
+**Timing Issue**:
+- Modal animation not complete (add wait for visibility)
+- Toast dismissed too quickly (reduce timeout)
+- API call slower than expected (increase timeout)
+- Page navigation interrupted
+
+**Data Issue**:
+- Prerequisite data missing (use TestDataLocator)
+- Test data collision (ensure unique names with timestamp)
+- Database state inconsistent (Sandwich Method helps identify)
+
+**Environment Issue**:
+- Network connectivity
+- Database connection
+- Authentication token expired
+
+#### Step 5: Implement Fix
+
+**Update Locator**:
+```typescript
+// Before (broken)
+readonly submitBtn = page.locator('.btn-submit');
+
+// After (fixed with semantic locator)
+readonly submitBtn = page.getByRole('button', { name: 'Submit' });
+```
+
+**Add Wait**:
+```typescript
+// Before (flaky)
+await page.click('[role="dialog"] button');
+
+// After (stable)
+await expect(page.getByRole('dialog')).toBeVisible();
+await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
+```
+
+**Fix Data Dependency**:
+```typescript
+// Before (hardcoded)
+const dealer = await executeQuery('SELECT * FROM dealers WHERE id = 123');
+
+// After (stable)
+const dealer = await TestDataLocator.getStableDealer();
+```
+
+#### Step 6: Verify Fix
+
+```bash
+# Run test multiple times to ensure stability
+for i in {1..5}; do
+  npm run test:dev -- --grep "[test-name]"
+done
+```
+
+#### Step 7: Document
+
+If issue revealed a gap or new pattern:
+- Update module knowledge with new finding
+- Add to "Known Issues" if workaround needed
+- Update test case documentation with notes
+
+---
+
+## 5. Module Development Lifecycle
+
+### Phase 1: Planning
+1. Review module requirements
+2. Identify test scenarios
+3. Document in `docs/modules/[module]/README.md`
+4. Get stakeholder approval
+
+### Phase 2: Setup
+1. Create module directory structure
+2. Create knowledge.md (initial version)
+3. Create test-cases.md (planned tests)
+4. Create gap-analysis.md (if needed)
+
+### Phase 3: Implementation
+1. Generate POMs from source code
+2. Create feature files
+3. Implement step definitions
+4. Update documentation as you go
+
+### Phase 4: Validation
+1. Run tests in development mode
+2. Verify database verifications
+3. Check test independence (run in isolation and parallel)
+4. Review code quality (linter, patterns)
+
+### Phase 5: Integration
+1. Run full regression suite
+2. Update test registry
+3. Create module README
+4. Archive old rules (if replacing)
+
+---
+
+## 6. Quality Gates
+
+Before merging/deploying tests, ensure:
+
+### Code Quality
+- [ ] All tests pass consistently (3+ runs)
+- [ ] No linter errors or warnings
+- [ ] Follows automation-patterns.mdc standards
+- [ ] Uses BasePage inheritance
+- [ ] Uses component library for ShadCN/Radix
+- [ ] No hardcoded waits (`page.waitForTimeout()`)
+- [ ] No CSS class selectors
+
+### Documentation Quality
+- [ ] Module knowledge updated
+- [ ] Test cases documented
+- [ ] Test registry current
+- [ ] Code comments clear and helpful
+- [ ] README files up to date
+
+### Test Design Quality
+- [ ] Scenarios are independent
+- [ ] Uses semantic locators
+- [ ] Sandwich Method for DB verifications
+- [ ] TestDataLocator for stable data
+- [ ] AUTO_QA_ prefix for test data
+- [ ] Appropriate tags (@smoke, @critical, @regression)
+
+### Maintainability
+- [ ] No code duplication
+- [ ] Reuses shared steps
+- [ ] Clear error messages
+- [ ] Easy to debug failures
+- [ ] Scalable patterns
+
+---
+
+## 7. Continuous Improvement
+
+### Review Cycles
+
+**Weekly**:
+- Review test failures and flakiness
+- Update TestDataLocator with new stable data
+- Refactor duplicated code
+
+**Monthly**:
+- Review test coverage gaps
+- Update documentation for accuracy
+- Refactor old tests to use new patterns
+- Archive obsolete tests
+
+**Quarterly**:
+- Framework architecture review
+- Performance optimization
+- Technology upgrades (Playwright, playwright-bdd)
+- Team training on new patterns
+
+### Metrics to Track
+
+- Test execution time
+- Test pass rate
+- Flakiness rate
+- Code coverage
+- Documentation completeness
+
+---
+
+## 8. Common Pitfalls to Avoid
+
+### ❌ Don't Do This
+
+**Creating tests without context**:
+```typescript
+// ❌ Generated without reading module knowledge
+// Result: Incorrect assertions, missing edge cases
+```
+
+**Duplicating existing steps**:
+```typescript
+// ❌ Step already exists in shared/navigation-steps.ts
+Given('I go to the orders page', ...);
+```
+
+**Hardcoding test data**:
+```typescript
+// ❌ Brittle, will break if data changes
+const dealerId = 'abc-123-def-456';
+```
+
+**Using unstable locators**:
+```typescript
+// ❌ Tailwind classes change frequently
+page.locator('.bg-blue-500.text-white')
+```
+
+**Skipping documentation updates**:
+```typescript
+// ❌ Test created but not documented
+// Result: Duplicate tests created later
+```
+
+### ✅ Do This Instead
+
+**Read context first**:
+```typescript
+// ✅ Read docs/modules/o2c/knowledge.md
+// ✅ Read ../web_app/src/app/o2c/orders/page.tsx
+// ✅ Then generate accurate test
+```
+
+**Reuse shared steps**:
+```typescript
+// ✅ Use existing step from shared library
+Given('I am on the {string} page', ...);
+```
+
+**Use TestDataLocator**:
+```typescript
+// ✅ Stable, maintainable
+const dealer = await TestDataLocator.getStableDealer();
+```
+
+**Use semantic locators**:
+```typescript
+// ✅ Stable, accessible-friendly
+page.getByRole('button', { name: 'Submit' })
+```
+
+**Update docs immediately**:
+```typescript
+// ✅ Document in test-cases.md right after creation
+// ✅ Update module knowledge with new patterns
+```
+
+---
+
+## Remember
+
+**Documentation is code.** Treat it with the same care as test code.
+
+- Keep it current
+- Make it accurate
+- Make it useful
+- Link it together
+- Review it regularly
+
+**Process discipline ensures quality.** Follow workflows consistently for best results.

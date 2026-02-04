@@ -1,5 +1,6 @@
 import { Page, Locator, expect } from '@playwright/test';
 import * as TOTP from 'otpauth';
+import { BasePage } from '../../support/base/BasePage';
 
 /**
  * Login Page Object Model for DAEE Platform
@@ -20,8 +21,7 @@ import * as TOTP from 'otpauth';
  * 4. getByText
  * 5. ID selectors
  */
-export class LoginPage {
-  readonly page: Page;
+export class LoginPage extends BasePage {
   
   // ==========================================
   // Login Step Locators
@@ -55,7 +55,7 @@ export class LoginPage {
   readonly toastMessage: Locator;
 
   constructor(page: Page) {
-    this.page = page;
+    super(page);
     
     // Login form elements (Step 1)
     this.emailInput = page.locator('input#email');

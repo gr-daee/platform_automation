@@ -1,0 +1,726 @@
+---
+description: Technical patterns for Page Objects, Step Definitions, and Database Verification
+globs: e2e/**/*.ts, e2e/**/*.feature
+alwaysApply: false
+---
+
+# Automation Patterns & Technical Standards
+
+This rule contains technical implementation patterns for DAEE test automation. Reference this for detailed code generation guidelines.
+
+---
+
+## 1. Page Object Model (POM) Patterns
+
+### Base Structure Template
+
+```typescript
+import { Page, Locator, expect } from '@playwright/test';
+import { BasePage } from '../../support/base/BasePage';
+import { SelectComponent } from '../../support/components/SelectComponent';
+import { DialogComponent } from '../../support/components/DialogComponent';
+import { ToastComponent } from '../../support/components/ToastComponent';
+
+/**
+ * [Module] Page Object Model
+ * 
+ * Source: ../web_app/src/app/[module]/page.tsx
+ * 
+ * Purpose: [Brief description of page functionality]
+ * 
+ * Key Features:
+ * - [Feature 1]
+ * - [Feature 2]
+ */
+export class [Module]Page extends BasePage {
+  // Component library instances
+  private selectComponent: SelectComponent;
+  private dialogComponent: DialogComponent;
+  private toastComponent: ToastComponent;
+  
+  // Page-specific locators (use semantic selectors)
+  readonly primaryButton: Locator;
+  readonly secondaryButton: Locator;
+  readonly nameInput: Locator;
+  readonly emailInput: Locator;
+  
+  constructor(page: Page) {
+    super(page);
+    
+    // Initialize component library
+    this.selectComponent = new SelectComponent(page);
+    this.dialogComponent = new DialogComponent(page);
+    this.toastComponent = new ToastComponent(page);
+    
+    // Define locators using semantic selector priority
+    this.primaryButton = page.getByRole('button', { name: 'Submit' });
+    this.secondaryButton = page.getByRole('button', { name: 'Cancel' });
+    this.nameInput = page.getByLabel('Name');
+    this.emailInput = page.getByPlaceholder('Enter email address');
+  }
+  
+  // Navigation methods
+  async goto(): Promise<void> {
+    await this.navigateTo('/[module]/[page]');
+  }
+  
+  // High-level action methods (compose multiple steps)
+  async createEntity(data: EntityData): Promise<void> {
+    await this.nameInput.fill(data.name);
+    await this.emailInput.fill(data.email);
+    await this.selectComponent.selectByLabel('Category', data.category);
+    await this.primaryButton.click();
+    await this.toastComponent.waitForSuccess('Created successfully');
+  }
+  
+  // Verification methods
+  async verifyEntityDisplayed(name: string): Promise<void> {
+    await expect(this.page.getByText(name)).toBeVisible();
+  }
+}
+```
+
+### POM Generation Checklist
+
+When generating a POM:
+- [ ] Read source component: `../web_app/src/app/[module]/page.tsx`
+- [ ] Read all child components in `../web_app/src/app/[module]/components/`
+- [ ] Inherit from `BasePage`
+- [ ] Initialize component library instances
+- [ ] Use semantic locators (getByRole, getByLabel, getByPlaceholder)
+- [ ] Create high-level action methods (not just locator getters)
+- [ ] Document source file location in JSDoc
+- [ ] Add verification methods for common assertions
+
+---
+
+## 2. Component Library Usage
+
+### SelectComponent (ShadCN/Radix Select)
+
+```typescript
+// Select by label and option text
+await selectComponent.selectByLabel('Category', 'Electronics');
+
+// Select by test ID
+await selectComponent.selectByTestId('category-select', 'Electronics');
+
+// Verify selected value
+await selectComponent.verifySelection('Category', 'Electronics');
+```
+
+**Pattern**: Radix Select requires clicking trigger, then clicking option from listbox.
+
+### DialogComponent (ShadCN/Radix Dialog)
+
+```typescript
+// Wait for dialog to open (handles 200ms animation)
+await dialogComponent.waitForOpen();
+
+// Interact with dialog content
+await dialogComponent.fillField('Name', 'Product A');
+await dialogComponent.clickButton('Save');
+
+// Wait for dialog to close
+await dialogComponent.waitForClose();
+```
+
+**Pattern**: Dialogs have 200ms fade-in animation. Always wait for visibility before interaction.
+
+### ToastComponent (Sonner Toast)
+
+```typescript
+// Wait for success toast
+await toastComponent.waitForSuccess('Created successfully');
+
+// Wait for error toast
+await toastComponent.waitForError('Failed to create');
+
+// Wait for any toast with text
+await toastComponent.waitForToast('Processing complete');
+
+// Verify toast appeared and dismiss
+await toastComponent.verifyAndDismiss('Saved successfully');
+```
+
+**Pattern**: Toasts appear with data-sonner-toast attribute. Default timeout 5000ms.
+
+### FormComponent (Form Validation)
+
+```typescript
+// Fill form fields
+await formComponent.fillField('Name', 'Product Name');
+await formComponent.fillField('Quantity', '100');
+
+// Submit form
+await formComponent.submit();
+
+// Verify validation errors
+await formComponent.verifyError('Email is required');
+
+// Verify form submitted
+await formComponent.verifySubmitted();
+```
+
+**Pattern**: Validation errors appear as role="alert" under fields.
+
+---
+
+## 3. Semantic Locator Strategies
+
+### Priority Order (Highest to Lowest)
+
+#### 1. data-testid (if available)
+```typescript
+page.locator('[data-testid="submit-order-btn"]')
+```
+**Use when**: Component has explicit test ID in source code.
+
+#### 2. getByRole with name
+```typescript
+page.getByRole('button', { name: 'Submit Order' })
+page.getByRole('textbox', { name: 'Email Address' })
+page.getByRole('combobox', { name: 'Select Category' })
+page.getByRole('link', { name: 'View Details' })
+```
+**Use when**: Element has accessible role and name/label.
+
+#### 3. getByLabel
+```typescript
+page.getByLabel('Product Name')
+page.getByLabel('Quantity')
+page.getByLabel('Category')
+```
+**Use when**: Form field has associated label element.
+
+#### 4. getByPlaceholder
+```typescript
+page.getByPlaceholder('Enter product name')
+page.getByPlaceholder('Search...')
+```
+**Use when**: Input has placeholder text.
+
+#### 5. getByText
+```typescript
+page.getByText('Submit Order', { exact: true })
+page.getByText(/Order #ORD-\d+/)
+```
+**Use when**: Need to find by visible text content.
+
+#### 6. ID selector (last resort)
+```typescript
+page.locator('input#email')
+page.locator('#submit-button')
+```
+**Use when**: No better semantic option available.
+
+### ❌ Forbidden Selectors
+
+```typescript
+// NEVER use CSS class selectors (Tailwind classes change frequently)
+page.locator('.bg-blue-500')
+page.locator('.text-gray-900')
+page.locator('.hover:bg-red-100')
+
+// NEVER use XPath
+page.locator('//div[@class="container"]/button')
+
+// NEVER use nth-child or complex CSS
+page.locator('div > ul > li:nth-child(3)')
+```
+
+---
+
+## 4. Step Definition Patterns
+
+### File Organization
+
+```
+e2e/src/steps/
+├── auth/
+│   └── auth-steps.ts           # Authentication-specific steps
+├── o2c/
+│   ├── indent-steps.ts         # Indent-specific steps
+│   └── order-steps.ts          # Order-specific steps
+├── shared/
+│   ├── navigation-steps.ts     # Reusable navigation steps
+│   ├── assertion-steps.ts      # Common assertions
+│   └── form-steps.ts           # Generic form interactions
+└── index.ts                    # Export all steps
+```
+
+### Step Definition Template
+
+```typescript
+import { Given, When, Then } from '@cucumber/cucumber';
+import { expect } from '@playwright/test';
+import { [Module]Page } from '../../pages/[module]/[Page]Page';
+import { getUserByEmail, hasUserCompletedMFA } from '../../support/db-helper';
+import { TestDataLocator } from '../../support/data/TestDataLocator';
+
+// Initialize Page Object
+let [module]Page: [Module]Page;
+
+Given('I am on the [module] page', async function ({ page }) {
+  [module]Page = new [Module]Page(page);
+  await [module]Page.goto();
+});
+
+When('I create a new entity with {string}', async function ({ page }, name: string) {
+  // Use TestDataLocator for stable data
+  const category = await TestDataLocator.getStableCategory();
+  
+  await [module]Page.createEntity({
+    name: `AUTO_QA_${Date.now()}_${name}`,
+    category: category.name,
+  });
+});
+
+Then('the entity should be created successfully', async function ({ page }) {
+  await [module]Page.verifySuccessToast('Created successfully');
+  await expect(page).toHaveURL(/\/[module]\/[entity]\/\d+/);
+});
+```
+
+### Shared Step Patterns
+
+#### Navigation Steps (shared/navigation-steps.ts)
+```typescript
+Given('I am on the {string} page', async function ({ page }, pageName: string) {
+  await page.goto(`/${pageName}`);
+  await page.waitForLoadState('networkidle');
+});
+
+When('I navigate to {string}', async function ({ page }, path: string) {
+  await page.goto(path);
+});
+
+When('I click the {string} button', async function ({ page }, buttonName: string) {
+  await page.getByRole('button', { name: buttonName }).click();
+});
+```
+
+#### Assertion Steps (shared/assertion-steps.ts)
+```typescript
+Then('I should see a success message', async function ({ page }) {
+  const toast = page.locator('[data-sonner-toast]');
+  await expect(toast).toContainText(/success|saved|created/i);
+});
+
+Then('I should see an error message', async function ({ page }) {
+  const alert = page.locator('[role="alert"]');
+  await expect(alert).toBeVisible();
+});
+
+Then('I should be on the {string} page', async function ({ page }, expectedPath: string) {
+  await expect(page).toHaveURL(new RegExp(expectedPath));
+});
+```
+
+#### Form Steps (shared/form-steps.ts)
+```typescript
+When('I fill the {string} field with {string}', async function ({ page }, fieldName: string, value: string) {
+  await page.getByLabel(fieldName).fill(value);
+});
+
+When('I select {string} from {string} dropdown', async function ({ page }, option: string, dropdownName: string) {
+  await page.getByRole('combobox', { name: dropdownName }).click();
+  await page.getByRole('option', { name: option }).click();
+});
+
+When('I submit the form', async function ({ page }) {
+  await page.getByRole('button', { name: /submit|save|create/i }).click();
+});
+```
+
+---
+
+## 5. Database Verification (Sandwich Method)
+
+### Pattern Implementation
+
+```typescript
+When('I perform database-affecting action', async function ({ page }) {
+  // STEP 1: DB BEFORE - Query initial state
+  const userBefore = await getUserByEmail('test@example.com');
+  const orderCountBefore = userBefore.order_count;
+  
+  console.log('DB BEFORE:', {
+    orderCount: orderCountBefore,
+    status: userBefore.status,
+  });
+  
+  // STEP 2: UI ACTION - Perform user interaction
+  await ordersPage.createOrder({
+    items: [{ product: 'Product A', quantity: 5 }],
+  });
+  
+  // STEP 3: DB AFTER - Verify state change
+  const userAfter = await getUserByEmail('test@example.com');
+  const orderCountAfter = userAfter.order_count;
+  
+  console.log('DB AFTER:', {
+    orderCount: orderCountAfter,
+    status: userAfter.status,
+  });
+  
+  // Assert state change
+  expect(orderCountAfter).toBe(orderCountBefore + 1);
+  expect(userAfter.last_order_at).not.toBe(userBefore.last_order_at);
+});
+```
+
+### Common Verification Patterns
+
+#### Verify Record Creation
+```typescript
+// Before: Record doesn't exist
+const recordsBefore = await executeQuery(
+  'SELECT * FROM orders WHERE name = $1',
+  [`AUTO_QA_${timestamp}_Order`]
+);
+expect(recordsBefore.length).toBe(0);
+
+// UI Action: Create record
+await ordersPage.createOrder(orderData);
+
+// After: Record exists
+const recordsAfter = await executeQuery(
+  'SELECT * FROM orders WHERE name = $1',
+  [`AUTO_QA_${timestamp}_Order`]
+);
+expect(recordsAfter.length).toBe(1);
+expect(recordsAfter[0].status).toBe('draft');
+```
+
+#### Verify Status Transition
+```typescript
+// Before: Check initial status
+const orderBefore = await getOrderById(orderId);
+expect(orderBefore.status).toBe('draft');
+
+// UI Action: Submit order
+await ordersPage.submitOrder(orderId);
+
+// After: Status changed
+const orderAfter = await getOrderById(orderId);
+expect(orderAfter.status).toBe('submitted');
+expect(orderAfter.submitted_at).not.toBeNull();
+```
+
+#### Verify Relationship Creation
+```typescript
+// Before: No order items
+const itemsBefore = await executeQuery(
+  'SELECT * FROM order_items WHERE order_id = $1',
+  [orderId]
+);
+expect(itemsBefore.length).toBe(0);
+
+// UI Action: Add items to order
+await ordersPage.addItems([
+  { product: 'Product A', quantity: 5 },
+  { product: 'Product B', quantity: 10 },
+]);
+
+// After: Items created
+const itemsAfter = await executeQuery(
+  'SELECT * FROM order_items WHERE order_id = $1',
+  [orderId]
+);
+expect(itemsAfter.length).toBe(2);
+```
+
+### Database Helper Usage
+
+```typescript
+import {
+  executeQuery,
+  getUserByEmail,
+  getUserSessions,
+  hasUserCompletedMFA,
+  getLatestSession,
+} from '../../support/db-helper';
+
+// Generic query (SELECT only)
+const results = await executeQuery<Order>(
+  'SELECT * FROM orders WHERE status = $1 ORDER BY created_at DESC LIMIT 10',
+  ['draft']
+);
+
+// Helper methods
+const user = await getUserByEmail('admin@example.com');
+const sessions = await getUserSessions(user.id);
+const hasMFA = await hasUserCompletedMFA(user.id);
+```
+
+---
+
+## 6. Test Data Management
+
+### AUTO_QA_ Prefix Pattern
+
+All transactional test data (created via UI) MUST use this prefix:
+
+```typescript
+// ✅ CORRECT
+const indentName = `AUTO_QA_${Date.now()}_Indent`;
+const orderRef = `AUTO_QA_${Date.now()}_ORD`;
+const productSKU = `AUTO_QA_${Date.now()}_SKU`;
+
+// ❌ WRONG - Missing prefix
+const indentName = `TestIndent_${Date.now()}`;
+const orderRef = `Order123`;
+```
+
+**Reason**: Read-only database constraint. Prefix helps identify test data for manual cleanup.
+
+### TestDataLocator Usage
+
+For stable prerequisite data (dealers, products, categories), use TestDataLocator:
+
+```typescript
+import { TestDataLocator } from '../../support/data/TestDataLocator';
+
+// Get stable dealer
+const dealer = await TestDataLocator.getStableDealer();
+await ordersPage.selectDealer(dealer.name);
+
+// Get stable product by category
+const product = await TestDataLocator.getStableProduct('Electronics');
+await ordersPage.addProduct(product.name, 5);
+
+// Get stable user by role
+const manager = await TestDataLocator.getStableUser('manager');
+await ordersPage.assignTo(manager.email);
+```
+
+**Benefits**:
+- No hardcoded IDs
+- Cached for performance
+- Reusable across tests
+- Easy to update centrally
+
+---
+
+## 7. ShadCN/Radix Interaction Patterns
+
+### Select/Combobox Pattern
+
+```typescript
+// ❌ WRONG - Native select doesn't work on Radix
+await page.selectOption('select[name="category"]', 'Electronics');
+
+// ✅ CORRECT - Use component library
+await selectComponent.selectByLabel('Category', 'Electronics');
+
+// ✅ CORRECT - Manual pattern
+await page.getByRole('combobox', { name: 'Category' }).click();
+await page.waitForSelector('[role="listbox"]'); // Wait for dropdown
+await page.getByRole('option', { name: 'Electronics' }).click();
+```
+
+### Dialog/Modal Pattern
+
+```typescript
+// Open dialog
+await page.getByRole('button', { name: 'Add Product' }).click();
+
+// Wait for dialog animation (200ms)
+await expect(page.getByRole('dialog')).toBeVisible();
+
+// Interact with dialog
+await page.getByRole('dialog').getByLabel('Product Name').fill('Product A');
+await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
+
+// Wait for dialog to close
+await expect(page.getByRole('dialog')).toBeHidden();
+```
+
+### Toast Pattern
+
+```typescript
+// Success toast
+await expect(page.locator('[data-sonner-toast]'))
+  .toContainText('Created successfully', { timeout: 5000 });
+
+// Error toast
+await expect(page.locator('[data-sonner-toast]'))
+  .toContainText('Failed to create');
+
+// Multiple toasts (use first/last/nth)
+const toasts = page.locator('[data-sonner-toast]');
+await expect(toasts.first()).toContainText('Processing...');
+await expect(toasts.last()).toContainText('Complete');
+```
+
+### Form Validation Pattern
+
+```typescript
+// Fill form with invalid data
+await page.getByLabel('Email').fill('invalid-email');
+await page.getByRole('button', { name: 'Submit' }).click();
+
+// Verify validation error appears under field
+await expect(page.getByRole('alert')).toContainText('Invalid email address');
+
+// Check multiple errors
+const alerts = page.locator('[role="alert"]');
+await expect(alerts).toHaveCount(3);
+await expect(alerts.nth(0)).toContainText('Name is required');
+await expect(alerts.nth(1)).toContainText('Email is invalid');
+await expect(alerts.nth(2)).toContainText('Quantity must be positive');
+```
+
+---
+
+## 8. Wait Strategies
+
+### Implicit Waits (Built-in)
+```typescript
+// Playwright automatically waits for:
+// - Element to be attached to DOM
+// - Element to be visible
+// - Element to be enabled
+// - Element to be stable (not animating)
+
+await page.getByRole('button', { name: 'Submit' }).click();
+// ↑ Waits up to actionTimeout (15s) for button to be clickable
+```
+
+### Explicit Waits
+```typescript
+// Wait for specific state
+await page.waitForLoadState('networkidle');
+await page.waitForSelector('[data-loaded="true"]');
+await page.waitForURL(/\/orders\/\d+/);
+
+// Wait for API response
+await page.waitForResponse(resp => 
+  resp.url().includes('/api/orders') && resp.status() === 200
+);
+
+// Wait with custom timeout
+await expect(page.getByText('Processing...')).toBeVisible({ timeout: 30000 });
+```
+
+### Modal/Dialog Waits
+```typescript
+// Wait for modal to open (200ms animation)
+await page.getByRole('button', { name: 'Add' }).click();
+await expect(page.getByRole('dialog')).toBeVisible();
+
+// Wait for modal to close
+await page.getByRole('button', { name: 'Close' }).click();
+await expect(page.getByRole('dialog')).toBeHidden();
+```
+
+### Toast Waits
+```typescript
+// Toast appears within 5s
+await expect(page.locator('[data-sonner-toast]'))
+  .toBeVisible({ timeout: 5000 });
+
+// Toast auto-dismisses after 3s (default)
+await expect(page.locator('[data-sonner-toast]'))
+  .toBeHidden({ timeout: 5000 });
+```
+
+---
+
+## 9. Error Handling Patterns
+
+### Try-Catch for Cleanup
+```typescript
+When('I perform action that might fail', async function ({ page }) {
+  const testData = `AUTO_QA_${Date.now()}_Data`;
+  
+  try {
+    await ordersPage.createOrder(testData);
+    await ordersPage.verifySuccess();
+  } catch (error) {
+    // Capture screenshot on failure
+    await page.screenshot({ 
+      path: `test-results/failure-${Date.now()}.png`,
+      fullPage: true 
+    });
+    
+    // Log error details
+    console.error('Action failed:', error.message);
+    
+    // Re-throw to fail the test
+    throw error;
+  }
+});
+```
+
+### Conditional Assertions
+```typescript
+// Check if element exists before interacting
+const hasModal = await page.getByRole('dialog').isVisible();
+if (hasModal) {
+  await page.getByRole('button', { name: 'Close' }).click();
+}
+
+// Handle optional elements
+const errorMessage = page.getByRole('alert');
+if (await errorMessage.count() > 0) {
+  console.log('Error appeared:', await errorMessage.textContent());
+}
+```
+
+---
+
+## 10. Performance Optimization
+
+### Reuse Page Objects
+```typescript
+// ✅ GOOD - Reuse instance
+let ordersPage: OrdersPage;
+
+Given('I am on orders page', async function ({ page }) {
+  ordersPage = new OrdersPage(page);
+  await ordersPage.goto();
+});
+
+When('I create order', async function () {
+  await ordersPage.createOrder(data); // Reuse same instance
+});
+
+// ❌ BAD - Create new instance each step
+When('I create order', async function ({ page }) {
+  const ordersPage = new OrdersPage(page); // Wasteful
+  await ordersPage.createOrder(data);
+});
+```
+
+### Cache Test Data
+```typescript
+// ✅ GOOD - Cache stable data
+const dealer = await TestDataLocator.getStableDealer(); // Cached
+const product = await TestDataLocator.getStableProduct('Electronics'); // Cached
+
+// ❌ BAD - Query every time
+const dealer = await executeQuery('SELECT * FROM dealers LIMIT 1'); // Slow
+```
+
+### Parallel-Safe Tests
+```typescript
+// Each test uses unique data (no conflicts)
+const uniqueName = `AUTO_QA_${Date.now()}_${Math.random()}`;
+
+// Tests can run in parallel without interference
+```
+
+---
+
+## Remember
+
+These patterns ensure:
+- ✅ Consistent code structure across all tests
+- ✅ Maintainable and readable test code
+- ✅ Reliable test execution (no flakiness)
+- ✅ Efficient token usage (no duplicated patterns)
+- ✅ Scalable framework as project grows
+
+**Apply these patterns consistently for maximum effectiveness.**
