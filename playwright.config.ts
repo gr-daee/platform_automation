@@ -153,7 +153,8 @@ export default defineConfig({
       },
       dependencies: ['setup'],
       // Exclude login tests - they need fresh context
-      testIgnore: /login\.feature/,
+      // Exclude O2C tests - run only on chromium for now
+      testIgnore: [/login\.feature/, /o2c\/.*\.feature/],
     },
 
     {
@@ -164,7 +165,8 @@ export default defineConfig({
       },
       dependencies: ['setup'],
       // Exclude login tests - they need fresh context
-      testIgnore: /login\.feature/,
+      // Exclude O2C tests - run only on chromium for now
+      testIgnore: [/login\.feature/, /o2c\/.*\.feature/],
     },
 
     /* Mobile viewports for responsive testing */

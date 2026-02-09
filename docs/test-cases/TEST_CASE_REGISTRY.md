@@ -23,6 +23,14 @@ This registry tracks all automated test cases with their unique identifiers for 
 | AUTH-LOGIN-TC-003 | AUTH | LOGIN | Login fails with incorrect password | e2e/features/auth/login.feature | @regression | ✅ |
 | AUTH-LOGIN-TC-004 | AUTH | LOGIN | Login form validation for empty fields | e2e/features/auth/login.feature | @regression | ✅ |
 
+## Order-to-Cash Module (O2C)
+
+### Indent SubModule (INDENT)
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| O2C-INDENT-TC-012 | O2C | INDENT | User searches and selects dealer from Create Indent modal | e2e/features/o2c/indents.feature | @regression @dealer-search | ✅ |
+
 ## Usage
 
 ### Running Tests by Test Case ID

@@ -1,4 +1,4 @@
-import { When } from '@cucumber/cucumber';
+import { createBdd } from 'playwright-bdd';
 
 /**
  * Shared Form Interaction Steps
@@ -6,6 +6,8 @@ import { When } from '@cucumber/cucumber';
  * Reusable step definitions for common form actions.
  * These steps can be used across all feature files.
  */
+
+const { When } = createBdd();
 
 /**
  * Fill any field by label

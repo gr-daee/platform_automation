@@ -19,12 +19,32 @@ Framework-level documentation including setup guides, implementation details, an
 ### 🚀 [Framework Enhancements](framework-enhancements/)
 **Purpose**: Enhancement history and implementation records for architects and leads.
 
-Documentation of major framework enhancements, including consolidated rules implementation and documentation system setup.
+Documentation of major framework enhancements, including consolidated rules implementation, documentation system setup, and multi-user authentication.
 
 **Key Documents:**
 - [Enhancements Overview](framework-enhancements/README.md) - Navigation index for all enhancements
 - [01 - Consolidated Rules](framework-enhancements/01-consolidated-rules/01-IMPLEMENTATION_SUMMARY.md) - Rule consolidation (68% token reduction)
 - [02 - Documentation System](framework-enhancements/02-documentation-system/02-QUICK_START.md) - Knowledge management system (daily reference)
+- [03 - Multi-User Auth](framework-enhancements/03-multi-user-auth/02-QUICK_REFERENCE.md) - User-specific authentication (O2C uses IACS MD User)
+
+### 🔧 [Troubleshooting](troubleshooting/)
+**Purpose**: Problem-solution guides for common issues encountered during development.
+
+Documentation of issues encountered and resolved, organized chronologically for easy reference.
+
+**Quick Access:**
+- [Troubleshooting Index](troubleshooting/README.md) - All troubleshooting guides
+- [February 2026](troubleshooting/2026-02/) - BDD generation, runtime errors, component API fixes
+- [Common Issues](troubleshooting/README.md#common-issues-quick-reference) - Quick symptom → solution lookup
+
+### 📋 [Implementations](implementations/)
+**Purpose**: Detailed records of test implementations following IMPL-### naming convention.
+
+Documentation of specific test case implementations, including technical details, corner cases, and lessons learned.
+
+**Structure:**
+- `implementations/2026-02/` - February 2026 implementations
+- `implementations/templates/` - Templates for new implementations
 
 ### 🧪 [Test Cases](test-cases/)
 Test case documentation organized by automation and manual testing.
@@ -73,6 +93,12 @@ Cross-module knowledge including architecture, database schema, and business rul
 1. Review [Framework Enhancements](framework-enhancements/README.md)
 2. Check [Consolidated Rules Summary](framework-enhancements/01-consolidated-rules/01-IMPLEMENTATION_SUMMARY.md)
 3. Read [Documentation System Guide](framework-enhancements/02-documentation-system/01-COMPLETE_GUIDE.md)
+4. Review [Multi-User Auth System](framework-enhancements/03-multi-user-auth/README.md)
+
+### For Troubleshooting Issues
+1. Check [Troubleshooting Index](troubleshooting/README.md) by symptom
+2. Search [Common Issues](troubleshooting/README.md#common-issues-quick-reference) for error messages
+3. Review [February 2026 Fixes](troubleshooting/2026-02/) for recent solutions
 
 ### For Module Understanding
 1. Read [Module Knowledge](modules/[module]/knowledge.md)
@@ -135,6 +161,7 @@ This documentation structure works with Cursor rules (3 consolidated rules):
 ## Need Help?
 
 - Check [Framework Setup Guide](framework/setup/SETUP_GUIDE.md) for setup issues
+- **Search [Troubleshooting](troubleshooting/) for common errors** ✨ NEW
 - Review [Module Knowledge](modules/) for domain understanding
 - Consult [Cursor Rules](../.cursor/rules/) for code generation standards
 - Contact DAEE QA team for questions
@@ -155,5 +182,5 @@ This documentation structure works with Cursor rules (3 consolidated rules):
 
 ---
 
-**Last Updated**: 2026-02-04  
+**Last Updated**: 2026-02-05  
 **Maintained By**: DAEE QA Team
