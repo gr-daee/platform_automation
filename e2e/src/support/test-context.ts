@@ -152,9 +152,8 @@ class TestContext {
 
       // Attach to test report within step context
       // Note: playwright-bdd wraps BDD steps in test.step() internally
-      // Attachments made with testInfo.attach() within a BDD step should associate with that step
-      // However, Monocart reporter has a limitation: attachments in nested steps may not
-      // display in the step tree view, but will appear in the Attachments section
+      // Attachments made with testInfo.attach() within a BDD step associate with that step
+      // and appear in Playwright HTML and Allure reports.
       try {
         // Attach directly - this should associate with the current BDD step context
         // (since we're called from within a BDD step which is wrapped in test.step())

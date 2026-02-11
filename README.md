@@ -6,7 +6,7 @@ End-to-end test automation framework for the DAEE SaaS ERP platform using Playwr
 
 - **Playwright**: Browser automation framework
 - **playwright-bdd**: BDD/Cucumber integration for Playwright
-- **monocart-reporter**: Rich HTML test reporting
+- **Allure Report 3**: Steps, attachments, and readable HTML reports
 - **otpauth**: TOTP generation for MFA authentication
 - **pg**: PostgreSQL client for database verification
 - **TypeScript**: Type-safe test development
@@ -89,8 +89,11 @@ npm run test:debug
 # Debug mode (capture screenshots at every step)
 DEBUG_MODE=true npm test
 
-# View test report
+# View test report (Playwright HTML)
 npm run test:report
+
+# View Allure Report 3 (run tests first, then: generate + open)
+npm run test:report:allure
 ```
 
 **📖 For detailed execution mode guide, see**: [Test Execution Guide](docs/framework/usage/TEST_EXECUTION.md)

@@ -306,9 +306,16 @@ DEBUG_MODE=false
 - **Issue**: Screenshots only on failure
 - **Solution**: Enable `DEBUG_MODE=true` for screenshots at every step
 
+## Viewing Reports
+
+- **Playwright HTML**: `npm run test:report` (opens playwright-report)
+- **Allure Report 3**: After running tests, run `npm run test:report:allure` to generate and open the Allure report. See [ALLURE_REPORT.md](../implementation/ALLURE_REPORT.md).
+- **Artifact folders**: See [REPORT_ATTACHMENT_BEHAVIOR.md](../implementation/REPORT_ATTACHMENT_BEHAVIOR.md) for test-results, playwright-report, allure-results, allure-report.
+
 ## Related Documentation
 
 - [Environment Setup Guide](../setup/ENV_SETUP_GUIDE.md) - Environment variable configuration
 - [Setup Guide](../setup/SETUP_GUIDE.md) - Framework setup instructions
 - [Debug Mode Guide](../implementation/DEBUG_MODE_GUIDE.md) - Debug mode details
+- [ALLURE_REPORT.md](../implementation/ALLURE_REPORT.md) - Allure Report 3 usage
 - [Main README](../../README.md) - Framework overview

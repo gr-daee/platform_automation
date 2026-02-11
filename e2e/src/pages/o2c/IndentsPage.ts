@@ -65,8 +65,7 @@ export class IndentsPage extends BasePage {
    * Get count of dealers displayed in modal
    */
   async getDealerCount(): Promise<number> {
-    // Wait for table to load
-    await this.page.waitForTimeout(500);
+    await expect(this.dealerModal.getByRole('table')).toBeVisible();
     const rows = await this.dealerTableRows.all();
     // Subtract 1 for header row
     return Math.max(0, rows.length - 1);
@@ -77,8 +76,7 @@ export class IndentsPage extends BasePage {
    */
   async searchDealer(searchTerm: string): Promise<void> {
     await this.dealerSearchInput.fill(searchTerm);
-    // Wait for debounce (300ms) + some buffer
-    await this.page.waitForTimeout(500);
+    await this.page.waitForLoadState('networkidle');
   }
   
   /**

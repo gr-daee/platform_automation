@@ -33,6 +33,8 @@
     "node_modules",
     "dist",
     "test-results",
-    "monocart-report"
+    "allure-results",
+    "allure-report",
+    "playwright-report"
   ]
 }

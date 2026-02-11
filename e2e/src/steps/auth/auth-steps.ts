@@ -111,9 +111,7 @@ When('I generate and enter a valid TOTP code', async ({}) => {
 When('I submit the TOTP verification', async ({ page }) => {
   await loginPage.clickVerifyTOTP();
   console.log('✅ TOTP verification submitted');
-  
-  // Wait a moment for auth state to update
-  await page.waitForTimeout(2000);
+  await page.waitForLoadState('networkidle');
 });
 
 When('I enter an invalid TOTP code {string}', async ({}, invalidCode: string) => {

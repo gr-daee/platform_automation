@@ -15,7 +15,7 @@ The foundational test automation framework for the DAEE platform has been succes
 ### 2. ✅ Playwright Configuration
 - **playwright.config.ts**: 
   - playwright-bdd integration for Cucumber/BDD support
-  - monocart-reporter for rich HTML reports
+  - Playwright HTML reporter and Allure Report 3 (allure-playwright)
   - Multi-browser support (Chromium, Firefox, WebKit)
   - Multi-environment configuration (local/staging)
   - Global setup for pre-authentication
@@ -118,7 +118,7 @@ platform_automation/
 ✅ All dependencies successfully installed:
 - `@playwright/test` ^1.48.0
 - `playwright-bdd` ^7.5.0
-- `monocart-reporter` ^2.9.8
+- `allure` ^3.x and `allure-playwright` ^3.x (Allure Report 3)
 - `otpauth` ^9.3.4
 - `pg` ^8.13.1
 - `dotenv` ^16.4.7
@@ -241,8 +241,8 @@ npm run test:report
    - Database Helper performs sandwich verifications
 
 3. **Reports generated**:
-   - HTML report with screenshots
-   - Monocart report with rich visualizations
+   - Playwright HTML report with screenshots and trace viewer link
+   - Allure Report 3 with steps and attachments
    - Test traces for debugging failures
 
 ## Key Features Implemented

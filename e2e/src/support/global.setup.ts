@@ -120,8 +120,8 @@ async function authenticateUser(
 
     console.log('📍 Current URL:', page.url());
 
-    // Give a moment for auth state to stabilize
-    await page.waitForTimeout(2000);
+    // Wait for network to settle so auth state is stable before saving storage
+    await page.waitForLoadState('networkidle');
 
     // Save storage state
     const authFilePath = path.join(authDir, user.authFile);

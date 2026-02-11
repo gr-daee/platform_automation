@@ -10,6 +10,9 @@ import { Page, Locator, expect } from '@playwright/test';
  * - Toast/Dialog handling
  * - Form interactions
  * 
+ * Wait strategy: Prefer event-based waits (expect().toBeVisible(), waitForLoadState,
+ * waitForResponse). Avoid page.waitForTimeout() — see automation-patterns "Replacing waitForTimeout".
+ * 
  * All Page Objects MUST inherit from this class.
  * 
  * @example
@@ -409,7 +412,8 @@ export abstract class BasePage {
   }
 
   /**
-   * Click element with retry (handles occasional click interception)
+   * Click element with retry (handles occasional click interception).
+   * Prefer event-based waits over fixed delays; avoid page.waitForTimeout().
    */
   async clickWithRetry(locator: Locator, retries: number = 3): Promise<void> {
     for (let i = 0; i < retries; i++) {
@@ -418,7 +422,7 @@ export abstract class BasePage {
         return;
       } catch (error) {
         if (i === retries - 1) throw error;
-        await this.page.waitForTimeout(500);
+        await this.page.waitForLoadState('domcontentloaded');
       }
     }
   }

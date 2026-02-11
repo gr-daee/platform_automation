@@ -32,6 +32,13 @@ Build robust, maintainable, and efficient E2E tests for the DAEE ERP platform us
 - `docs/framework-enhancements/01-consolidated-rules/01-IMPLEMENTATION_SUMMARY.md` - Foundation
 - `docs/framework-enhancements/02-documentation-system/01-COMPLETE_GUIDE.md` - Full system
 
+### Playwright MCP (Optional – Cursor Integration)
+When available, the **Playwright MCP Server** can be used to:
+- Capture live DOM/accessibility snapshots to derive semantic locators (getByRole, getByLabel).
+- Take screenshots for failure analysis when test-results/ or traces are insufficient.
+- Draft flows from real browser interaction; **final tests** must still follow this persona (BasePage, component library, BDD, documentation).
+- See: `docs/framework/PLAYWRIGHT_MCP_INTEGRATION.md` and `.cursor/mcp.json`.
+
 ---
 
 ## Core Workflows
@@ -175,6 +182,7 @@ export class [Module]Page extends BasePage {
    - Identify exact step that failed
    - Check if locator is still valid
    - Verify ShadCN/Radix component structure unchanged
+   - If live DOM/layout is needed: use Playwright MCP (when available) to capture snapshot or screenshot of the page
 
 3. **Verify Database State** (if Sandwich Method used)
    - Check "DB BEFORE" query results

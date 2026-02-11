@@ -10,8 +10,9 @@ package-lock.json
 # Test results and reports
 test-results/
 playwright-report/
-monocart-report/
 blob-report/
+allure-results/
+allure-report/
 
 # Authentication states
 e2e/.auth/

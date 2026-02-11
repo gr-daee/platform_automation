@@ -164,6 +164,19 @@ await formComponent.verifySubmitted();
 
 **Pattern**: Validation errors appear as role="alert" under fields.
 
+### Replacing waitForTimeout
+
+`page.waitForTimeout(ms)` is deprecated and discouraged; use event-based waits so tests stay fast and stable.
+
+| Instead of… | Use… |
+|-------------|------|
+| Fixed delay after an action | `expect(locator).toBeVisible({ timeout })` or `locator.waitFor({ state: 'visible', timeout })` |
+| Waiting for navigation/network | `page.waitForLoadState('networkidle')` or `page.waitForURL(...)` |
+| Waiting for a response | `page.waitForResponse(urlOrPredicate)` |
+| Retry backoff | `page.waitForLoadState('domcontentloaded')` or a short polling loop only if truly needed |
+
+Prefer waiting for the specific condition (element visible, URL, response) rather than a fixed timeout.
+
 ---
 
 ## 3. Semantic Locator Strategies

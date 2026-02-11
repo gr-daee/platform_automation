@@ -6,6 +6,10 @@
   "scripts": {
     "test": "playwright test",
     "test:report": "playwright show-report",
+    "test:report:allure": "npx allure generate allure-results -o allure-report && npx allure open allure-report",
+    "test:report:allure:generate": "npx allure generate allure-results -o allure-report",
+    "test:report:allure:open": "npx allure open allure-report",
+    "test:allure": "npx allure run -- npm run test",
     "bdd:generate": "bddgen",
     "prebdd:generate": "echo 'Generating BDD step files...'",
     "pretest": "npm run bdd:generate",
@@ -36,15 +40,16 @@
   "license": "ISC",
   "dependencies": {
     "@playwright/test": "^1.48.0",
-    "playwright-bdd": "^7.5.0",
-    "monocart-reporter": "^2.9.8",
+    "dotenv": "^16.4.7",
     "otpauth": "^9.3.4",
     "pg": "^8.13.1",
-    "dotenv": "^16.4.7"
+    "playwright-bdd": "^7.5.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
     "@types/pg": "^8.11.10",
+    "allure": "^3.1.0",
+    "allure-playwright": "^3.4.5",
     "typescript": "^5.8.0"
   }
 }

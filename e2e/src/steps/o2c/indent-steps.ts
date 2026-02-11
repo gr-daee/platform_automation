@@ -51,19 +51,14 @@ Then('the modal should display a list of active dealers', async function() {
 });
 
 Then('the modal should have a search input', async function({ page }) {
-  const searchInput = indentsPage['dealerSearchInput']; // Access via bracket notation
+  const searchInput = indentsPage.dealerSearchInput;
   await expect(searchInput).toBeVisible();
   await expect(searchInput).toBeEnabled();
   console.log('✅ Search input is visible and enabled');
 });
 
 Then('the dealer list should be filtered', async function({ page }) {
-  // Wait for filtering to complete
-  await page.waitForTimeout(500);
-  
-  // Verify table is still visible (not empty state)
-  const table = indentsPage['dealerModal'].getByRole('table');
-  await expect(table).toBeVisible();
+  await expect(indentsPage.dealerModal.getByRole('table')).toBeVisible();
   console.log('✅ Dealer list is filtered');
 });
 

@@ -44,7 +44,8 @@ const testDir = defineBddConfig({
  * 
  * Features:
  * - BDD/Cucumber integration via playwright-bdd
- * - Monocart reporter for rich HTML reports
+ * - Playwright HTML reporter (trace viewer link)
+ * - Allure Report 3 (allure-playwright) for steps, attachments, and Allure 3 UI
  * - Multi-environment support (local, staging)
  * - Pre-authenticated sessions via global setup
  */
@@ -65,23 +66,14 @@ export default defineConfig({
     ['list'],
     ['html', { open: 'never' }],
     [
-      'monocart-reporter',
+      'allure-playwright',
       {
-        name: 'DAEE Platform E2E Test Report',
-        outputFile: 'monocart-report/index.html',
-        coverage: {
-          entryFilter: (entry: any) => {
-            // Include only application code, exclude node_modules and test files
-            return entry.url.includes('/src/') && !entry.url.includes('node_modules');
-          },
-        },
-        trend: true,
-        tags: {
-          smoke: { background: '#228B22' },
-          critical: { background: '#DC143C' },
-          regression: { background: '#4169E1' },
-          // Test case IDs (e.g., @AUTH-LOGIN-TC-001) are automatically displayed as tags
-          // Monocart reporter will show all tags including test case IDs in the test report
+        resultsDir: 'allure-results',
+        detail: true,
+        suiteTitle: true,
+        environmentInfo: {
+          node_version: process.version,
+          playwright_version: process.env.npm_package_dependencies__playwright_test?.replace('^', '') ?? 'unknown',
         },
       },
     ],
