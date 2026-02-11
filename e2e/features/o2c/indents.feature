@@ -3,13 +3,8 @@ Feature: O2C Indent Management
   I want to create and manage indents
   So that I can process dealer orders efficiently
 
-  # Intended User Context (for future multi-user implementation):
-  # - User: IACS MD User (md@idhyahagri.com)
-  # - Tenant: IACS
-  # - Role: Managing Director
-  # 
-  # Current: Using Super Admin (super-admin@daee.in) via pre-authenticated session
-  # TODO: Implement proper multi-user auth to test as IACS MD User
+  Background:
+    Given I am logged in as "IACS MD User"
 
   @O2C-INDENT-TC-012 @regression @dealer-search @iacs-tenant
   Scenario: User searches and selects dealer from Create Indent modal

@@ -132,7 +132,33 @@ export default defineConfig({
         // storageState: undefined,
       },
     },
-    
+
+    // O2C tests - IACS MD User (must be before chromium for test assignment)
+    {
+      name: 'chromium-o2c',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'e2e/.auth/iacs-md.json',
+      },
+      testMatch: /o2c[/\\].*\.feature/,
+      dependencies: ['setup'],
+      testIgnore: /login\.feature/,
+    },
+
+    // O2C tests - Super Admin (same tests as chromium-o2c, different user)
+    // Run with: npm run test:dev -- --project=chromium-o2c-super-admin --grep "@O2C-"
+    {
+      name: 'chromium-o2c-super-admin',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'e2e/.auth/admin.json',
+      },
+      testMatch: /o2c[/\\].*\.feature/,
+      dependencies: ['setup'],
+      testIgnore: /login\.feature/,
+    },
+
+    // Default chromium - Super Admin (excludes O2C - they use chromium-o2c)
     {
       name: 'chromium',
       use: {
@@ -141,8 +167,8 @@ export default defineConfig({
         storageState: 'e2e/.auth/admin.json',
       },
       dependencies: ['setup'],
-      // Exclude login tests - they need fresh context
-      testIgnore: /login\.feature/,
+      // Exclude login tests - they need fresh context; exclude O2C - they use chromium-o2c
+      testIgnore: [/login\.feature/, /o2c[/\\].*\.feature/],
     },
 
     {

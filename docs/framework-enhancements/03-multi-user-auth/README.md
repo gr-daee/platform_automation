@@ -87,11 +87,11 @@ Background:
 
 ### New Files Created
 - `e2e/src/steps/shared/auth-background-steps.ts` - Authentication step definitions
-- `e2e/src/support/auth-profiles.setup.ts` - Multi-user auth setup
 
 ### Modified Files
+- `e2e/src/support/global.setup.ts` - Multi-user auth (Super Admin + IACS MD User)
 - `playwright.config.ts` - Added chromium-o2c project with IACS MD User
-- `e2e/features/o2c/indents.feature` - Added user context in Background
+- `e2e/features/o2c/indents.feature` - Added Background with `Given I am logged in as "IACS MD User"`
 
 ### Generated Files
 - `e2e/.auth/admin.json` - Super Admin session
@@ -149,8 +149,8 @@ Test runs with correct user context
 
 ### Adding New Users
 1. Add credentials to `.env.local`
-2. Update `auth-profiles.setup.ts`
-3. Update `auth-background-steps.ts`
+2. Add profile to users array in `global.setup.ts`
+3. Add role to userRoleMap in `auth-background-steps.ts`
 4. Create new project in `playwright.config.ts` (if needed)
 
 ### Testing New Users

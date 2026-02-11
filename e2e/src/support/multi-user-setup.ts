@@ -7,14 +7,15 @@ import { testContext } from './test-context';
 
 /**
  * Multi-User Global Setup for DAEE Platform
- * 
+ *
+ * NOTE: The canonical implementation is in global.setup.ts which is wired in playwright.config.
+ * This file is kept for reference. Selectors match AnimatedLoginFlow.tsx (input#totp-code, input#verify-code).
+ *
  * Creates separate authentication files for different users/tenants/roles:
- * - super-admin.json - Super Admin (system-level access)
+ * - admin.json - Super Admin (system-level access)
  * - iacs-md.json - IACS MD User (tenant: IACS, role: MD)
- * - finance-manager.json - Finance Manager
- * - warehouse-manager.json - Warehouse Manager
- * 
- * Each test can specify which user to use via storageState in test/fixture
+ *
+ * Each test uses storageState via Playwright project config (testMatch determines which auth file).
  */
 
 interface UserCredentials {
@@ -46,24 +47,29 @@ async function authenticateUser(
   try {
     // Navigate to login
     console.log('📍 Navigating to login page...');
-    await page.goto('/login');
-    
-    // Wait for login form
+    await page.goto('/login', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle');
+
+    // Wait for login form (use IDs from AnimatedLoginFlow)
     console.log('⏳ Waiting for login form...');
-    await page.waitForSelector('input[type="email"]', { timeout: 10000 });
-    
+    await page.waitForSelector('input#email', { state: 'visible', timeout: 10000 });
+
     // Fill credentials
     console.log('✍️  Filling email...');
-    await page.fill('input[type="email"]', user.email);
-    await page.fill('input[type="password"]', user.password);
-    
-    // Click Sign In
+    await page.locator('input#email').fill(user.email);
+    await page.locator('input#password').fill(user.password);
+
+    // Click Sign In - use form context for stability
     console.log('🔘 Clicking Sign In button...');
-    await page.click('button[type="submit"]:has-text("Sign In")');
-    
-    // Wait for TOTP step
+    const signInButton = page.locator('form').getByRole('button', { name: 'Sign In', exact: true });
+    await signInButton.click();
+
+    // Wait for TOTP step (totp-setup: #totp-code, totp-verify: #verify-code)
     console.log('⏳ Waiting for TOTP verification step...');
-    await page.waitForSelector('input[placeholder*="6-digit"]', { timeout: 10000 });
+    await page.waitForSelector('input#totp-code, input#verify-code', {
+      state: 'visible',
+      timeout: 15000,
+    });
     console.log('✅ TOTP verification step reached');
     
     // Generate TOTP
@@ -81,11 +87,13 @@ async function authenticateUser(
     
     // Enter TOTP
     console.log('✍️  Entering TOTP code...');
-    await page.fill('input[placeholder*="6-digit"]', totpCode);
-    
+    const totpInput = page.locator('input#totp-code, input#verify-code').first();
+    await totpInput.fill(totpCode);
+
     // Click Verify
     console.log('🔘 Clicking Verify button...');
-    await page.click('button[type="submit"]:has-text("Verify")');
+    const verifyButton = page.getByRole('button', { name: /Verify/i }).first();
+    await verifyButton.click();
     
     // Wait for authentication
     console.log('⏳ Waiting for authentication to complete...');

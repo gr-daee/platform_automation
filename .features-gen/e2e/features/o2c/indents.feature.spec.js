@@ -3,6 +3,10 @@ import { test } from "playwright-bdd";
 
 test.describe("O2C Indent Management", () => {
 
+  test.beforeEach(async ({ Given, page }) => {
+    await Given("I am logged in as \"IACS MD User\"", null, { page });
+  });
+
   test("User searches and selects dealer from Create Indent modal", { tag: ["@O2C-INDENT-TC-012", "@regression", "@dealer-search", "@iacs-tenant"] }, async ({ Given, page, When, Then, And }) => {
     await Given("I am on the O2C Indents page", null, { page });
     await When("I click the Create Indent button", null, { page });
@@ -28,5 +32,5 @@ test.use({
 });
 
 const bddFileMeta = {
-  "User searches and selects dealer from Create Indent modal": {"pickleLocation":"15:3","tags":["@O2C-INDENT-TC-012","@regression","@dealer-search","@iacs-tenant"],"ownTags":["@iacs-tenant","@dealer-search","@regression","@O2C-INDENT-TC-012"]},
+  "User searches and selects dealer from Create Indent modal": {"pickleLocation":"10:3","tags":["@O2C-INDENT-TC-012","@regression","@dealer-search","@iacs-tenant"],"ownTags":["@iacs-tenant","@dealer-search","@regression","@O2C-INDENT-TC-012"]},
 };

@@ -449,6 +449,14 @@ npm run test:dev          # Development mode (headed, single worker)
 - **ShadCN/Radix UI**: Requires special interaction patterns (not native selectors)
 - **TOTP/MFA**: All tests must handle 2FA authentication
 
+### Multi-User Authentication
+DAEE is multi-tenant, multi-role. Tests run as different users based on Playwright project routing:
+
+- **When creating a test**: Determine which persona (IACS MD User, Super Admin, Finance Manager, etc.) the scenario requires
+- **Feature file convention**: Include `Background: Given I am logged in as "{User Role}"`; place feature file in path that matches Playwright project routing (e.g., `o2c/*.feature` → IACS MD User)
+- **Adding a new user**: (1) Add credentials to `.env.local`, (2) Add profile to users array in `global.setup.ts`, (3) Add role to `auth-background-steps.ts`, (4) Add Playwright project with testMatch and storageState
+- **Reference**: `docs/framework-enhancements/03-multi-user-auth/`
+
 ---
 
 ## Semantic Locator Strategy (Priority Order)

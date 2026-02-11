@@ -60,7 +60,7 @@ Feature: [Feature Name]
   So that [achieve goal]
 
   Background:
-    Given I am authenticated as an admin user
+    Given I am logged in as "IACS MD User"
     And I am on the [module] page
 
   @[MODULE]-[FEATURE]-TC-001 @smoke @critical
@@ -90,6 +90,7 @@ Feature: [Feature Name]
 - Tag with test case ID (@MODULE-FEATURE-TC-###)
 - Tag with test type (@smoke, @critical, @regression)
 - Write from user perspective (no technical details)
+- **Multi-user auth**: Use `Given I am logged in as "{User Role}"` with the role appropriate for the module (e.g., "IACS MD User" for O2C, "Super Admin" for admin tests). User role must match a supported role in `auth-background-steps.ts`. Feature file path determines which Playwright project (and thus which user) runs. See `docs/framework-enhancements/03-multi-user-auth/`.
 
 ### Step 2: Create Page Object Model
 

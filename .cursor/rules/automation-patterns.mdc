@@ -238,14 +238,15 @@ page.locator('div > ul > li:nth-child(3)')
 ```
 e2e/src/steps/
 ├── auth/
-│   └── auth-steps.ts           # Authentication-specific steps
-├── o2c/
-│   ├── indent-steps.ts         # Indent-specific steps
-│   └── order-steps.ts          # Order-specific steps
+│   └── auth-steps.ts           # Login-flow tests (no pre-auth)
 ├── shared/
+│   ├── auth-background-steps.ts # Multi-user auth: Given I am logged in as "{role}"
 │   ├── navigation-steps.ts     # Reusable navigation steps
 │   ├── assertion-steps.ts      # Common assertions
 │   └── form-steps.ts           # Generic form interactions
+├── o2c/
+│   ├── indent-steps.ts         # Indent-specific steps
+│   └── order-steps.ts          # Order-specific steps
 └── index.ts                    # Export all steps
 ```
 
