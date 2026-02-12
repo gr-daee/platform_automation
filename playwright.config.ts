@@ -94,6 +94,20 @@ const testDir = defineBddConfig({
 });
 
 /**
+ * Chrome configuration: Use system Chrome instead of bundled Chromium
+ * 
+ * Using channel: 'chrome' to use system-installed Chrome browser
+ * instead of Playwright's bundled Chromium. This avoids sandbox issues
+ * and uses the Chrome browser already installed on the system.
+ * 
+ * Desktop Chrome device preset provides viewport: 1280x720, userAgent, etc.
+ */
+const chromeConfig = {
+  ...devices['Desktop Chrome'],
+  channel: 'chrome' as const, // Use system Chrome instead of bundled Chromium
+};
+
+/**
  * Playwright configuration for DAEE Platform E2E Testing
  * 
  * Features:
@@ -135,6 +149,7 @@ export default defineConfig({
   
   /* Global setup and teardown */
   globalSetup: require.resolve('./e2e/src/support/global.setup.ts'),
+  globalTeardown: require.resolve('./e2e/src/support/global.teardown.ts'),
   
   /* Global timeout settings */
   expect: {
@@ -193,9 +208,9 @@ export default defineConfig({
     
     {
       name: 'login-tests',
-      testMatch: /login\.feature/,
+      testMatch: /login\.spec\.js/,              // Matches generated .spec.js files
       use: {
-        ...devices['Desktop Chrome'],
+        ...chromeConfig,
         // Fresh context - testing login itself
         storageState: { cookies: [], origins: [] },
       },
@@ -207,55 +222,55 @@ export default defineConfig({
     {
       name: 'iacs-md',
       use: {
-        ...devices['Desktop Chrome'],
+        ...chromeConfig,
         storageState: 'e2e/.auth/iacs-md.json',
       },
-      testMatch: /o2c[/\\].*\.feature$/,        // File path routing
+      testMatch: /o2c[/\\].*\.spec\.js$/,        // File path routing (matches generated .spec.js files)
       grep: /@iacs-md/,                          // Tag filtering
       grepInvert: /@skip-iacs-md/,               // Skip exclusions
       dependencies: ['setup'],
-      testIgnore: /login\.feature/,
+      testIgnore: /login\.spec\.js/,
     },
 
     // IACS Finance Admin - Primary for Finance tests (when created)
     {
       name: 'iacs-finance',
       use: {
-        ...devices['Desktop Chrome'],
+        ...chromeConfig,
         storageState: 'e2e/.auth/iacs-finance-admin.json',
       },
-      testMatch: /finance[/\\].*\.feature$/,
+      testMatch: /finance[/\\].*\.spec\.js$/,
       grep: /@iacs-finance/,
       grepInvert: /@skip-iacs-finance/,
       dependencies: ['setup'],
-      testIgnore: /login\.feature/,
+      testIgnore: /login\.spec\.js/,
     },
 
     // IACS Warehouse Manager - Primary for Warehouse tests (when created)
     {
       name: 'iacs-warehouse',
       use: {
-        ...devices['Desktop Chrome'],
+        ...chromeConfig,
         storageState: 'e2e/.auth/iacs-warehouse-manager.json',
       },
-      testMatch: /warehouse[/\\].*\.feature$/,
+      testMatch: /warehouse[/\\].*\.spec\.js$/,
       grep: /@iacs-warehouse/,
       grepInvert: /@skip-iacs-warehouse/,
       dependencies: ['setup'],
-      testIgnore: /login\.feature/,
+      testIgnore: /login\.spec\.js/,
     },
 
     // Super Admin - Primary for Admin tests + fallback
     {
       name: 'super-admin',
       use: {
-        ...devices['Desktop Chrome'],
+        ...chromeConfig,
         storageState: 'e2e/.auth/admin.json',
       },
-      testMatch: /(?!login|o2c|finance|warehouse).*\.feature$/,
+      testMatch: /(?!login|o2c|finance|warehouse).*\.spec\.js$/,
       grep: /@super-admin/,
       dependencies: ['setup'],
-      testIgnore: /login\.feature/,
+      testIgnore: /login\.spec\.js/,
     },
 
     // ===== SECONDARY USER PROJECTS (30% multi-user tests only) =====
@@ -264,11 +279,11 @@ export default defineConfig({
     {
       name: 'multi-user-iacs-finance',
       use: {
-        ...devices['Desktop Chrome'],
+        ...chromeConfig,
         storageState: 'e2e/.auth/iacs-finance-admin.json',
       },
       grep: /@multi-user.*@iacs-finance/,        // Only multi-user + finance tag
-      testMatch: /(?!login).*\.feature$/,         // Any feature file
+      testMatch: /(?!login).*\.spec\.js$/,         // Any generated spec file
       dependencies: ['setup'],
     },
     
@@ -276,11 +291,11 @@ export default defineConfig({
     {
       name: 'multi-user-iacs-warehouse',
       use: {
-        ...devices['Desktop Chrome'],
+        ...chromeConfig,
         storageState: 'e2e/.auth/iacs-warehouse-manager.json',
       },
       grep: /@multi-user.*@iacs-warehouse/,
-      testMatch: /(?!login).*\.feature$/,
+      testMatch: /(?!login).*\.spec\.js$/,
       dependencies: ['setup'],
     },
     
@@ -288,11 +303,11 @@ export default defineConfig({
     {
       name: 'multi-user-super-admin',
       use: {
-        ...devices['Desktop Chrome'],
+        ...chromeConfig,
         storageState: 'e2e/.auth/admin.json',
       },
       grep: /@multi-user.*@super-admin/,
-      testMatch: /(?!login).*\.feature$/,
+      testMatch: /(?!login).*\.spec\.js$/,
       dependencies: ['setup'],
     },
 
@@ -305,7 +320,7 @@ export default defineConfig({
       },
       grep: /@cross-browser|@smoke/,
       dependencies: ['setup'],
-      testIgnore: /login\.feature/,
+      testIgnore: /login\.spec\.js/,
     },
 
     {
@@ -316,7 +331,7 @@ export default defineConfig({
       },
       grep: /@cross-browser|@smoke/,
       dependencies: ['setup'],
-      testIgnore: /login\.feature/,
+      testIgnore: /login\.spec\.js/,
     },
 
     /* Mobile viewports for responsive testing */

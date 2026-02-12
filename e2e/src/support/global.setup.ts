@@ -12,6 +12,64 @@ import {
 } from './config/user-profiles.config';
 
 /**
+ * Clean up previous test reports and artifacts
+ * Similar to Extent Reports cleanup - ensures fresh start for each test run
+ * 
+ * Configuration:
+ * - CLEAN_ALLURE_RESULTS=true: Clean allure-results/ (fresh start, no accumulation)
+ * - CLEAN_ALLURE_RESULTS=false or unset: Keep allure-results/ (accumulate results)
+ * - Always cleans: allure-report/, playwright-report/, test-results/ (generated reports)
+ */
+function cleanupPreviousReports(): void {
+  const projectRoot = path.resolve(__dirname, '../../../');
+  const cleanAllureResults = process.env.CLEAN_ALLURE_RESULTS === 'true';
+  
+  // Always clean generated reports (HTML reports)
+  const reportDirsToClean = [
+    path.join(projectRoot, 'allure-report'),
+    path.join(projectRoot, 'playwright-report'),
+    path.join(projectRoot, 'test-results'),
+  ];
+
+  // Conditionally clean raw results based on env var
+  if (cleanAllureResults) {
+    reportDirsToClean.push(path.join(projectRoot, 'allure-results'));
+  }
+
+  console.log('🧹 Cleaning up previous test reports and artifacts...');
+  if (cleanAllureResults) {
+    console.log('   ℹ️  CLEAN_ALLURE_RESULTS=true - Starting fresh (no result accumulation)');
+  } else {
+    console.log('   ℹ️  Allure results will accumulate (set CLEAN_ALLURE_RESULTS=true for fresh start)');
+  }
+
+  reportDirsToClean.forEach(dir => {
+    if (fs.existsSync(dir)) {
+      try {
+        fs.rmSync(dir, { recursive: true, force: true });
+        console.log(`   ✅ Cleaned: ${path.basename(dir)}/`);
+      } catch (error) {
+        console.warn(`   ⚠️  Failed to clean ${path.basename(dir)}/:`, (error as Error).message);
+      }
+    }
+  });
+
+  // Recreate directories that are needed
+  const requiredDirs = [
+    path.join(projectRoot, 'allure-results'),
+    path.join(projectRoot, 'test-results'),
+  ];
+
+  requiredDirs.forEach(dir => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  });
+
+  console.log('✅ Cleanup complete\n');
+}
+
+/**
  * Multi-User Global Setup for DAEE Platform E2E Tests
  *
  * Purpose: Pre-authenticate multiple user profiles and save storage state files
@@ -171,6 +229,9 @@ async function authenticateUser(
 async function globalSetup(config: FullConfig) {
   console.log('\n🔧 ===== MULTI-USER GLOBAL SETUP START =====\n');
 
+  // Clean up reports and artifacts from previous test runs (like Extent Reports cleanup)
+  cleanupPreviousReports();
+
   // Clean up screenshots from previous test runs
   testContext.cleanupAllScreenshots();
 
@@ -236,13 +297,14 @@ async function globalSetup(config: FullConfig) {
       failureCount++;
       failedProfiles.push(user.name);
 
+      // TODO: Re-enable Super Admin check after 4-5 weeks when super-admin profile is active
       // If Super Admin fails, throw error (critical - required for most tests)
-      if (user.name === 'Super Admin') {
-        throw new Error(
-          'Critical: Super Admin authentication failed. Cannot proceed with tests. ' +
-            'Ensure web app is running and freshly built. "Failed to find Server Action" may indicate build cache mismatch - restart web app.'
-        );
-      }
+      // if (user.name === 'Super Admin') {
+      //   throw new Error(
+      //     'Critical: Super Admin authentication failed. Cannot proceed with tests. ' +
+      //       'Ensure web app is running and freshly built. "Failed to find Server Action" may indicate build cache mismatch - restart web app.'
+      //   );
+      // }
     }
   }
 

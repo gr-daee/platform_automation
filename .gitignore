@@ -13,7 +13,6 @@ playwright-report/
 blob-report/
 allure-results/
 allure-report/
-
 # Authentication states
 e2e/.auth/
 *.json.auth

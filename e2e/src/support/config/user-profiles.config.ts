@@ -27,6 +27,12 @@ export interface UserProfile {
 /**
  * User Profile Matrix
  * Add new users here to scale testing across roles and tenants
+ * 
+ * TEMPORARY LIMITATION (Feb 2026):
+ * - Currently only 'iacs-md' is active
+ * - Other profiles commented out to reduce complexity during initial test development
+ * - Will be re-enabled in 4-5 weeks when we have a sizable number of tests
+ * - To re-enable: Uncomment the profiles below and ensure .env.local has credentials
  */
 export const USER_PROFILES: Record<string, UserProfile> = {
   // ==========================================
@@ -47,83 +53,88 @@ export const USER_PROFILES: Record<string, UserProfile> = {
     description: 'Managing Director with full O2C access, read-only Finance and Warehouse',
   },
   
-  'iacs-finance-admin': {
-    id: 'iacs-finance-admin',
-    email: process.env.IACS_FINANCE_ADMIN_EMAIL || 'finance.admin@iacs.com',
-    password: process.env.IACS_FINANCE_ADMIN_PASSWORD || 'SecurePassword123!',
-    totpSecret: process.env.IACS_FINANCE_ADMIN_TOTP_SECRET || 'JBSWY3DPEHPK3PXP',
-    tenant: 'IACS',
-    role: 'Finance Admin',
-    displayName: 'IACS Finance Admin',
-    storageStatePath: 'e2e/.auth/iacs-finance-admin.json',
-    permissions: ['finance:*', 'o2c:read'],
-    testDataScope: 'iacs',
-    description: 'Finance Admin with full Finance module access, read-only O2C',
-  },
+  // TODO: Re-enable after 4-5 weeks when we have more tests
+  // 'iacs-finance-admin': {
+  //   id: 'iacs-finance-admin',
+  //   email: process.env.IACS_FINANCE_ADMIN_EMAIL || 'finance.admin@iacs.com',
+  //   password: process.env.IACS_FINANCE_ADMIN_PASSWORD || 'SecurePassword123!',
+  //   totpSecret: process.env.IACS_FINANCE_ADMIN_TOTP_SECRET || 'JBSWY3DPEHPK3PXP',
+  //   tenant: 'IACS',
+  //   role: 'Finance Admin',
+  //   displayName: 'IACS Finance Admin',
+  //   storageStatePath: 'e2e/.auth/iacs-finance-admin.json',
+  //   permissions: ['finance:*', 'o2c:read'],
+  //   testDataScope: 'iacs',
+  //   description: 'Finance Admin with full Finance module access, read-only O2C',
+  // },
   
-  'iacs-warehouse-manager': {
-    id: 'iacs-warehouse-manager',
-    email: process.env.IACS_WAREHOUSE_MANAGER_EMAIL || 'warehouse@iacs.com',
-    password: process.env.IACS_WAREHOUSE_MANAGER_PASSWORD || 'SecurePassword123!',
-    totpSecret: process.env.IACS_WAREHOUSE_MANAGER_TOTP_SECRET || 'JBSWY3DPEHPK3PXP',
-    tenant: 'IACS',
-    role: 'Warehouse Manager',
-    displayName: 'IACS Warehouse Manager',
-    storageStatePath: 'e2e/.auth/iacs-warehouse-manager.json',
-    permissions: ['warehouse:*', 'o2c:read'],
-    testDataScope: 'iacs',
-    description: 'Warehouse Manager with full Warehouse access, read-only O2C',
-  },
+  // TODO: Re-enable after 4-5 weeks when we have more tests
+  // 'iacs-warehouse-manager': {
+  //   id: 'iacs-warehouse-manager',
+  //   email: process.env.IACS_WAREHOUSE_MANAGER_EMAIL || 'warehouse@iacs.com',
+  //   password: process.env.IACS_WAREHOUSE_MANAGER_PASSWORD || 'SecurePassword123!',
+  //   totpSecret: process.env.IACS_WAREHOUSE_MANAGER_TOTP_SECRET || 'JBSWY3DPEHPK3PXP',
+  //   tenant: 'IACS',
+  //   role: 'Warehouse Manager',
+  //   displayName: 'IACS Warehouse Manager',
+  //   storageStatePath: 'e2e/.auth/iacs-warehouse-manager.json',
+  //   permissions: ['warehouse:*', 'o2c:read'],
+  //   testDataScope: 'iacs',
+  //   description: 'Warehouse Manager with full Warehouse access, read-only O2C',
+  // },
   
   // ==========================================
   // Demo Tenant Users
   // ==========================================
   
-  'demo-admin': {
-    id: 'demo-admin',
-    email: process.env.DEMO_ADMIN_EMAIL || 'admin@demo.com',
-    password: process.env.DEMO_ADMIN_PASSWORD || 'SecurePassword123!',
-    totpSecret: process.env.DEMO_ADMIN_TOTP_SECRET || 'JBSWY3DPEHPK3PXP',
-    tenant: 'Demo Tenant',
-    role: 'Super Admin',
-    displayName: 'Demo Admin',
-    storageStatePath: 'e2e/.auth/demo-admin.json',
-    permissions: ['*:*'],
-    testDataScope: 'demo',
-    description: 'Super Admin for Demo Tenant with all permissions',
-  },
+  // TODO: Re-enable after 4-5 weeks when we have more tests
+  // 'demo-admin': {
+  //   id: 'demo-admin',
+  //   email: process.env.DEMO_ADMIN_EMAIL || 'admin@demo.com',
+  //   password: process.env.DEMO_ADMIN_PASSWORD || 'SecurePassword123!',
+  //   totpSecret: process.env.DEMO_ADMIN_TOTP_SECRET || 'JBSWY3DPEHPK3PXP',
+  //   tenant: 'Demo Tenant',
+  //   role: 'Super Admin',
+  //   displayName: 'Demo Admin',
+  //   storageStatePath: 'e2e/.auth/demo-admin.json',
+  //   permissions: ['*:*'],
+  //   testDataScope: 'demo',
+  //   description: 'Super Admin for Demo Tenant with all permissions',
+  // },
   
-  'demo-finance-manager': {
-    id: 'demo-finance-manager',
-    email: process.env.DEMO_FINANCE_MANAGER_EMAIL || 'finance@demo.com',
-    password: process.env.DEMO_FINANCE_MANAGER_PASSWORD || 'SecurePassword123!',
-    totpSecret: process.env.DEMO_FINANCE_MANAGER_TOTP_SECRET || 'JBSWY3DPEHPK3PXP',
-    tenant: 'Demo Tenant',
-    role: 'Finance Manager',
-    displayName: 'Demo Finance Manager',
-    storageStatePath: 'e2e/.auth/demo-finance-manager.json',
-    permissions: ['finance:*'],
-    testDataScope: 'demo',
-    description: 'Finance Manager for Demo Tenant with finance-only access',
-  },
+  // TODO: Re-enable after 4-5 weeks when we have more tests
+  // 'demo-finance-manager': {
+  //   id: 'demo-finance-manager',
+  //   email: process.env.DEMO_FINANCE_MANAGER_EMAIL || 'finance@demo.com',
+  //   password: process.env.DEMO_FINANCE_MANAGER_PASSWORD || 'SecurePassword123!',
+  //   totpSecret: process.env.DEMO_FINANCE_MANAGER_TOTP_SECRET || 'JBSWY3DPEHPK3PXP',
+  //   tenant: 'Demo Tenant',
+  //   role: 'Finance Manager',
+  //   displayName: 'Demo Finance Manager',
+  //   storageStatePath: 'e2e/.auth/demo-finance-manager.json',
+  //   permissions: ['finance:*'],
+  //   testDataScope: 'demo',
+  //   description: 'Finance Manager for Demo Tenant with finance-only access',
+  // },
   
   // ==========================================
   // Super Admin (Cross-Tenant)
   // ==========================================
   
-  'super-admin': {
-    id: 'super-admin',
-    email: process.env.TEST_PRIMARY_ADMIN_EMAIL!,
-    password: process.env.TEST_PRIMARY_ADMIN_PASSWORD!,
-    totpSecret: process.env.TEST_PRIMARY_ADMIN_TOTP_SECRET!,
-    tenant: 'Demo Tenant',
-    role: 'Super Admin',
-    displayName: 'Super Admin',
-    storageStatePath: 'e2e/.auth/admin.json',
-    permissions: ['*:*'],
-    testDataScope: 'global',
-    description: 'Global Super Admin with access to all tenants and modules',
-  },
+  // TODO: Re-enable after 4-5 weeks when we have more tests
+  // 'super-admin': {
+  //   id: 'super-admin',
+  //   email: process.env.TEST_PRIMARY_ADMIN_EMAIL!,
+  //   password: process.env.TEST_PRIMARY_ADMIN_PASSWORD!,
+  //   totpSecret: process.env.TEST_PRIMARY_ADMIN_TOTP_SECRET!,
+  //   tenant: 'Demo Tenant',
+  //   role: 'Super Admin',
+  //   displayName: 'Super Admin',
+  //   storageStatePath: 'e2e/.auth/admin.json',
+  //   permissions: ['*:*'],
+  //   testDataScope: 'global',
+  //   description: 'Global Super Admin with access to all tenants and modules',
+  // },
 };
 
 /**

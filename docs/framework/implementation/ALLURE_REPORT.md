@@ -19,9 +19,22 @@ Unchanged. Use your usual commands:
 - `npm run test:dev -- e2e/features/auth/login.feature` – development mode, single feature
 - `npm run test:smoke`, `npm run test:critical`, etc.
 
-After each run, the **allure-playwright** reporter writes raw results into `allure-results/`.
+After each run:
+1. The **allure-playwright** reporter writes raw results into `allure-results/`
+2. **Global teardown automatically generates** the Allure HTML report (like Extent Reports)
+3. Report is ready immediately - no manual generation needed!
 
-## How to generate the report
+## Automatic Report Generation
+
+**✨ NEW**: Allure report is automatically generated after each test execution (similar to Extent Reports in WebdriverIO).
+
+- **Before tests**: Previous reports are cleaned up (configurable)
+- **After tests**: Allure report is automatically generated
+- **Result**: Report is always ready - just open `allure-report/index.html` or use `npm run test:report:allure:open`
+
+### Manual Report Generation (if needed)
+
+If automatic generation fails or you want to regenerate:
 
 From existing results in `allure-results/`:
 
@@ -64,10 +77,27 @@ This runs `npx allure run -- npm run test`, which executes your test suite and t
 
 ## Artifact folders
 
-- **allure-results/** – Raw Allure results (JSON, attachments) written by allure-playwright. Do not edit; regenerate the report after each test run.
-- **allure-report/** – Generated HTML report. Created by `allure generate`; served by `allure open`.
+- **allure-results/** – Raw Allure results (JSON, attachments) written by allure-playwright. Do not edit; automatically regenerated after each test run.
+- **allure-report/** – Generated HTML report. Automatically created by global teardown after each test run; served by `allure open`.
 
 Both are gitignored.
+
+## Report Cleanup Configuration
+
+By default, reports accumulate across test runs (Allure's default behavior). To start fresh each run (like Extent Reports):
+
+Add to `.env.local`:
+```bash
+CLEAN_ALLURE_RESULTS=true  # Clean allure-results/ before each test run (fresh start)
+```
+
+**Default behavior** (`CLEAN_ALLURE_RESULTS` not set or `false`):
+- ✅ Results accumulate (historical data preserved)
+- ✅ Generated reports (`allure-report/`, `playwright-report/`, `test-results/`) are cleaned before each run
+
+**Fresh start mode** (`CLEAN_ALLURE_RESULTS=true`):
+- ✅ All reports cleaned before each run
+- ✅ No result accumulation (like Extent Reports)
 
 ## References
 

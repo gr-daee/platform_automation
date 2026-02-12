@@ -92,7 +92,9 @@ DEBUG_MODE=true npm test
 # View test report (Playwright HTML)
 npm run test:report
 
-# View Allure Report 3 (run tests first, then: generate + open)
+# View Allure Report 3 (automatically generated after each test run)
+npm run test:report:allure:open
+# Or manually generate if needed:
 npm run test:report:allure
 ```
 

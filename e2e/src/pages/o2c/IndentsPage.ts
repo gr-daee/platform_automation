@@ -1,6 +1,7 @@
 import { Page, Locator, expect } from '@playwright/test';
 import { BasePage } from '../../support/base/BasePage';
 import { DialogComponent } from '../../support/components/DialogComponent';
+import { PollingHelper } from '../../support/helpers/PollingHelper';
 
 /**
  * O2C Indents Page Object Model
@@ -76,18 +77,35 @@ export class IndentsPage extends BasePage {
    */
   async searchDealer(searchTerm: string): Promise<void> {
     await this.dealerSearchInput.fill(searchTerm);
-    await this.page.waitForLoadState('networkidle');
+    // Wait for search to trigger (debounce delay)
+    await this.page.waitForTimeout(500);
   }
   
   /**
    * Verify dealer appears in filtered results
+   * Uses polling to wait for results to load (max 15 seconds)
    */
   async verifyDealerInResults(dealerName: string): Promise<void> {
-    // Search may return multiple matching dealers - verify at least one is visible
+    // Poll until dealer results are loaded and visible
     const dealerRows = this.dealerModal.getByRole('row', { name: new RegExp(dealerName, 'i') });
-    const count = await dealerRows.count();
+    
+    await PollingHelper.pollUntil(
+      async () => {
+        const count = await dealerRows.count();
+        return count > 0;
+      },
+      {
+        timeout: 15000, // Max 15 seconds as requested
+        interval: 500,  // Poll every 500ms
+        description: `dealer "${dealerName}" to appear in search results`,
+        onPoll: (attempt, elapsed) => {
+          console.log(`⏳ Polling for dealer results (attempt ${attempt}, ${elapsed}ms elapsed)...`);
+        },
+      }
+    );
     
     // Verify at least one matching dealer is found
+    const count = await dealerRows.count();
     expect(count).toBeGreaterThan(0);
     
     // Verify first matching dealer is visible

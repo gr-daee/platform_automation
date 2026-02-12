@@ -1,6 +1,7 @@
 import { expect } from '@playwright/test';
 import { createBdd } from 'playwright-bdd';
 import { IndentsPage } from '../../pages/o2c/IndentsPage';
+import { PollingHelper } from '../../support/helpers/PollingHelper';
 
 const { Given, When, Then } = createBdd();
 
@@ -58,6 +59,27 @@ Then('the modal should have a search input', async function({ page }) {
 });
 
 Then('the dealer list should be filtered', async function({ page }) {
+  // Poll until dealer table is visible and has filtered results (max 15 seconds)
+  await PollingHelper.pollUntil(
+    async () => {
+      const table = indentsPage.dealerModal.getByRole('table');
+      const isVisible = await table.isVisible().catch(() => false);
+      if (!isVisible) return false;
+      
+      // Check if table has rows (excluding header)
+      const rows = await indentsPage.dealerTableRows.count();
+      return rows > 1; // More than just header row
+    },
+    {
+      timeout: 15000, // Max 15 seconds
+      interval: 500,
+      description: 'dealer list to be filtered and visible',
+      onPoll: (attempt, elapsed) => {
+        console.log(`⏳ Waiting for dealer list to filter (attempt ${attempt}, ${elapsed}ms elapsed)...`);
+      },
+    }
+  );
+  
   await expect(indentsPage.dealerModal.getByRole('table')).toBeVisible();
   console.log('✅ Dealer list is filtered');
 });
