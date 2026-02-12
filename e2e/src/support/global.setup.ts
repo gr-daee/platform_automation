@@ -4,6 +4,12 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as dotenv from 'dotenv';
 import { testContext } from './test-context';
+import { 
+  getUserProfile, 
+  getProfilesToAuthenticate, 
+  displayProfilesSummary,
+  type UserProfile 
+} from './config/user-profiles.config';
 
 /**
  * Multi-User Global Setup for DAEE Platform E2E Tests
@@ -11,17 +17,28 @@ import { testContext } from './test-context';
  * Purpose: Pre-authenticate multiple user profiles and save storage state files
  * Benefits:
  * - Tests start already authenticated (faster execution)
- * - Different tests can run as different users (IACS MD, Super Admin, etc.)
+ * - Different tests can run as different users (role-based routing)
  * - Storage state is browser-agnostic (reused across chromium, firefox, webkit)
+ * - Scalable to N tenants × M roles
  *
  * Flow:
- * 1. Load credentials from .env.local for each configured user
- * 2. For each user: launch browser, login, TOTP verify, save to e2e/.auth/{user}.json
- * 3. Tests use appropriate storageState via Playwright project config
+ * 1. Load user profiles from config/user-profiles.config.ts
+ * 2. Determine which profiles to authenticate (env var or all)
+ * 3. For each profile: launch browser, login, TOTP verify, save storage state
+ * 4. Tests use appropriate storageState via Playwright project config (tag-based routing)
  *
- * Auth files created:
- * - admin.json - Super Admin (default for most tests)
- * - iacs-md.json - IACS MD User (for O2C tests)
+ * Configuration:
+ * - User profiles: e2e/src/support/config/user-profiles.config.ts
+ * - Env variables: .env.local (per-profile credentials)
+ * - Selective auth: TEST_AUTH_PROFILES=iacs-md,super-admin (optional)
+ *
+ * Auth files created (dynamic based on profiles):
+ * - admin.json - Super Admin (cross-tenant)
+ * - iacs-md.json - IACS MD User (O2C primary)
+ * - iacs-finance-admin.json - IACS Finance Admin (Finance primary)
+ * - iacs-warehouse-manager.json - IACS Warehouse Manager (Warehouse primary)
+ * - demo-admin.json - Demo Tenant Admin
+ * - (more as configured in user-profiles.config.ts)
  */
 
 interface UserCredentials {
@@ -32,6 +49,7 @@ interface UserCredentials {
   authFile: string;
   tenant?: string;
   role?: string;
+  permissions?: string[];
 }
 
 async function authenticateUser(
@@ -169,39 +187,44 @@ async function globalSetup(config: FullConfig) {
     console.log('📁 Created .auth directory');
   }
 
-  // Define all user profiles
-  const users: UserCredentials[] = [
-    // Super Admin (required - default for most tests)
-    {
-      name: 'Super Admin',
-      email: process.env.TEST_PRIMARY_ADMIN_EMAIL || process.env.TEST_USER_ADMIN_EMAIL || '',
-      password: process.env.TEST_PRIMARY_ADMIN_PASSWORD || process.env.TEST_USER_ADMIN_PASSWORD || '',
-      totpSecret: process.env.TEST_PRIMARY_ADMIN_TOTP_SECRET || process.env.TEST_USER_ADMIN_TOTP_SECRET || '',
-      authFile: 'admin.json',
-      tenant: 'Demo Tenant',
-      role: 'Super Admin',
-    },
-    // IACS MD User (for O2C tests)
-    {
-      name: 'IACS MD User',
-      email: process.env.IACS_MD_USER_EMAIL || '',
-      password: process.env.IACS_MD_USER_PASSWORD || '',
-      totpSecret: process.env.IACS_MD_USER_TOTP_SECRET || '',
-      authFile: 'iacs-md.json',
-      tenant: 'IACS',
-      role: 'Managing Director',
-    },
-  ];
+  // Display available profiles
+  displayProfilesSummary();
+
+  // Get profiles to authenticate (from env or all)
+  const profilesToAuth = getProfilesToAuthenticate();
+  console.log(`🎯 Authenticating ${profilesToAuth.length} profile(s): ${profilesToAuth.join(', ')}\n`);
+
+  // Convert profiles to UserCredentials format
+  const users: UserCredentials[] = profilesToAuth.map(profileId => {
+    try {
+      const profile = getUserProfile(profileId);
+      return {
+        name: profile.displayName,
+        email: profile.email,
+        password: profile.password,
+        totpSecret: profile.totpSecret,
+        authFile: path.basename(profile.storageStatePath),
+        tenant: profile.tenant,
+        role: profile.role,
+        permissions: profile.permissions,
+      };
+    } catch (error) {
+      console.error(`❌ Error loading profile '${profileId}':`, (error as Error).message);
+      throw error;
+    }
+  });
 
   // Authenticate each user
   let successCount = 0;
   let failureCount = 0;
+  const failedProfiles: string[] = [];
 
   for (const user of users) {
     // Skip if credentials not configured
     if (!user.email || !user.password || !user.totpSecret) {
       console.log(`⏭️  Skipping ${user.name} (credentials not configured in .env.local)`);
       failureCount++;
+      failedProfiles.push(user.name);
       continue;
     }
 
@@ -211,6 +234,7 @@ async function globalSetup(config: FullConfig) {
     } catch (error) {
       console.error(`❌ Failed to authenticate ${user.name}:`, (error as Error).message);
       failureCount++;
+      failedProfiles.push(user.name);
 
       // If Super Admin fails, throw error (critical - required for most tests)
       if (user.name === 'Super Admin') {
@@ -225,6 +249,9 @@ async function globalSetup(config: FullConfig) {
   console.log('\n📊 ===== AUTHENTICATION SUMMARY =====');
   console.log(`✅ Successful: ${successCount}`);
   console.log(`❌ Failed/Skipped: ${failureCount}`);
+  if (failedProfiles.length > 0) {
+    console.log(`⚠️  Failed profiles: ${failedProfiles.join(', ')}`);
+  }
   console.log('✅ ===== MULTI-USER GLOBAL SETUP COMPLETE =====\n');
 
   if (successCount === 0) {

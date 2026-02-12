@@ -41,6 +41,122 @@ When available, the **Playwright MCP Server** can be used to:
 
 ---
 
+## Multi-User Testing Strategy (70/30 Split)
+
+### Overview
+DAEE is a multi-tenant SaaS platform requiring tests across different roles and tenants.
+
+**Framework Approach**:
+- **70% tests** = Single-user (run once, primary user only)
+- **30% tests** = Multi-user (run across relevant users for permission/isolation testing)
+
+### When to Create Multi-User Tests (30%)
+
+**✅ Use @multi-user tag for**:
+1. **Permission Boundaries**: Testing "can user X do action Y?"
+   - Example: Finance Admin can view but not delete orders
+2. **Tenant Isolation**: Ensuring users cannot see other tenant data
+   - Example: IACS user cannot access Demo Tenant data
+3. **Data Visibility**: Different users see different data based on role
+   - Example: Warehouse Manager only sees warehouse-related indents
+4. **RBAC Validation**: Verify role-based access control rules
+   - Example: Admin can access settings, MD User cannot
+
+**❌ Keep as single-user tests (70%)**:
+1. **Happy Path CRUD**: Standard create, read, update, delete operations
+2. **Workflows**: Approval flows, status transitions, business processes
+3. **UI Validation**: Form validation, error messages, toast notifications
+4. **Business Rules**: Calculation logic, data validation rules
+5. **Integration Tests**: Third-party integrations, API calls
+
+### Multi-User Test Creation Pattern
+
+**Step 1: Identify if multi-user needed**
+```
+Decision Tree:
+├─ Does this test RBAC permissions or tenant isolation? → Multi-user
+├─ Does this test "can user X do Y?" → Multi-user
+├─ Does this test workflow or CRUD? → Single-user
+└─ Does this test UI validation? → Single-user
+```
+
+**Step 2: Create Scenario Outline**
+```gherkin
+Feature: O2C Indent Management
+
+  # Single-user test (70%)
+  @O2C-INDENT-TC-001 @smoke @p1 @iacs-md
+  Scenario: MD User creates indent
+    Given I am logged in as "IACS MD User"
+    When I create a new indent
+    Then the indent should be created successfully
+    # Runs ONCE as IACS MD User
+  
+  # Multi-user test (30%)
+  @O2C-INDENT-TC-050 @critical @p0 @multi-user
+  @iacs-md @iacs-finance @iacs-warehouse
+  Scenario Outline: User permissions for indent deletion
+    Given I am logged in as "<User>"
+    When I try to delete an indent
+    Then I should see "<Result>"
+    
+    Examples:
+      | User              | Result  | Reason              |
+      | IACS MD User     | Success | Full permissions    |
+      | Finance Admin    | Denied  | Read-only access    |
+      | Warehouse Manager| Denied  | No delete permission|
+    # Runs 3 TIMES (once per user)
+```
+
+**Step 3: Execution**
+```bash
+# Run all O2C tests (single-user runs once, multi-user runs 3x)
+npm run test:regression -- e2e/features/o2c/
+
+# Run only multi-user tests
+npm run test:regression -- --grep "@multi-user"
+
+# Run specific test as specific user
+npm run test:dev -- --project=iacs-md --grep "@O2C-INDENT-TC-050"
+```
+
+### Tag Conventions
+
+**Single-User Tags**:
+- Format: `@{primary-user-role}`
+- Examples: `@iacs-md`, `@iacs-finance`, `@super-admin`
+- Usage: One tag per test
+- Result: Test runs once
+
+**Multi-User Tags**:
+- Format: `@multi-user @{user1} @{user2} @{user3}`
+- Must include: `@multi-user` + individual user tags
+- Usage: Multiple user tags
+- Result: Test runs N times (once per user tag)
+
+**Example Progression**:
+```gherkin
+# Test 1: Single-user (created first)
+@O2C-001 @smoke @iacs-md
+Scenario: User creates order
+
+# Later: Identified need to test permissions
+# Convert to multi-user by adding tags
+@O2C-001 @smoke @multi-user @iacs-md @iacs-finance
+Scenario Outline: User creates order based on permissions
+  Examples: ...
+```
+
+### Proactive Suggestion
+
+When user asks to "create test for indent creation":
+1. Ask: "Is this testing permissions or tenant isolation?"
+2. If YES → Suggest multi-user test with Scenario Outline
+3. If NO → Create single-user test with primary user tag
+4. Document decision in test-cases.md
+
+---
+
 ## Core Workflows
 
 ### 🔧 Workflow 1: Creating a New Test
@@ -78,21 +194,63 @@ Before writing ANY code, you MUST read:
 - ❌ Inconsistent test approaches
 
 #### Step 2: Generate Test Artifacts
-Follow patterns from `automation-patterns.mdc`:
-1. **Feature file** (`e2e/features/[module]/[feature].feature`)
-   - Write Gherkin scenarios with clear Given/When/Then
-   - Tag with test case IDs (@MODULE-FEATURE-TC-001)
-   - Tag with test types (@smoke, @critical, @regression)
 
-2. **Page Object Model** (`e2e/src/pages/[module]/[PageName]Page.ts`)
-   - ALWAYS inherit from `BasePage`
-   - Use component library for ShadCN/Radix patterns
-   - Follow semantic locator strategy
+**2.1 Determine Test Type (70/30 Decision)**
 
-3. **Step Definitions** (`e2e/src/steps/[module]/[feature]-steps.ts`)
-   - Implement Sandwich Method for verifications
-   - Reuse shared steps when possible
-   - Use fixtures: `{ page, testContext, transactionExtractor }`
+Before writing code, determine:
+- **Single-user test (70%)**: Primary user tag only
+  - Use when: Happy path, workflows, UI validation
+  - Example: `@O2C-001 @smoke @iacs-md`
+- **Multi-user test (30%)**: @multi-user + all relevant user tags
+  - Use when: Permissions, tenant isolation, RBAC
+  - Example: `@O2C-050 @critical @multi-user @iacs-md @iacs-finance`
+
+**2.2 Create Feature File** (`e2e/features/[module]/[feature].feature`)
+
+**Single-User Pattern**:
+```gherkin
+@O2C-INDENT-TC-001 @smoke @p1 @iacs-md
+Scenario: MD User creates indent
+  Given I am logged in as "IACS MD User"
+  When I create a new indent
+  Then the indent should be created successfully
+  # Test runs ONCE as IACS MD User
+```
+
+**Multi-User Pattern**:
+```gherkin
+@O2C-INDENT-TC-050 @critical @p0 @multi-user
+@iacs-md @iacs-finance @iacs-warehouse
+Scenario Outline: User views indents by role
+  Given I am logged in as "<User>"
+  When I navigate to indents page
+  Then I should see "<Expected Data>"
+  Examples:
+    | User              | Expected Data   |
+    | IACS MD User     | All indents     |
+    | Finance Admin    | Approved only   |
+    | Warehouse Manager| None            |
+  # Test runs 3 TIMES (once per user)
+```
+
+**Tag Requirements**:
+- Test case ID: `@MODULE-FEATURE-TC-###`
+- Test type: `@smoke`, `@critical`, or `@regression`
+- Priority: `@p0` (critical), `@p1` (high), `@p2` (medium), `@p3` (low)
+- User tags: `@iacs-md`, `@iacs-finance`, `@iacs-warehouse`, `@super-admin`
+- Multi-user: `@multi-user` (if testing permissions/isolation)
+
+**2.3 Create Page Object Model** (`e2e/src/pages/[module]/[PageName]Page.ts`)
+- ALWAYS inherit from `BasePage`
+- Use component library for ShadCN/Radix patterns
+- Follow semantic locator strategy
+- See `automation-patterns.mdc` for templates
+
+**2.4 Create Step Definitions** (`e2e/src/steps/[module]/[feature]-steps.ts`)
+- Implement Sandwich Method for verifications
+- Reuse shared steps when possible
+- Use fixtures: `{ page, testContext, transactionExtractor }`
+- Handle multi-user scenarios with Scenario Outline
 
 #### Step 3: Update Documentation (MANDATORY)
 See `framework-workflows.mdc` for requirements:

@@ -6,14 +6,30 @@ import * as path from 'path';
 // Load environment variables from .env.local
 dotenv.config({ path: path.resolve(__dirname, '.env.local') });
 
-// Execution mode configuration
-// Modes: 'production' (default), 'debug', 'development'
+// ==========================================
+// Execution Mode Configuration
+// ==========================================
+/**
+ * Execution Modes:
+ * - 'production': Parallel execution, optimized for CI/CD and regression (default)
+ * - 'debug': Single worker, extended timeouts, screenshots on failure
+ * - 'development': Single worker, headed mode, verbose output for authoring tests
+ */
 const executionMode = process.env.TEST_EXECUTION_MODE || 'production';
-const isDebugMode = process.env.DEBUG_MODE === 'true';
+const isDebugMode = executionMode === 'debug';
 const isDevelopmentMode = executionMode === 'development';
 const isProductionMode = executionMode === 'production';
 
-// Worker configuration based on execution mode
+// ==========================================
+// Worker Configuration (Optimized by Mode)
+// ==========================================
+/**
+ * Worker Strategy:
+ * - Development/Debug: 1 worker (sequential execution for stability)
+ * - Production (local): auto (50% of CPU cores)
+ * - Production (CI): 2 workers (balance speed vs resource usage)
+ * - Override: Set TEST_WORKERS env var (number, percentage, or 'auto')
+ */
 let workers: number | string | undefined;
 if (process.env.TEST_WORKERS) {
   // Allow explicit worker configuration
@@ -28,11 +44,49 @@ if (process.env.TEST_WORKERS) {
   // Default based on execution mode
   workers = isDevelopmentMode ? 1 : 
             isDebugMode ? 1 : 
-            process.env.CI ? 1 : undefined; // auto in local production
+            process.env.CI ? 2 : undefined; // auto in local production (50% cores)
 }
 
-// Headed mode configuration
+console.log(`🔧 Execution Mode: ${executionMode}`);
+console.log(`👷 Workers: ${workers === undefined ? 'auto (50% of cores)' : workers}`);
+
+// ==========================================
+// Timeout Configuration (Optimized by Mode)
+// ==========================================
+/**
+ * Timeout Strategy:
+ * - Production: 60s test, 30s action (optimized for speed)
+ * - Debug: 120s test, 45s action (extended for debugging)
+ * - Development: 90s test, 45s action (balance between speed and debugging)
+ */
+const timeouts = {
+  test: isDebugMode ? 120000 : isDevelopmentMode ? 90000 : 60000,
+  action: isDebugMode ? 45000 : isDevelopmentMode ? 45000 : 30000,
+  navigation: isDebugMode ? 45000 : isDevelopmentMode ? 45000 : 30000,
+};
+
+console.log(`⏱️  Timeouts: test=${timeouts.test / 1000}s, action=${timeouts.action / 1000}s`);
+
+// ==========================================
+// Retry Configuration (Optimized by Mode)
+// ==========================================
+/**
+ * Retry Strategy:
+ * - Production (CI): 2 retries (handle infrastructure flakiness)
+ * - Production (local): 1 retry (catch occasional flakiness)
+ * - Debug/Development: 0 retries (immediate feedback)
+ */
+const retries = isDebugMode || isDevelopmentMode ? 0 :
+                process.env.CI ? 2 : 1;
+
+console.log(`🔁 Retries: ${retries}`);
+
+// ==========================================
+// Visual Mode Configuration
+// ==========================================
 const headed = process.env.TEST_HEADED === 'true' || isDevelopmentMode;
+
+console.log(`👁️  Headed: ${headed ? 'Yes' : 'No'}\n`);
 
 const testDir = defineBddConfig({
   paths: ['e2e/features/**/*.feature'],
@@ -52,13 +106,13 @@ const testDir = defineBddConfig({
 export default defineConfig({
   testDir,
   
-  /* Maximum time one test can run for */
-  timeout: 60 * 1000,
+  /* Timeouts (optimized by execution mode) */
+  timeout: timeouts.test,
   
   /* Test execution settings */
-  fullyParallel: true,
+  fullyParallel: !isDebugMode && !isDevelopmentMode, // Sequential in debug/dev mode
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  retries: retries,
   workers: workers,
   
   /* Reporter configuration */
@@ -82,6 +136,11 @@ export default defineConfig({
   /* Global setup and teardown */
   globalSetup: require.resolve('./e2e/src/support/global.setup.ts'),
   
+  /* Global timeout settings */
+  expect: {
+    timeout: timeouts.action,
+  },
+  
   /* Shared settings for all projects */
   use: {
     /* Base URL from environment variable */
@@ -99,80 +158,154 @@ export default defineConfig({
     /* Video: record all in debug mode, only on failure in normal mode */
     video: isDebugMode ? 'on' : 'retain-on-failure',
     
-    /* Navigation timeout */
-    navigationTimeout: 30 * 1000,
+    /* Navigation timeout (optimized by mode) */
+    navigationTimeout: timeouts.navigation,
     
-    /* Action timeout */
-    actionTimeout: 15 * 1000,
+    /* Action timeout (optimized by mode) */
+    actionTimeout: timeouts.action,
   },
 
   /* Configure projects for major browsers */
+  /**
+   * Multi-User Project Strategy (70/30 Hybrid Approach)
+   * 
+   * Primary Projects (70% single-user tests):
+   * - Use file path routing (testMatch) + tag filtering (grep)
+   * - Run single-user tests ONCE + multi-user tests for their role
+   * - Examples: iacs-md, iacs-finance, super-admin
+   * 
+   * Secondary Projects (30% multi-user tests only):
+   * - Use tag-based routing (@multi-user + user tag)
+   * - Run ONLY multi-user tests for specific roles
+   * - Examples: multi-user-iacs-finance, multi-user-iacs-warehouse
+   * 
+   * Benefits:
+   * - 70 single-user tests × 1 = 70 runs
+   * - 30 multi-user tests × 4 users = 120 runs
+   * - Total: 190 runs (vs 400 if all were multi-user!)
+   */
   projects: [
-    // Setup project - runs first to authenticate
+    // ===== SETUP & LOGIN =====
     {
       name: 'setup',
       testMatch: /global\.setup\.ts/,
     },
     
-    // Login tests - use fresh context (no pre-authentication)
     {
       name: 'login-tests',
       testMatch: /login\.feature/,
       use: {
         ...devices['Desktop Chrome'],
-        // Don't use storage state for login tests - we're testing login itself
-        // storageState: undefined,
+        // Fresh context - testing login itself
+        storageState: { cookies: [], origins: [] },
       },
     },
 
-    // O2C tests - IACS MD User (must be before chromium for test assignment)
+    // ===== PRIMARY USER PROJECTS (70% single-user tests) =====
+    
+    // IACS MD User - Primary for O2C tests
     {
-      name: 'chromium-o2c',
+      name: 'iacs-md',
       use: {
         ...devices['Desktop Chrome'],
         storageState: 'e2e/.auth/iacs-md.json',
       },
-      testMatch: /o2c[/\\].*\.feature/,
+      testMatch: /o2c[/\\].*\.feature$/,        // File path routing
+      grep: /@iacs-md/,                          // Tag filtering
+      grepInvert: /@skip-iacs-md/,               // Skip exclusions
       dependencies: ['setup'],
       testIgnore: /login\.feature/,
     },
 
-    // O2C tests - Super Admin (same tests as chromium-o2c, different user)
-    // Run with: npm run test:dev -- --project=chromium-o2c-super-admin --grep "@O2C-"
+    // IACS Finance Admin - Primary for Finance tests (when created)
     {
-      name: 'chromium-o2c-super-admin',
+      name: 'iacs-finance',
       use: {
         ...devices['Desktop Chrome'],
-        storageState: 'e2e/.auth/admin.json',
+        storageState: 'e2e/.auth/iacs-finance-admin.json',
       },
-      testMatch: /o2c[/\\].*\.feature/,
+      testMatch: /finance[/\\].*\.feature$/,
+      grep: /@iacs-finance/,
+      grepInvert: /@skip-iacs-finance/,
       dependencies: ['setup'],
       testIgnore: /login\.feature/,
     },
 
-    // Default chromium - Super Admin (excludes O2C - they use chromium-o2c)
+    // IACS Warehouse Manager - Primary for Warehouse tests (when created)
     {
-      name: 'chromium',
+      name: 'iacs-warehouse',
       use: {
         ...devices['Desktop Chrome'],
-        // Use pre-authenticated state from setup
-        storageState: 'e2e/.auth/admin.json',
+        storageState: 'e2e/.auth/iacs-warehouse-manager.json',
       },
+      testMatch: /warehouse[/\\].*\.feature$/,
+      grep: /@iacs-warehouse/,
+      grepInvert: /@skip-iacs-warehouse/,
       dependencies: ['setup'],
-      // Exclude login tests - they need fresh context; exclude O2C - they use chromium-o2c
-      testIgnore: [/login\.feature/, /o2c[/\\].*\.feature/],
+      testIgnore: /login\.feature/,
     },
 
+    // Super Admin - Primary for Admin tests + fallback
+    {
+      name: 'super-admin',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'e2e/.auth/admin.json',
+      },
+      testMatch: /(?!login|o2c|finance|warehouse).*\.feature$/,
+      grep: /@super-admin/,
+      dependencies: ['setup'],
+      testIgnore: /login\.feature/,
+    },
+
+    // ===== SECONDARY USER PROJECTS (30% multi-user tests only) =====
+    
+    // IACS Finance - Multi-user tests only
+    {
+      name: 'multi-user-iacs-finance',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'e2e/.auth/iacs-finance-admin.json',
+      },
+      grep: /@multi-user.*@iacs-finance/,        // Only multi-user + finance tag
+      testMatch: /(?!login).*\.feature$/,         // Any feature file
+      dependencies: ['setup'],
+    },
+    
+    // IACS Warehouse - Multi-user tests only
+    {
+      name: 'multi-user-iacs-warehouse',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'e2e/.auth/iacs-warehouse-manager.json',
+      },
+      grep: /@multi-user.*@iacs-warehouse/,
+      testMatch: /(?!login).*\.feature$/,
+      dependencies: ['setup'],
+    },
+    
+    // Super Admin - Multi-user tests only
+    {
+      name: 'multi-user-super-admin',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'e2e/.auth/admin.json',
+      },
+      grep: /@multi-user.*@super-admin/,
+      testMatch: /(?!login).*\.feature$/,
+      dependencies: ['setup'],
+    },
+
+    // ===== CROSS-BROWSER (Super Admin, smoke tests only) =====
     {
       name: 'firefox',
       use: {
         ...devices['Desktop Firefox'],
         storageState: 'e2e/.auth/admin.json',
       },
+      grep: /@cross-browser|@smoke/,
       dependencies: ['setup'],
-      // Exclude login tests - they need fresh context
-      // Exclude O2C tests - run only on chromium for now
-      testIgnore: [/login\.feature/, /o2c\/.*\.feature/],
+      testIgnore: /login\.feature/,
     },
 
     {
@@ -181,15 +314,15 @@ export default defineConfig({
         ...devices['Desktop Safari'],
         storageState: 'e2e/.auth/admin.json',
       },
+      grep: /@cross-browser|@smoke/,
       dependencies: ['setup'],
-      // Exclude login tests - they need fresh context
-      // Exclude O2C tests - run only on chromium for now
-      testIgnore: [/login\.feature/, /o2c\/.*\.feature/],
+      testIgnore: /login\.feature/,
     },
 
     /* Mobile viewports for responsive testing */
     // {
-    //   name: 'Mobile Chrome',
+    //   name: 'mobile-chrome-android',
+    //   testMatch: /(?!login).*mobile.*\.feature/,
     //   use: {
     //     ...devices['Pixel 5'],
     //     storageState: 'e2e/.auth/admin.json',
@@ -197,7 +330,8 @@ export default defineConfig({
     //   dependencies: ['setup'],
     // },
     // {
-    //   name: 'Mobile Safari',
+    //   name: 'mobile-safari-ios',
+    //   testMatch: /(?!login).*mobile.*\.feature/,
     //   use: {
     //     ...devices['iPhone 13'],
     //     storageState: 'e2e/.auth/admin.json',

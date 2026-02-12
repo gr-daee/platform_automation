@@ -45,31 +45,44 @@ export class TestDataLocator {
    * Get a stable dealer (not test data)
    * Returns the most recently created active dealer
    * 
-   * @returns Dealer object with id, name, gstin, etc.
+   * @param tenant - Optional tenant filter (e.g., 'IACS', 'Demo Tenant')
+   * @returns Dealer object with id, name, gstin, tenant info, etc.
    * 
    * @example
    * const dealer = await TestDataLocator.getStableDealer();
+   * const iacsDealer = await TestDataLocator.getStableDealer('IACS');
    * await ordersPage.selectDealer(dealer.name);
    */
-  static async getStableDealer(): Promise<any> {
-    const cacheKey = this.getCacheKey('dealer');
+  static async getStableDealer(tenant?: string): Promise<any> {
+    const cacheKey = this.getCacheKey('dealer', { tenant });
     
     if (!this.cache.has(cacheKey)) {
-      const dealers = await executeQuery(`
-        SELECT id, name, gstin, email, phone, status
-        FROM dealers
-        WHERE status = 'active'
-          AND name NOT LIKE 'AUTO_QA_%'
-        ORDER BY created_at DESC
-        LIMIT 10
-      `);
+      let query = `
+        SELECT d.id, d.name, d.gstin, d.email, d.phone, d.status, 
+               t.id as tenant_id, t.name as tenant_name
+        FROM dealers d
+        LEFT JOIN tenants t ON d.tenant_id = t.id
+        WHERE d.status = 'active'
+          AND d.name NOT LIKE 'AUTO_QA_%'
+      `;
+      const params: any[] = [];
+      
+      if (tenant) {
+        query += ` AND t.name = $1`;
+        params.push(tenant);
+      }
+      
+      query += ` ORDER BY d.created_at DESC LIMIT 10`;
+      
+      const dealers = await executeQuery(query, params);
       
       if (dealers.length === 0) {
-        throw new Error('No stable dealer found. Please ensure at least one active dealer exists.');
+        const tenantMsg = tenant ? ` for tenant '${tenant}'` : '';
+        throw new Error(`No stable dealer found${tenantMsg}. Please ensure at least one active dealer exists.`);
       }
       
       this.cache.set(cacheKey, dealers);
-      console.log(`✅ Cached ${dealers.length} stable dealers`);
+      console.log(`✅ Cached ${dealers.length} stable dealers${tenant ? ` (tenant: ${tenant})` : ''}`);
     }
     
     const dealers = this.cache.get(cacheKey);
@@ -79,27 +92,42 @@ export class TestDataLocator {
   /**
    * Get all stable dealers
    * 
+   * @param tenant - Optional tenant filter
    * @param limit - Maximum number of dealers to return (default: 10)
    * @returns Array of dealer objects
    * 
    * @example
-   * const dealers = await TestDataLocator.getStableDealers(5);
+   * const dealers = await TestDataLocator.getStableDealers();
+   * const iacsDealers = await TestDataLocator.getStableDealers('IACS', 5);
    */
-  static async getStableDealers(limit: number = 10): Promise<any[]> {
-    const cacheKey = this.getCacheKey('dealers', { limit });
+  static async getStableDealers(tenant?: string, limit: number = 10): Promise<any[]> {
+    const cacheKey = this.getCacheKey('dealers', { tenant, limit });
     
     if (!this.cache.has(cacheKey)) {
-      const dealers = await executeQuery(`
-        SELECT id, name, gstin, email, phone, status
-        FROM dealers
-        WHERE status = 'active'
-          AND name NOT LIKE 'AUTO_QA_%'
-        ORDER BY created_at DESC
-        LIMIT $1
-      `, [limit]);
+      let query = `
+        SELECT d.id, d.name, d.gstin, d.email, d.phone, d.status,
+               t.id as tenant_id, t.name as tenant_name
+        FROM dealers d
+        LEFT JOIN tenants t ON d.tenant_id = t.id
+        WHERE d.status = 'active'
+          AND d.name NOT LIKE 'AUTO_QA_%'
+      `;
+      const params: any[] = [];
+      
+      if (tenant) {
+        query += ` AND t.name = $1`;
+        params.push(tenant);
+        query += ` ORDER BY d.created_at DESC LIMIT $2`;
+        params.push(limit);
+      } else {
+        query += ` ORDER BY d.created_at DESC LIMIT $1`;
+        params.push(limit);
+      }
+      
+      const dealers = await executeQuery(query, params);
       
       this.cache.set(cacheKey, dealers);
-      console.log(`✅ Cached ${dealers.length} stable dealers`);
+      console.log(`✅ Cached ${dealers.length} stable dealers${tenant ? ` (tenant: ${tenant})` : ''}`);
     }
     
     return this.cache.get(cacheKey);
@@ -344,19 +372,64 @@ export class TestDataLocator {
   }
 
   // ==========================================
-  // Tenant Data (if multi-tenant)
+  // Tenant Data (Multi-Tenant Support)
   // ==========================================
 
   /**
-   * Get a stable tenant
+   * Get a stable tenant by name
    * 
-   * @returns Tenant object with id, name, etc.
+   * @param tenantName - Optional tenant name filter
+   * @returns Tenant object with id, name, domain, etc.
    * 
    * @example
    * const tenant = await TestDataLocator.getStableTenant();
+   * const iacsTenant = await TestDataLocator.getStableTenant('IACS');
    */
-  static async getStableTenant(): Promise<any> {
-    const cacheKey = this.getCacheKey('tenant');
+  static async getStableTenant(tenantName?: string): Promise<any> {
+    const cacheKey = this.getCacheKey('tenant', { tenantName });
+    
+    if (!this.cache.has(cacheKey)) {
+      let query = `
+        SELECT id, name, domain, status
+        FROM tenants
+        WHERE status = 'active'
+          AND name NOT LIKE 'AUTO_QA_%'
+      `;
+      const params: any[] = [];
+      
+      if (tenantName) {
+        query += ` AND name = $1`;
+        params.push(tenantName);
+      }
+      
+      query += ` ORDER BY created_at DESC LIMIT 10`;
+      
+      const tenants = await executeQuery(query, params);
+      
+      if (tenants.length === 0) {
+        const nameMsg = tenantName ? ` with name '${tenantName}'` : '';
+        throw new Error(`No stable tenant found${nameMsg}. Please ensure at least one active tenant exists.`);
+      }
+      
+      this.cache.set(cacheKey, tenants);
+      console.log(`✅ Cached ${tenants.length} stable tenants${tenantName ? ` (name: ${tenantName})` : ''}`);
+    }
+    
+    const tenants = this.cache.get(cacheKey);
+    return tenants[0];
+  }
+
+  /**
+   * Get all stable tenants
+   * 
+   * @param limit - Maximum number of tenants to return (default: 10)
+   * @returns Array of tenant objects
+   * 
+   * @example
+   * const tenants = await TestDataLocator.getStableTenants();
+   */
+  static async getStableTenants(limit: number = 10): Promise<any[]> {
+    const cacheKey = this.getCacheKey('tenants', { limit });
     
     if (!this.cache.has(cacheKey)) {
       const tenants = await executeQuery(`
@@ -365,19 +438,14 @@ export class TestDataLocator {
         WHERE status = 'active'
           AND name NOT LIKE 'AUTO_QA_%'
         ORDER BY created_at DESC
-        LIMIT 10
-      `);
-      
-      if (tenants.length === 0) {
-        throw new Error('No stable tenant found. Please ensure at least one active tenant exists.');
-      }
+        LIMIT $1
+      `, [limit]);
       
       this.cache.set(cacheKey, tenants);
       console.log(`✅ Cached ${tenants.length} stable tenants`);
     }
     
-    const tenants = this.cache.get(cacheKey);
-    return tenants[0];
+    return this.cache.get(cacheKey);
   }
 
   // ==========================================
