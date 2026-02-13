@@ -4,8 +4,10 @@ This project is configured to use the **Playwright MCP Server** (`@executeautoma
 
 ## Config Location
 
-- **Project-level:** `.cursor/mcp.json` (this repo)
-- **Global (optional):** `~/.cursor/mcp.json` — add the same `playwright` entry if you want MCP in all projects
+- **Project-level:** `.cursor/mcp.json` (this repo) — includes both **playwright** and **linear** MCP servers.
+- **Global (optional):** `~/.cursor/mcp.json` — add the same entries if you want these MCPs in all projects.
+
+For full MCP setup (Playwright + Linear), see [MCP Setup](./MCP_SETUP.md).
 
 ## First-Time Setup
 
