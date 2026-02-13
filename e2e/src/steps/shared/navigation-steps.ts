@@ -1,4 +1,4 @@
-import { Given, When } from '@cucumber/cucumber';
+import { createBdd } from 'playwright-bdd';
 
 /**
  * Shared Navigation Steps
@@ -6,6 +6,8 @@ import { Given, When } from '@cucumber/cucumber';
  * Reusable step definitions for common navigation actions.
  * These steps can be used across all feature files.
  */
+
+const { Given, When } = createBdd();
 
 /**
  * Navigate to any page by name

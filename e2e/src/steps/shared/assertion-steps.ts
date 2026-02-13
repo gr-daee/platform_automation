@@ -1,5 +1,5 @@
-import { Then } from '@cucumber/cucumber';
 import { expect } from '@playwright/test';
+import { createBdd } from 'playwright-bdd';
 
 /**
  * Shared Assertion Steps
@@ -8,37 +8,65 @@ import { expect } from '@playwright/test';
  * These steps can be used across all feature files.
  */
 
+const { Then } = createBdd();
+
 /**
  * Verify success message appears (toast or alert)
+ * Handles multiple toasts by checking visible ones
  * 
  * @example
  * Then I should see a success message
  */
 Then('I should see a success message', async function ({ page }) {
-  const toast = page.locator('[data-sonner-toast]');
-  await expect(toast).toContainText(/success|saved|created|updated|deleted|completed/i, {
-    timeout: 5000,
-  });
+  // Get all visible toasts and check if any contain success message
+  const toasts = page.locator('[data-sonner-toast][data-visible="true"]');
+  const count = await toasts.count();
+  
+  if (count === 0) {
+    // No visible toasts, wait for any toast to appear
+    const toast = page.locator('[data-sonner-toast]').first();
+    await expect(toast).toContainText(/success|saved|created|updated|deleted|completed/i, {
+      timeout: 5000,
+    });
+  } else {
+    // Check the most recent (first) visible toast
+    const latestToast = toasts.first();
+    await expect(latestToast).toContainText(/success|saved|created|updated|deleted|completed/i, {
+      timeout: 5000,
+    });
+  }
+  
   console.log('✅ Success message verified');
 });
 
 /**
  * Verify error message appears
+ * Handles multiple toasts by checking visible ones
  * 
  * @example
  * Then I should see an error message
  */
 Then('I should see an error message', async function ({ page }) {
-  // Check for toast first
-  const toast = page.locator('[data-sonner-toast]');
-  const hasToast = (await toast.count()) > 0;
+  // Check for visible toasts first
+  const visibleToasts = page.locator('[data-sonner-toast][data-visible="true"]');
+  const hasVisibleToast = (await visibleToasts.count()) > 0;
   
-  if (hasToast) {
-    await expect(toast).toContainText(/error|failed|invalid|unable|cannot/i, { timeout: 5000 });
+  if (hasVisibleToast) {
+    // Check the most recent visible toast
+    const latestToast = visibleToasts.first();
+    await expect(latestToast).toContainText(/error|failed|invalid|unable|cannot/i, { timeout: 5000 });
   } else {
-    // Check for alert role (form validation errors)
-    const alert = page.getByRole('alert');
-    await expect(alert).toBeVisible({ timeout: 5000 });
+    // Check for any toast
+    const toast = page.locator('[data-sonner-toast]').first();
+    const hasToast = (await toast.count()) > 0;
+    
+    if (hasToast) {
+      await expect(toast).toContainText(/error|failed|invalid|unable|cannot/i, { timeout: 5000 });
+    } else {
+      // Check for alert role (form validation errors)
+      const alert = page.getByRole('alert');
+      await expect(alert).toBeVisible({ timeout: 5000 });
+    }
   }
   
   console.log('✅ Error message verified');

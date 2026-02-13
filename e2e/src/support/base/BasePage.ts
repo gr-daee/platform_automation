@@ -1,14 +1,19 @@
 import { Page, Locator, expect } from '@playwright/test';
+import { PageLoadHelper } from '../helpers/PageLoadHelper';
 
 /**
  * BasePage - Base class for all Page Object Models
  * 
  * Provides common utilities and patterns used across all pages:
  * - Navigation helpers
- * - Wait strategies
+ * - Enhanced wait strategies (pollUntil, retryAction, waitForElementStable)
  * - Common assertions
  * - Toast/Dialog handling
  * - Form interactions
+ * - Page load verification
+ * 
+ * Wait strategy: Prefer event-based waits (expect().toBeVisible(), waitForLoadState,
+ * waitForResponse). Avoid page.waitForTimeout() — see automation-patterns "Replacing waitForTimeout".
  * 
  * All Page Objects MUST inherit from this class.
  * 
@@ -20,7 +25,11 @@ import { Page, Locator, expect } from '@playwright/test';
  * }
  */
 export abstract class BasePage {
-  constructor(protected readonly page: Page) {}
+  protected readonly pageLoadHelper: PageLoadHelper;
+
+  constructor(protected readonly page: Page) {
+    this.pageLoadHelper = new PageLoadHelper(page);
+  }
 
   // ==========================================
   // Navigation Methods
@@ -409,7 +418,8 @@ export abstract class BasePage {
   }
 
   /**
-   * Click element with retry (handles occasional click interception)
+   * Click element with retry (handles occasional click interception).
+   * Prefer event-based waits over fixed delays; avoid page.waitForTimeout().
    */
   async clickWithRetry(locator: Locator, retries: number = 3): Promise<void> {
     for (let i = 0; i < retries; i++) {
@@ -418,7 +428,7 @@ export abstract class BasePage {
         return;
       } catch (error) {
         if (i === retries - 1) throw error;
-        await this.page.waitForTimeout(500);
+        await this.page.waitForLoadState('domcontentloaded');
       }
     }
   }
@@ -487,5 +497,215 @@ export abstract class BasePage {
    */
   async uploadFiles(inputLocator: Locator, filePaths: string[]): Promise<void> {
     await inputLocator.setInputFiles(filePaths);
+  }
+
+  // ==========================================
+  // Enhanced Wait Methods (Flakiness Prevention)
+  // ==========================================
+
+  /**
+   * Wait for page to be fully loaded and stable
+   * 
+   * Uses PageLoadHelper for comprehensive page load verification.
+   * Recommended after navigation, page changes, or before critical actions.
+   * 
+   * @param config - Page load configuration (see PageLoadHelper)
+   * 
+   * @example
+   * // Basic usage (default options)
+   * await this.waitForPageStable();
+   * 
+   * @example
+   * // Custom configuration
+   * await this.waitForPageStable({
+   *   waitForNetworkIdle: true,
+   *   waitForLoadingIndicators: true,
+   *   waitForAnimations: 300,
+   *   timeout: 15000
+   * });
+   */
+  async waitForPageStable(config?: any): Promise<void> {
+    await this.pageLoadHelper.waitForPageLoad(config);
+  }
+
+  /**
+   * Poll until condition is met or timeout
+   * 
+   * Useful for waiting for data to appear, counts to update, etc.
+   * 
+   * @param condition - Async function that returns true when condition met
+   * @param timeout - Maximum wait time (ms)
+   * @param interval - Check interval (ms)
+   * @param description - Condition description for error message
+   * 
+   * @example
+   * await this.pollUntil(
+   *   async () => {
+   *     const count = await this.page.locator('.item').count();
+   *     return count > 0;
+   *   },
+   *   10000,
+   *   500,
+   *   'items to appear'
+   * );
+   */
+  async pollUntil(
+    condition: () => Promise<boolean>,
+    timeout: number = 10000,
+    interval: number = 500,
+    description: string = 'condition'
+  ): Promise<void> {
+    await this.pageLoadHelper.pollUntil(condition, timeout, interval, description);
+  }
+
+  /**
+   * Retry an action with exponential backoff
+   * 
+   * Useful for flaky operations (network requests, dynamic content).
+   * 
+   * @param action - Async action to retry
+   * @param maxAttempts - Maximum number of attempts (default: 3)
+   * @param initialDelay - Initial delay between retries in ms (default: 1000)
+   * @param backoffMultiplier - Delay multiplier for exponential backoff (default: 2)
+   * @param description - Action description for error message
+   * 
+   * @example
+   * await this.retryAction(
+   *   async () => {
+   *     await this.page.getByRole('button', { name: 'Submit' }).click();
+   *     await this.waitForToast('Success');
+   *   },
+   *   3,
+   *   1000,
+   *   2,
+   *   'submit form'
+   * );
+   */
+  async retryAction<T>(
+    action: () => Promise<T>,
+    maxAttempts: number = 3,
+    initialDelay: number = 1000,
+    backoffMultiplier: number = 2,
+    description: string = 'action'
+  ): Promise<T> {
+    let lastError: Error | null = null;
+    let delay = initialDelay;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await action();
+      } catch (error) {
+        lastError = error as Error;
+        
+        if (attempt === maxAttempts) {
+          break; // Don't wait after last attempt
+        }
+
+        console.log(`⚠️ ${description} failed (attempt ${attempt}/${maxAttempts}), retrying in ${delay}ms...`);
+        await this.page.waitForTimeout(delay);
+        delay *= backoffMultiplier;
+      }
+    }
+
+    throw new Error(
+      `${description} failed after ${maxAttempts} attempts.\n` +
+      `Last error: ${lastError?.message || 'Unknown error'}`
+    );
+  }
+
+  /**
+   * Wait for element to be stable (not moving/animating)
+   * 
+   * Checks element's bounding box position multiple times to ensure
+   * it's not animating or being repositioned by layout shifts.
+   * 
+   * @param locator - Element locator
+   * @param timeout - Maximum wait time (ms)
+   * @param checkInterval - Interval between stability checks (ms)
+   * @param requiredStableChecks - Number of consecutive stable checks required
+   * 
+   * @example
+   * await this.waitForElementStable(
+   *   this.page.getByRole('button', { name: 'Submit' }),
+   *   5000
+   * );
+   */
+  async waitForElementStable(
+    locator: Locator,
+    timeout: number = 5000,
+    checkInterval: number = 100,
+    requiredStableChecks: number = 3
+  ): Promise<void> {
+    const startTime = Date.now();
+
+    // Ensure element is visible first
+    await locator.waitFor({ state: 'visible', timeout });
+
+    let previousBox: any = null;
+    let stableCount = 0;
+
+    while (Date.now() - startTime < timeout) {
+      const currentBox = await locator.boundingBox();
+
+      if (!currentBox) {
+        throw new Error('Element has no bounding box (may be hidden)');
+      }
+
+      if (previousBox) {
+        // Check if position is stable (within 1px tolerance for sub-pixel rendering)
+        const isStable =
+          Math.abs(currentBox.x - previousBox.x) < 1 &&
+          Math.abs(currentBox.y - previousBox.y) < 1 &&
+          Math.abs(currentBox.width - previousBox.width) < 1 &&
+          Math.abs(currentBox.height - previousBox.height) < 1;
+
+        if (isStable) {
+          stableCount++;
+          if (stableCount >= requiredStableChecks) {
+            return; // Element is stable!
+          }
+        } else {
+          stableCount = 0; // Reset if position changed
+        }
+      }
+
+      previousBox = currentBox;
+      await this.page.waitForTimeout(checkInterval);
+    }
+
+    throw new Error(
+      `Element did not stabilize within ${timeout}ms. ` +
+      `It may be continuously animating or affected by layout shifts.`
+    );
+  }
+
+  /**
+   * Wait for specific network request(s) to complete
+   * 
+   * Useful for ensuring API calls finish before proceeding.
+   * 
+   * @param urlPatterns - Array of URL patterns to wait for (e.g., ['/api/orders', '/api/dealers'])
+   * @param timeout - Maximum wait time (ms)
+   * 
+   * @example
+   * await this.waitForNetworkRequests(['/api/orders', '/api/dealers'], 10000);
+   */
+  async waitForNetworkRequests(urlPatterns: string[], timeout: number = 10000): Promise<void> {
+    await this.pageLoadHelper.waitForNetworkRequests(urlPatterns, timeout);
+  }
+
+  /**
+   * Wait for page URL to match expected pattern
+   * 
+   * Useful after navigation actions to ensure redirect completed.
+   * 
+   * @param urlPattern - URL pattern (regex or string)
+   * @param timeout - Maximum wait time (ms)
+   * 
+   * @example
+   * await this.waitForUrl(/\/orders\/\d+/, 10000);
+   */
+  async waitForUrl(urlPattern: string | RegExp, timeout: number = 15000): Promise<void> {
+    await this.pageLoadHelper.waitForUrl(urlPattern, timeout);
   }
 }

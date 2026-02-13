@@ -22,7 +22,7 @@ npx playwright install
 This will install:
 - Playwright and browser binaries
 - playwright-bdd for Cucumber/BDD support
-- monocart-reporter for rich HTML reports
+- allure and allure-playwright for Allure Report 3
 - otpauth for TOTP generation
 - pg for PostgreSQL database access
 - TypeScript and type definitions
@@ -145,19 +145,21 @@ npm run test:ui
 
 **📖 For detailed execution mode guide, see**: [TEST_EXECUTION.md](../usage/TEST_EXECUTION.md)
 
-### 6. View Test Report
+### 6. View Test Reports
 
-After tests complete, view the Monocart report:
+After tests complete, you can view:
 
+**Playwright HTML report** (with trace viewer link):
 ```bash
 npm run test:report
 ```
 
-This opens the HTML report in your browser showing:
-- Test results with screenshots
-- Performance metrics
-- Execution timeline
-- Failed test details with traces
+**Allure Report 3** (steps and attachments):
+```bash
+npm run test:report:allure
+```
+
+Reports show test results, screenshots, execution timeline, and failed test details with traces (Playwright) or step-level attachments (Allure).
 
 ## Troubleshooting
 
@@ -228,7 +230,9 @@ platform_automation/
 │           ├── fixtures.ts
 │           ├── global.setup.ts
 │           └── db-helper.ts
-├── monocart-report/               # 📊 Generated HTML reports
+├── allure-results/                # Allure raw results (gitignored)
+├── allure-report/                 # Allure HTML report (gitignored)
+├── playwright-report/            # Playwright HTML report (gitignored)
 ├── test-results/                  # 🧪 Test execution results
 ├── .env.local                     # ⚠️  Git-ignored - your config
 ├── .env.example                   # 📋 Template configuration

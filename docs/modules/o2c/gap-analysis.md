@@ -16,14 +16,14 @@ Tracks test coverage gaps for the Order-to-Cash module, including indents, order
 
 | Category | Total Scenarios | Covered | Gaps | Coverage % |
 |----------|----------------|---------|------|------------|
-| Happy Path | 5 | 3 | 2 | 60% |
+| Happy Path | 5 | 4 | 1 | 80% |
 | Negative Cases | 6 | 2 | 4 | 33% |
 | Boundary Conditions | 4 | 0 | 4 | 0% |
 | State Transitions | 4 | 2 | 2 | 50% |
 | Integration | 3 | 1 | 2 | 33% |
 | Error Handling | 3 | 0 | 3 | 0% |
 | Corner Cases | 5 | 0 | 5 | 0% |
-| **TOTAL** | **30** | **8** | **22** | **27%** |
+| **TOTAL** | **30** | **9** | **21** | **30%** |
 
 ---
 
@@ -96,13 +96,17 @@ Tracks test coverage gaps for the Order-to-Cash module, including indents, order
 - **Test ID Needed**: O2C-INDENT-TC-011
 - **Status**: 🔴 Open
 
-### GAP-O2C-P2-003: No test for dealer filtering
+### ✅ GAP-O2C-P2-003: No test for dealer filtering
 - **Description**: Dealer dropdown filtering not tested
 - **Impact**: Medium - UX feature not verified
 - **Scenario**: User searches for dealer by name in dropdown
 - **Risk**: Search functionality may break
 - **Test ID Needed**: O2C-INDENT-TC-012
-- **Status**: 🔴 Open
+- **Status**: ✅ Resolved
+- **Resolved**: 2026-02-04
+- **Resolution**: Created test O2C-INDENT-TC-012
+- **Implementation**: IMPL-027 (pending)
+- **Notes**: Covers dealer search by name, GST, territory in modal with server-side debounced search
 
 ### GAP-O2C-P2-004: No test for indent edit after submission
 - **Description**: System should prevent editing submitted indents
@@ -175,6 +179,12 @@ Tracks test coverage gaps for the Order-to-Cash module, including indents, order
 - **Resolution**: Created test O2C-INDENT-TC-003
 - **Implementation**: IMPL-005
 - **Notes**: Covers empty dealer, empty product, empty quantity
+
+### ✅ GAP-O2C-P2-003: No test for dealer filtering
+- **Resolved**: 2026-02-04
+- **Resolution**: Created test O2C-INDENT-TC-012
+- **Implementation**: IMPL-027 (pending)
+- **Notes**: Covers dealer search by name, GST, territory in modal with server-side debounced search
 
 ---
 

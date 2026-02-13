@@ -14,6 +14,11 @@ Framework-level documentation for the DAEE Platform test automation framework.
 
 ### Implementation
 - **[IMPLEMENTATION_COMPLETE.md](implementation/IMPLEMENTATION_COMPLETE.md)** - Framework implementation summary and architecture
+- **[ALLURE_REPORT.md](implementation/ALLURE_REPORT.md)** - Allure Report 3 usage (generate, view, artifact folders)
+
+### Reviews & Integrations
+- **[FRAMEWORK_COMPLIANCE_REVIEW_2026-02.md](FRAMEWORK_COMPLIANCE_REVIEW_2026-02.md)** - Architect/SDET compliance review and best-practice assessment
+- **[PLAYWRIGHT_MCP_INTEGRATION.md](PLAYWRIGHT_MCP_INTEGRATION.md)** - Playwright MCP setup and usage with Cursor
 
 ## Quick Links
 

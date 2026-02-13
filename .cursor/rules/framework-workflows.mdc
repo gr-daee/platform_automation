@@ -60,7 +60,7 @@ Feature: [Feature Name]
   So that [achieve goal]
 
   Background:
-    Given I am authenticated as an admin user
+    Given I am logged in to the Application
     And I am on the [module] page
 
   @[MODULE]-[FEATURE]-TC-001 @smoke @critical
@@ -90,6 +90,8 @@ Feature: [Feature Name]
 - Tag with test case ID (@MODULE-FEATURE-TC-###)
 - Tag with test type (@smoke, @critical, @regression)
 - Write from user perspective (no technical details)
+- **Single-user auth**: Use `Given I am logged in to the Application` (user determined by project/tag)
+- **Multi-user auth**: Use `Given I am logged in as "<User>"` in Scenario Outline with Examples table (e.g., "IACS MD User", "Finance Manager"). User role must match a supported role in `auth-background-steps.ts`. See `docs/framework-enhancements/03-multi-user-auth/`.
 
 ### Step 2: Create Page Object Model
 
@@ -176,12 +178,21 @@ npm run bdd:generate
 npm run test:dev -- e2e/features/[module]/[feature].feature
 ```
 
+**Monocart report will auto-open** with videos, screenshots, traces for debugging.
+
 ### Step 7: Verify & Document
 
 - [ ] Test passes consistently
+- [ ] Monocart report shows expected behavior (dev/debug mode)
 - [ ] Documentation updated (test-cases.md, knowledge.md)
 - [ ] No linter errors
 - [ ] Follows all patterns from automation-patterns.mdc
+
+**Debugging Failed Tests**:
+- **Dev/Debug**: Check Monocart report (auto-opened) or `npm run test:report:monocart`
+- **Production**: Check Allure report with `npm run test:report:allure:open`
+- Review screenshots, videos, traces in reports
+- See `docs/framework/implementation/MONOCART_REPORT.md` for details
 
 ---
 

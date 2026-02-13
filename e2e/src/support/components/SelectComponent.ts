@@ -312,7 +312,7 @@ export class SelectComponent {
     const searchInput = this.page.locator('[role="combobox"] input');
     if (await searchInput.isVisible()) {
       await searchInput.fill(searchText);
-      await this.page.waitForTimeout(300); // Wait for filter
+      await expect(this.page.getByRole('option', { name: optionValue })).toBeVisible({ timeout: 3000 });
     }
     
     // Select option from filtered results

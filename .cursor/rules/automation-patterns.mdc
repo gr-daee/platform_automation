@@ -164,6 +164,19 @@ await formComponent.verifySubmitted();
 
 **Pattern**: Validation errors appear as role="alert" under fields.
 
+### Replacing waitForTimeout
+
+`page.waitForTimeout(ms)` is deprecated and discouraged; use event-based waits so tests stay fast and stable.
+
+| Instead of… | Use… |
+|-------------|------|
+| Fixed delay after an action | `expect(locator).toBeVisible({ timeout })` or `locator.waitFor({ state: 'visible', timeout })` |
+| Waiting for navigation/network | `page.waitForLoadState('networkidle')` or `page.waitForURL(...)` |
+| Waiting for a response | `page.waitForResponse(urlOrPredicate)` |
+| Retry backoff | `page.waitForLoadState('domcontentloaded')` or a short polling loop only if truly needed |
+
+Prefer waiting for the specific condition (element visible, URL, response) rather than a fixed timeout.
+
 ---
 
 ## 3. Semantic Locator Strategies
@@ -238,14 +251,15 @@ page.locator('div > ul > li:nth-child(3)')
 ```
 e2e/src/steps/
 ├── auth/
-│   └── auth-steps.ts           # Authentication-specific steps
-├── o2c/
-│   ├── indent-steps.ts         # Indent-specific steps
-│   └── order-steps.ts          # Order-specific steps
+│   └── auth-steps.ts           # Login-flow tests (no pre-auth)
 ├── shared/
+│   ├── auth-background-steps.ts # Multi-user auth: Given I am logged in as "{role}"
 │   ├── navigation-steps.ts     # Reusable navigation steps
 │   ├── assertion-steps.ts      # Common assertions
 │   └── form-steps.ts           # Generic form interactions
+├── o2c/
+│   ├── indent-steps.ts         # Indent-specific steps
+│   └── order-steps.ts          # Order-specific steps
 └── index.ts                    # Export all steps
 ```
 
@@ -283,6 +297,22 @@ Then('the entity should be created successfully', async function ({ page }) {
 ```
 
 ### Shared Step Patterns
+
+#### Auth Steps (shared/auth-background-steps.ts)
+```typescript
+// Generic login step for single-user tests (user determined by project)
+Given('I am logged in to the Application', async function ({ page }) {
+  await page.goto('/');
+  await page.waitForLoadState('domcontentloaded');
+});
+
+// Explicit login step for multi-user Scenario Outlines
+Given('I am logged in as {string}', async function ({ page }, userRole: string) {
+  // User role from Examples table (e.g., "IACS MD User", "Finance Manager")
+  await page.goto('/');
+  await page.waitForLoadState('domcontentloaded');
+});
+```
 
 #### Navigation Steps (shared/navigation-steps.ts)
 ```typescript
@@ -639,7 +669,7 @@ When('I perform action that might fail', async function ({ page }) {
     await ordersPage.createOrder(testData);
     await ordersPage.verifySuccess();
   } catch (error) {
-    // Capture screenshot on failure
+    // Capture screenshot on failure (auto-captured in dev/debug mode)
     await page.screenshot({ 
       path: `test-results/failure-${Date.now()}.png`,
       fullPage: true 
@@ -653,6 +683,20 @@ When('I perform action that might fail', async function ({ page }) {
   }
 });
 ```
+
+### Debugging with Reports
+
+When tests fail, check the appropriate report based on execution mode:
+
+**Development/Debug Mode:**
+- Monocart report auto-opens with videos, screenshots, traces
+- Access: `npm run test:report:monocart` or check `monocart-report/index.html`
+
+**Production Mode:**
+- Allure report: `npm run test:report:allure:open`
+- Playwright HTML: `npm run test:report`
+
+See `docs/framework/implementation/MONOCART_REPORT.md` for details.
 
 ### Conditional Assertions
 ```typescript

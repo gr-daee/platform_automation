@@ -81,6 +81,36 @@ Each entry maps:
 
 ## O2C Module
 
+### `../web_app/src/app/o2c/components/O2CIndentsManager.tsx`
+**Affected Tests**:
+- `O2C-INDENT-TC-012`: Dealer search and selection in modal
+  - **Interaction**: POM (`e2e/src/pages/o2c/IndentsPage.ts`)
+  - **Locators Used**: 
+    - `getByRole('button', { name: /create indent/i })`
+    - `getByRole('dialog')`
+  - **Last Verified**: 2026-02-04
+
+**Change Risk**: 🟡 Medium - 1 test affected
+
+---
+
+### `../web_app/src/app/o2c/components/DealerSelectionDialog.tsx`
+**Affected Tests**:
+- `O2C-INDENT-TC-012`: Dealer search and selection in modal
+  - **Interaction**: POM (`e2e/src/pages/o2c/IndentsPage.ts`)
+  - **Locators Used**: 
+    - `getByRole('dialog')`
+    - `getByPlaceholder(/search by dealer code, name, gst, or territory/i)`
+    - `getByRole('heading', { name: /select dealer/i })`
+    - `getByRole('row')`
+    - `getByRole('button', { name: /select/i })`
+    - `getByRole('table')`
+  - **Last Verified**: 2026-02-04
+
+**Change Risk**: 🔴 High - 1 test affected (core component)
+
+---
+
 ### `../web_app/src/app/o2c/indents/page.tsx`
 **Affected Tests**:
 - `O2C-INDENT-TC-001`: Create indent with valid data

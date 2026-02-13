@@ -32,6 +32,129 @@ Build robust, maintainable, and efficient E2E tests for the DAEE ERP platform us
 - `docs/framework-enhancements/01-consolidated-rules/01-IMPLEMENTATION_SUMMARY.md` - Foundation
 - `docs/framework-enhancements/02-documentation-system/01-COMPLETE_GUIDE.md` - Full system
 
+### Playwright MCP (Optional – Cursor Integration)
+When available, the **Playwright MCP Server** can be used to:
+- Capture live DOM/accessibility snapshots to derive semantic locators (getByRole, getByLabel).
+- Take screenshots for failure analysis when test-results/ or traces are insufficient.
+- Draft flows from real browser interaction; **final tests** must still follow this persona (BasePage, component library, BDD, documentation).
+- See: `docs/framework/PLAYWRIGHT_MCP_INTEGRATION.md` and `.cursor/mcp.json`.
+
+---
+
+## Multi-User Testing Strategy (70/30 Split)
+
+### Overview
+DAEE is a multi-tenant SaaS platform requiring tests across different roles and tenants.
+
+**Framework Approach**:
+- **70% tests** = Single-user (run once, primary user only)
+- **30% tests** = Multi-user (run across relevant users for permission/isolation testing)
+
+### When to Create Multi-User Tests (30%)
+
+**✅ Use @multi-user tag for**:
+1. **Permission Boundaries**: Testing "can user X do action Y?"
+   - Example: Finance Manager can view but not delete orders
+2. **Tenant Isolation**: Ensuring users cannot see other tenant data
+   - Example: IACS user cannot access Demo Tenant data
+3. **Data Visibility**: Different users see different data based on role
+   - Example: Warehouse Manager only sees warehouse-related indents
+4. **RBAC Validation**: Verify role-based access control rules
+   - Example: Admin can access settings, MD User cannot
+
+**❌ Keep as single-user tests (70%)**:
+1. **Happy Path CRUD**: Standard create, read, update, delete operations
+2. **Workflows**: Approval flows, status transitions, business processes
+3. **UI Validation**: Form validation, error messages, toast notifications
+4. **Business Rules**: Calculation logic, data validation rules
+5. **Integration Tests**: Third-party integrations, API calls
+
+### Multi-User Test Creation Pattern
+
+**Step 1: Identify if multi-user needed**
+```
+Decision Tree:
+├─ Does this test RBAC permissions or tenant isolation? → Multi-user
+├─ Does this test "can user X do Y?" → Multi-user
+├─ Does this test workflow or CRUD? → Single-user
+└─ Does this test UI validation? → Single-user
+```
+
+**Step 2: Create Scenario Outline**
+```gherkin
+Feature: O2C Indent Management
+
+  # Single-user test (70%)
+  @O2C-INDENT-TC-001 @smoke @p1 @iacs-md
+  Scenario: MD User creates indent
+    Given I am logged in to the Application
+    When I create a new indent
+    Then the indent should be created successfully
+    # Runs ONCE as IACS MD User (determined by project)
+  
+  # Multi-user test (30%)
+  @O2C-INDENT-TC-050 @critical @p0 @multi-user
+  @iacs-md @iacs-finance @iacs-warehouse
+  Scenario Outline: User permissions for indent deletion
+    Given I am logged in as "<User>"
+    When I try to delete an indent
+    Then I should see "<Result>"
+    
+    Examples:
+      | User              | Result  | Reason              |
+      | IACS MD User     | Success | Full permissions    |
+      | Finance Manager  | Denied  | Read-only access    |
+      | Warehouse Manager| Denied  | No delete permission|
+    # Runs 3 TIMES (once per user)
+```
+
+**Step 3: Execution**
+```bash
+# Run all O2C tests (single-user runs once, multi-user runs 3x)
+npm run test:regression -- e2e/features/o2c/
+
+# Run only multi-user tests
+npm run test:regression -- --grep "@multi-user"
+
+# Run specific test as specific user
+npm run test:dev -- --project=iacs-md --grep "@O2C-INDENT-TC-050"
+```
+
+### Tag Conventions
+
+**Single-User Tags**:
+- Format: `@{primary-user-role}`
+- Examples: `@iacs-md`, `@iacs-finance`, `@super-admin`
+- Usage: One tag per test
+- Result: Test runs once
+
+**Multi-User Tags**:
+- Format: `@multi-user @{user1} @{user2} @{user3}`
+- Must include: `@multi-user` + individual user tags
+- Usage: Multiple user tags
+- Result: Test runs N times (once per user tag)
+
+**Example Progression**:
+```gherkin
+# Test 1: Single-user (created first)
+@O2C-001 @smoke @iacs-md
+Scenario: User creates order
+
+# Later: Identified need to test permissions
+# Convert to multi-user by adding tags
+@O2C-001 @smoke @multi-user @iacs-md @iacs-finance
+Scenario Outline: User creates order based on permissions
+  Examples: ...
+```
+
+### Proactive Suggestion
+
+When user asks to "create test for indent creation":
+1. Ask: "Is this testing permissions or tenant isolation?"
+2. If YES → Suggest multi-user test with Scenario Outline
+3. If NO → Create single-user test with primary user tag
+4. Document decision in test-cases.md
+
 ---
 
 ## Core Workflows
@@ -71,21 +194,64 @@ Before writing ANY code, you MUST read:
 - ❌ Inconsistent test approaches
 
 #### Step 2: Generate Test Artifacts
-Follow patterns from `automation-patterns.mdc`:
-1. **Feature file** (`e2e/features/[module]/[feature].feature`)
-   - Write Gherkin scenarios with clear Given/When/Then
-   - Tag with test case IDs (@MODULE-FEATURE-TC-001)
-   - Tag with test types (@smoke, @critical, @regression)
 
-2. **Page Object Model** (`e2e/src/pages/[module]/[PageName]Page.ts`)
-   - ALWAYS inherit from `BasePage`
-   - Use component library for ShadCN/Radix patterns
-   - Follow semantic locator strategy
+**2.1 Determine Test Type (70/30 Decision)**
 
-3. **Step Definitions** (`e2e/src/steps/[module]/[feature]-steps.ts`)
-   - Implement Sandwich Method for verifications
-   - Reuse shared steps when possible
-   - Use fixtures: `{ page, testContext, transactionExtractor }`
+Before writing code, determine:
+- **Single-user test (70%)**: Primary user tag only
+  - Use when: Happy path, workflows, UI validation
+  - Example: `@O2C-001 @smoke @iacs-md`
+- **Multi-user test (30%)**: @multi-user + all relevant user tags
+  - Use when: Permissions, tenant isolation, RBAC
+  - Example: `@O2C-050 @critical @multi-user @iacs-md @iacs-finance`
+
+**2.2 Create Feature File** (`e2e/features/[module]/[feature].feature`)
+
+**Single-User Pattern**:
+```gherkin
+@O2C-INDENT-TC-001 @smoke @p1 @iacs-md
+Scenario: MD User creates indent
+  Given I am logged in to the Application
+  When I create a new indent
+  Then the indent should be created successfully
+  # Test runs ONCE as IACS MD User (determined by @iacs-md tag + project)
+```
+
+**Multi-User Pattern**:
+```gherkin
+@O2C-INDENT-TC-050 @critical @p0 @multi-user
+@iacs-md @iacs-finance @iacs-warehouse
+Scenario Outline: User views indents by role
+  Given I am logged in as "<User>"
+  When I navigate to indents page
+  Then I should see "<Expected Data>"
+  Examples:
+    | User              | Expected Data   |
+    | IACS MD User     | All indents     |
+    | Finance Manager  | Approved only   |
+    | Warehouse Manager| None            |
+  # Test runs 3 TIMES (once per user)
+```
+
+**Tag Requirements**:
+- Test case ID: `@MODULE-FEATURE-TC-###`
+- Test type: `@smoke`, `@critical`, or `@regression`
+- Priority: `@p0` (critical), `@p1` (high), `@p2` (medium), `@p3` (low)
+- User tags: `@iacs-md`, `@iacs-finance`, `@iacs-warehouse`, `@super-admin`
+- Multi-user: `@multi-user` (if testing permissions/isolation)
+
+**2.3 Create Page Object Model** (`e2e/src/pages/[module]/[PageName]Page.ts`)
+- ALWAYS inherit from `BasePage`
+- Use component library for ShadCN/Radix patterns
+- Follow semantic locator strategy
+- See `automation-patterns.mdc` for templates
+
+**2.4 Create Step Definitions** (`e2e/src/steps/[module]/[feature]-steps.ts`)
+- Implement Sandwich Method for verifications
+- Reuse shared steps when possible
+- Use fixtures: `{ page, testContext }` (from playwright-bdd)
+- Import utilities: `transactionExtractor` from `support/transaction-extractor`
+- Handle multi-user scenarios with Scenario Outline
 
 #### Step 3: Update Documentation (MANDATORY)
 See `framework-workflows.mdc` for requirements:
@@ -167,14 +333,20 @@ export class [Module]Page extends BasePage {
 **Analysis Process**:
 
 1. **Check Latest Results**
+   - **Dev/Debug mode**: Monocart report (auto-opened or `npm run test:report:monocart`)
+     - Videos, screenshots, trace links, network metrics
+   - **Production mode**: Allure report (`npm run test:report:allure:open`)
+     - BDD steps, step-level attachments
+   - **Playwright HTML**: `npm run test:report` (trace viewer links)
    - Look for screenshots in `test-results/`
    - Review trace files (`.zip` files)
-   - Check console logs for errors
+   - Check console logs in reports
 
 2. **Analyze Failure Point**
    - Identify exact step that failed
    - Check if locator is still valid
    - Verify ShadCN/Radix component structure unchanged
+   - If live DOM/layout is needed: use Playwright MCP (when available) to capture snapshot or screenshot of the page
 
 3. **Verify Database State** (if Sandwich Method used)
    - Check "DB BEFORE" query results
@@ -403,6 +575,8 @@ const indentName = `AUTO_QA_${Date.now()}_Indent`;
 ### Tech Stack
 - **Playwright** ^1.48.0 - Browser automation
 - **playwright-bdd** ^7.5.0 - BDD/Cucumber integration
+- **Monocart Reporter** ^2.10.0 - Dev/debug reports (video, metrics, auto-open)
+- **Allure Report 3** ^3.4.5 - Production BDD reports (steps, attachments)
 - **TypeScript** ^5.8.0 - Type-safe development
 - **PostgreSQL** (pg ^8.13.1) - Database verification
 - **otpauth** ^9.3.4 - TOTP/MFA handling
@@ -437,17 +611,51 @@ e2e/
 
 ### Execution Modes
 ```bash
-npm run test:regression   # Production mode (parallel, headless)
-npm run test:smoke        # Smoke tests only
-npm run test:debug        # Debug mode (sequential, screenshots)
-npm run test:dev          # Development mode (headed, single worker)
+npm run test:regression   # Production mode (parallel, headless, Allure report)
+npm run test:smoke        # Smoke tests only (production mode)
+npm run test:debug        # Debug mode (sequential, Monocart report, full capture)
+npm run test:dev          # Development mode (headed, Monocart report, full capture)
 ```
+
+### Reporting Strategy (Conditional by Mode)
+
+**Development/Debug Mode:**
+- **Monocart Reporter**: Auto-opens after tests
+- **Features**: Video recording, network metrics, tree-grid, trace viewer links
+- **Access**: Automatic, or `npm run test:report:monocart`
+- **Location**: `monocart-report/index.html`
+- **Capture**: Screenshots, videos, traces on every test (not just failures)
+
+**Production Mode:**
+- **Allure Report**: Generated in global teardown
+- **Features**: BDD step display, historical tracking, step-level attachments
+- **Access**: `npm run test:report:allure:open`
+- **Location**: `allure-report/index.html`
+- **Playwright HTML**: Available with `npm run test:report` (trace viewer)
+- **Capture**: Screenshots, videos, traces only on failure/retry
+
+**Quick Reference:**
+- Dev/Debug report: Opens automatically (Monocart)
+- Production report: `npm run test:report:allure:open` (Allure)
+- Trace viewer: Click trace link in Monocart or Playwright HTML report
+- See: `docs/framework/implementation/MONOCART_REPORT.md`, `docs/framework/REPORTING_DIRECTORIES.md`
 
 ### Key Constraints
 - **Read-Only Database**: No DELETE/UPDATE queries (SELECT only)
 - **Test Data Prefix**: Use `AUTO_QA_${Date.now()}_` for transactional data
 - **ShadCN/Radix UI**: Requires special interaction patterns (not native selectors)
 - **TOTP/MFA**: All tests must handle 2FA authentication
+
+### Multi-User Authentication
+DAEE is multi-tenant, multi-role. Tests run as different users based on Playwright project routing:
+
+- **When creating a test**: Determine which persona (IACS MD User, Super Admin, Finance Manager, etc.) the scenario requires
+- **Feature file convention**: 
+  - **Single-user**: `Background: Given I am logged in to the Application` (user determined by project)
+  - **Multi-user**: `Given I am logged in as "<User>"` in Scenario Outline (user from Examples table)
+- **Project routing**: Place feature file in path that matches Playwright project routing (e.g., `o2c/*.feature` → IACS MD User via @iacs-md tag)
+- **Adding a new user**: (1) Add credentials to `.env.local`, (2) Add profile to users array in `global.setup.ts`, (3) Add role to `auth-background-steps.ts`, (4) Add Playwright project with testMatch and storageState
+- **Reference**: `docs/framework-enhancements/03-multi-user-auth/`
 
 ---
 
@@ -559,13 +767,22 @@ The Sandwich Method verifies state changes by querying the database before and a
 
 ### Pattern Structure
 ```typescript
-When('I perform action', async ({ page }) => {
+// Import transactionExtractor (not a fixture)
+import { transactionExtractor } from '../../support/transaction-extractor';
+
+When('I perform action', async ({ page, testContext }) => {
+  // Fixtures: page, testContext (from playwright-bdd)
+  // Import: transactionExtractor (utility module)
+  
   // 1. DB BEFORE - Query initial state
   const userBefore = await getUserByEmail('admin@test.com');
   console.log('User state before:', userBefore.status);
   
   // 2. UI ACTION - Perform user interaction
   await ordersPage.submitOrder(orderData);
+  
+  // Extract transaction ID if needed
+  const transactionId = await transactionExtractor.extractTransactionId(page);
   
   // 3. DB AFTER - Verify state change
   const userAfter = await getUserByEmail('admin@test.com');

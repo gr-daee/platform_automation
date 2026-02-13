@@ -1,15 +1,15 @@
 import { expect } from '@playwright/test';
 import { createBdd } from 'playwright-bdd';
-import { LoginPage } from '../pages/auth/LoginPage';
+import { LoginPage } from '../../pages/auth/LoginPage';
 import {
   getUserByEmail,
   getUserSessions,
   hasUserCompletedMFA,
   getLatestSession,
-} from '../support/db-helper';
-import { testContext } from '../support/test-context';
-import { transactionExtractor } from '../support/transaction-extractor';
-import { logger } from '../support/logger';
+} from '../../support/db-helper';
+import { testContext } from '../../support/test-context';
+import { transactionExtractor } from '../../support/transaction-extractor';
+import { logger } from '../../support/logger';
 
 /**
  * Step Definitions for Authentication Feature
@@ -111,9 +111,7 @@ When('I generate and enter a valid TOTP code', async ({}) => {
 When('I submit the TOTP verification', async ({ page }) => {
   await loginPage.clickVerifyTOTP();
   console.log('✅ TOTP verification submitted');
-  
-  // Wait a moment for auth state to update
-  await page.waitForTimeout(2000);
+  await page.waitForLoadState('networkidle');
 });
 
 When('I enter an invalid TOTP code {string}', async ({}, invalidCode: string) => {
@@ -160,8 +158,10 @@ Then('I should see the TOTP verification step', async ({ page }) => {
   console.log('✅ TOTP verification step displayed');
 });
 
-Then('I should see a success message', async ({ page }) => {
-  const stepName = 'I should see a success message';
+// Note: Generic "I should see a success message" step is now in shared/assertion-steps.ts
+// This step is kept for auth-specific success message validation with transaction tracking
+Then('I should see the authentication success message', async ({ page }) => {
+  const stepName = 'I should see the authentication success message';
   testContext.logStep('Then', stepName);
   
   // Capture screenshot before validation
@@ -249,8 +249,10 @@ Then('I should be redirected to the notes page', async ({ page }) => {
 //   console.log('✅ [DB VERIFICATION COMPLETE] User authenticated with MFA');
 // });
 
-Then('I should see an error message', async ({ page }) => {
-  const stepName = 'I should see an error message';
+// Note: Generic "I should see an error message" step is now in shared/assertion-steps.ts
+// This step is kept for auth-specific error validation
+Then('I should see the authentication error message', async ({ page }) => {
+  const stepName = 'I should see the authentication error message';
   testContext.logStep('Then', stepName);
   
   // Capture screenshot before validation (important for error scenarios)

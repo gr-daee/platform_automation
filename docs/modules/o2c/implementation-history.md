@@ -12,6 +12,16 @@ This document tracks all test automation implementations for the Order-to-Cash (
 
 ## Implementations
 
+### [IMPL-027 - Dealer Search and Selection in Create Indent Modal](../../implementations/2026-02/IMPL-027_dealer-search-selection-modal.md) ✅
+- **Date**: 2026-02-04
+- **Type**: New Feature
+- **Status**: Complete
+- **Tests Created**: 1
+  - O2C-INDENT-TC-012: Dealer search and selection in modal
+- **Coverage Added**: Happy path (80%)
+- **Gaps Resolved**: GAP-O2C-P2-003 (No test for dealer filtering)
+- **Key Achievement**: Automated dealer selection modal with server-side search
+
 ### [IMPL-005 - O2C Indent Creation Tests](../../implementations/2026-01/IMPL-005_o2c-indent-creation.md) ✅
 - **Date**: 2026-01-20
 - **Type**: New Feature
@@ -29,12 +39,12 @@ This document tracks all test automation implementations for the Order-to-Cash (
 
 | Metric | Count |
 |--------|-------|
-| Total Implementations | 1 |
-| Tests Created | 3 |
+| Total Implementations | 2 |
+| Tests Created | 4 |
 | Tests Updated | 0 |
 | Tests Deprecated | 0 |
-| Gaps Resolved | 2 |
-| Current Coverage | 27% |
+| Gaps Resolved | 3 |
+| Current Coverage | 30% |
 
 ---
 
@@ -42,6 +52,7 @@ This document tracks all test automation implementations for the Order-to-Cash (
 
 | Date | Happy Path | Negative | Boundary | State Trans. | Integration | Error | Corner | Overall |
 |------|-----------|----------|----------|--------------|-------------|-------|--------|---------|
+| 2026-02-04 | 80% | 33% | 0% | 50% | 33% | 0% | 0% | 30% |
 | 2026-01-20 | 60% | 33% | 0% | 50% | 33% | 0% | 0% | 27% |
 | *Target* | 100% | 100% | 80% | 100% | 90% | 70% | 50% | 90% |
 
@@ -58,7 +69,6 @@ This document tracks all test automation implementations for the Order-to-Cash (
 ### Backlog (Future Sprints)
 - **IMPL-TBD**: Order creation from indent (GAP-O2C-P1-003)
 - **IMPL-TBD**: Boundary conditions (min/max quantities)
-- **IMPL-TBD**: Dealer filtering and search
 
 ---
 

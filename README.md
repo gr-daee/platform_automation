@@ -1,252 +1,479 @@
 # DAEE Platform Automation
 
-End-to-end test automation framework for the DAEE SaaS ERP platform using Playwright with BDD (Cucumber).
+> End-to-end test automation framework for the DAEE SaaS ERP platform using Playwright with BDD (Cucumber).
 
-## Tech Stack
+[![Playwright](https://img.shields.io/badge/Playwright-v1.48-green)](https://playwright.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-v5.8-blue)](https://www.typescriptlang.org/)
+[![BDD](https://img.shields.io/badge/BDD-Cucumber-brightgreen)](https://cucumber.io/)
 
-- **Playwright**: Browser automation framework
-- **playwright-bdd**: BDD/Cucumber integration for Playwright
-- **monocart-reporter**: Rich HTML test reporting
-- **otpauth**: TOTP generation for MFA authentication
-- **pg**: PostgreSQL client for database verification
-- **TypeScript**: Type-safe test development
+---
 
-## Getting Started
+## ✨ Key Features
 
-### Prerequisites
+- 🎭 **Playwright** browser automation with TypeScript
+- 🥒 **BDD/Cucumber** business-readable test scenarios
+- 👥 **Multi-User Testing** with pre-authenticated sessions
+- 📊 **Conditional Reporting** (Monocart for dev, Allure for production)
+- 🔍 **Sandwich Method** database verification
+- 🎨 **Component Library** for ShadCN/Radix UI patterns
+- 🔐 **MFA Support** with TOTP authentication
+
+---
+
+## 🚀 Quick Start (5 Minutes)
+
+### 1. Prerequisites
 
 - Node.js 18+ installed
 - Access to DAEE test environment
 - Test user credentials with TOTP secrets
 
-### Installation
+### 2. Installation
 
 ```bash
+# Clone repository
+git clone <repository-url>
+cd platform_automation
+
+# Install dependencies
 npm install
+
+# Install Playwright browsers
 npx playwright install
 ```
 
-### Configuration
+### 3. Configuration
 
-1. Copy `.env.example` to `.env.local`:
-   ```bash
-   cp .env.example .env.local
-   ```
+```bash
+# Copy environment file
+cp .env.example .env.local
 
-2. Fill in your test environment details:
-   - Database connection (Supabase)
-   - Test user credentials (email + TOTP secret)
-   - Base URL for test environment
+# Edit .env.local with your credentials
+# (Database URL, test user credentials, TOTP secrets)
+```
+
+### 4. Run Your First Test
+
+```bash
+# Run a smoke test
+npm run test:dev -- --grep "@smoke"
+```
+
+**Expected**: Browser opens, test runs, Monocart report auto-opens with video recording.
+
+**🎉 Success!** You're ready to start testing.
+
+---
+
+## 📚 Learning Path
+
+### New to the Framework?
+
+Follow this structured learning path:
+
+1. **[Getting Started](docs/training/01-getting-started.md)** (2 hours)
+   - Setup environment
+   - Run your first test
+   - Understand project structure
+
+2. **[Framework Architecture](docs/training/02-framework-architecture.md)** (2 hours)
+   - Learn BDD, POM, Sandwich Method
+   - Understand multi-user authentication
+   - Explore component library
+
+3. **[Running Tests](docs/training/03-running-tests.md)** (2 hours)
+   - Master execution modes (dev, debug, production)
+   - Navigate reports (Monocart, Allure)
+   - Debug failing tests
+
+4. **[Creating Tests](docs/training/04-creating-tests.md)** (2 hours)
+   - Follow test creation workflow
+   - Write feature files, POMs, step definitions
+   - Update documentation
+
+**[📖 View Complete Training Path](docs/training/README.md)**
+
+---
+
+## 🎯 Common Tasks
 
 ### Running Tests
 
-The framework supports three execution modes optimized for different use cases:
-
-**Production Mode (Default - for regression/smoke runs):**
 ```bash
-# Run all tests (parallel execution)
-npm run test:regression
+# Development mode (headed, Monocart report, full capture)
+npm run test:dev
 
-# Run smoke tests only
-npm run test:smoke
-
-# Run critical tests only
-npm run test:critical
-
-# Run weekly test suite
-npm run test:weekly
-```
-
-**Debug Mode (for investigating failures):**
-```bash
-# Debug specific test (headless, single worker)
-npm run test:debug -- --grep "Login fails with invalid TOTP code"
-
-# Debug with browser visible
-npm run test:debug:headed -- --grep "@AUTH-LOGIN-TC-002"
-```
-
-**Development Mode (for writing new tests):**
-```bash
-# Develop tests for a module (browser visible, single worker)
-npm run test:dev -- e2e/features/auth/
-
-# Develop specific feature
-npm run test:dev -- e2e/features/auth/login.feature
-```
-
-**Other Commands:**
-```bash
-# Run with browser visible
-npm run test:headed
-
-# Open Playwright UI (interactive)
-npm run test:ui
-
-# Debug mode (Playwright Inspector)
+# Debug mode (sequential, full capture)
 npm run test:debug
 
-# Debug mode (capture screenshots at every step)
-DEBUG_MODE=true npm test
+# Production mode (headless, parallel, Allure report)
+npm run test:regression
 
-# View test report
+# Smoke tests only
+npm run test:smoke
+```
+
+### Viewing Reports
+
+```bash
+# Monocart report (dev/debug mode - auto-opens)
+npm run test:report:monocart
+
+# Allure report (production mode)
+npm run test:report:allure:open
+
+# Playwright HTML report
 npm run test:report
 ```
 
-**📖 For detailed execution mode guide, see**: [Test Execution Guide](docs/framework/usage/TEST_EXECUTION.md)
-
-### Running Individual Tests
-
-You can run specific tests using the following commands:
+### Filtering Tests
 
 ```bash
-# Run a specific feature file
-npm run test:feature -- e2e/features/auth/login.feature
+# By tag
+npm run test:dev -- --grep "@smoke"
 
-# Run a specific scenario by name (use quotes for multi-word names)
-npm run test:scenario -- "Successful login with valid TOTP for Admin user"
+# By feature file
+npm run test:dev -- e2e/features/o2c/indents.feature
 
-# Run a test by test case ID tag
-npm run test:tc -- "@AUTH-LOGIN-TC-001"
+# By test case ID
+npm run test:dev -- --grep "@O2C-INDENT-TC-012"
 
-# Run multiple scenarios matching a pattern
-npm run test:scenario -- "Login fails"
-
-# Run all tests with a specific tag
-npm run test:tc -- "@smoke"
+# By project (user)
+npm run test:dev -- --project=iacs-md
 ```
 
-**Examples:**
-- `npm run test:feature -- e2e/features/auth/login.feature` - Runs all scenarios in login feature
-- `npm run test:scenario -- "Login fails with invalid TOTP code"` - Runs specific scenario
-- `npm run test:tc -- "@AUTH-LOGIN-TC-002"` - Runs test case TC-002
-- `npm run test:tc -- "@critical"` - Runs all critical tests
-
-## Debug Mode
-
-The framework supports a comprehensive debug mode that captures screenshots, logs, and transaction information at every step.
-
-### Enabling Debug Mode
-
-Set the `DEBUG_MODE` environment variable to `true`:
+### Creating Tests
 
 ```bash
-DEBUG_MODE=true npm test login
+# 1. Create feature file
+# e2e/features/[module]/[feature].feature
+
+# 2. Generate BDD files
+npm run bdd:generate
+
+# 3. Create Page Object Model
+# e2e/src/pages/[module]/[Page]Page.ts
+
+# 4. Create step definitions
+# e2e/src/steps/[module]/[feature]-steps.ts
+
+# 5. Run test
+npm run test:dev -- --grep "@[TEST-ID]"
+
+# 6. Update documentation
+# docs/modules/[module]/test-cases.md
 ```
 
-### Debug Mode Features
+**[📖 Detailed Test Creation Guide](docs/training/04-creating-tests.md)**
 
-When `DEBUG_MODE=true`:
-- **Screenshots**: Captured at every step (Given/When/Then)
-- **Video**: Full video recording enabled
-- **Trace**: Complete execution trace
-- **Logging**: Verbose DEBUG-level logging
-- **Transaction IDs**: Automatically extracted and logged
+---
 
-### Normal Mode (Default)
+## 📖 Core Concepts
 
-When `DEBUG_MODE=false` or unset:
-- Screenshots only on failure
-- Video only on failure
-- Trace only on retry
-- Standard INFO-level logging
+### BDD (Behavior-Driven Development)
 
-### Configuration
+Tests written in business-readable Gherkin syntax:
 
-Add to your `.env.local`:
+```gherkin
+Feature: Order Management
 
-```env
-DEBUG_MODE=false                    # Set to 'true' for debug mode
-DEBUG_SCREENSHOT_PATH=test-results/debug-screenshots  # Custom screenshot path
-DEBUG_LOG_LEVEL=INFO                # DEBUG, INFO, WARN, ERROR
+  Background:
+    Given I am logged in to the Application
+
+  @O2C-ORDER-TC-001 @smoke @p1 @iacs-md
+  Scenario: Create order successfully
+    Given I am on the orders page
+    When I create a new order with valid data
+    Then the order should be created successfully
+    And I should see a success message
 ```
 
-See [Environment Setup Guide](docs/framework/setup/ENV_SETUP_GUIDE.md) for details.
+### Page Object Model (POM)
 
-### Transaction ID Extraction
+UI elements abstracted into reusable page objects:
 
-The framework automatically extracts transaction IDs from:
-- UI elements (data attributes, text content)
-- URL parameters
-- API responses (when intercepted)
-
-Example usage in step definitions:
 ```typescript
-const transactionId = await transactionExtractor.extractTransactionId(page);
-if (transactionId) {
-  testContext.addTransactionId(transactionId);
+export class OrdersPage extends BasePage {
+  readonly createButton: Locator;
+  
+  async createOrder(data: OrderData): Promise<void> {
+    await this.createButton.click();
+    // ... high-level action method
+  }
 }
 ```
 
-## Framework Architecture
+### Sandwich Method
+
+Database verification before and after UI actions:
+
+```typescript
+// 1. DB BEFORE - Query initial state
+const countBefore = await getOrderCount();
+
+// 2. UI ACTION - Perform user interaction
+await ordersPage.createOrder(orderData);
+
+// 3. DB AFTER - Verify state change
+const countAfter = await getOrderCount();
+expect(countAfter).toBe(countBefore + 1);
+```
+
+### Multi-User Testing (70/30 Split)
+
+- **70% Single-User**: Run once with primary user (happy path, workflows)
+- **30% Multi-User**: Run across users (permissions, tenant isolation)
+
+```gherkin
+# Single-user test (70%)
+@O2C-001 @smoke @iacs-md
+Scenario: Create order
+  Given I am logged in to the Application
+  # Runs ONCE as IACS MD User
+
+# Multi-user test (30%)
+@O2C-050 @multi-user @iacs-md @iacs-finance
+Scenario Outline: User permissions
+  Given I am logged in as "<User>"
+  Examples:
+    | User            |
+    | IACS MD User    |
+    | Finance Manager |
+  # Runs TWICE (once per user)
+```
+
+**[📖 Learn More About Architecture](docs/knowledge-base/architecture.md)**
+
+---
+
+## 📊 Execution Modes & Reports
+
+### Execution Modes
+
+| Mode | Purpose | Browser | Workers | Report | Artifacts |
+|------|---------|---------|---------|--------|-----------|
+| **Development** | Day-to-day testing | Headed | 1 | Monocart (auto-open) | Full (video, screenshots, traces) |
+| **Debug** | Troubleshooting | Headed | 1 (sequential) | Monocart (auto-open) | Full |
+| **Production** | CI/CD, regression | Headless | Parallel | Allure + HTML | On failure only |
+
+### Reports
+
+**Monocart (Dev/Debug)**:
+- ✅ Video recording
+- ✅ Screenshots at every step
+- ✅ Trace viewer links
+- ✅ Network metrics
+- ✅ Auto-opens after tests
+
+**Allure (Production)**:
+- ✅ BDD step display
+- ✅ Historical trends
+- ✅ Step-level attachments
+- ✅ Test categories
+
+**[📖 Detailed Reporting Guide](docs/framework/implementation/MONOCART_REPORT.md)**
+
+---
+
+## 🏗️ Project Structure
 
 ```
 platform_automation/
 ├── e2e/
-│   ├── .auth/              # Pre-authenticated storage states
-│   ├── features/           # Gherkin feature files
-│   │   └── auth/
-│   │       └── login.feature
-│   ├── fixtures/           # Test data files
-│   └── src/
-│       ├── pages/          # Page Object Models
-│       │   └── auth/
-│       │       └── LoginPage.ts
-│       ├── steps/          # Step definitions
-│       │   └── auth-steps.ts
-│       └── support/        # Utilities and helpers
-│           ├── global.setup.ts
-│           └── db-helper.ts
-├── .env.local              # Local environment config (git-ignored)
-├── .env.example            # Example configuration
-├── playwright.config.ts    # Playwright configuration
-└── package.json
+│   ├── features/              # Gherkin feature files
+│   │   ├── o2c/               # O2C module features
+│   │   └── shared/            # Shared features
+│   ├── src/
+│   │   ├── pages/             # Page Object Models
+│   │   ├── steps/             # Step definitions
+│   │   │   ├── o2c/           # Module-specific steps
+│   │   │   └── shared/        # Reusable steps
+│   │   └── support/           # Utilities and helpers
+│   │       ├── base/          # BasePage, BaseComponent
+│   │       ├── components/    # Component library
+│   │       ├── data/          # TestDataLocator
+│   │       └── db-helper.ts   # Database utilities
+│   └── .auth/                 # Pre-authenticated sessions
+├── docs/
+│   ├── training/              # Training materials
+│   ├── modules/               # Module-specific docs
+│   ├── knowledge-base/        # Cross-module knowledge
+│   └── framework/             # Framework documentation
+├── .cursor/                   # Cursor AI rules
+│   └── rules/
+│       └── sr-automation-engineer-persona.mdc
+├── playwright.config.ts       # Playwright configuration
+├── package.json               # Dependencies and scripts
+└── .env.local                 # Environment variables (not in Git)
 ```
 
-## Testing Standards
+---
 
-- **BDD Approach**: Features written in Gherkin syntax
-- **Semantic Locators**: Use `getByRole`, `getByPlaceholder`, avoid CSS selectors
-- **Sandwich Method**: DB verification before/after UI actions
-- **Read-Only DB**: No data cleanup, use `AUTO_QA_` prefixes for test data
-- **Pre-Authentication**: Global setup creates authenticated sessions
+## 🎨 Tech Stack
 
-## Environment Variables
+- **[Playwright](https://playwright.dev/)** ^1.48.0 - Browser automation
+- **[playwright-bdd](https://github.com/vitalets/playwright-bdd)** ^7.5.0 - BDD/Cucumber integration
+- **[Monocart Reporter](https://github.com/cenfun/monocart-reporter)** ^2.10.0 - Dev/debug reports
+- **[Allure Report 3](https://allurereport.org/)** ^3.4.5 - Production BDD reports
+- **[TypeScript](https://www.typescriptlang.org/)** ^5.8.0 - Type-safe development
+- **[PostgreSQL (pg)](https://node-postgres.com/)** ^8.13.1 - Database verification
+- **[otpauth](https://github.com/hectorm/otpauth)** ^9.3.4 - TOTP/MFA handling
 
-See `.env.example` for all available configuration options. Key variables:
+---
 
-- `TEST_BASE_URL`: Application URL (default: http://localhost:3000)
-- `TEST_USER_ADMIN_EMAIL`: Admin user email
-- `TEST_USER_ADMIN_TOTP_SECRET`: Admin user TOTP secret (Base32)
-- `SUPABASE_DB_*`: Database connection details
+## 📋 Command Cheat Sheet
 
-## Documentation
+### Test Execution
 
-Comprehensive documentation is available in the `docs/` directory:
+| Command | Description |
+|---------|-------------|
+| `npm run test:dev` | Development mode (headed, Monocart) |
+| `npm run test:debug` | Debug mode (sequential, full capture) |
+| `npm run test:regression` | Production mode (parallel, Allure) |
+| `npm run test:smoke` | Smoke tests only |
+| `npm run bdd:generate` | Generate BDD spec files |
+
+### Reports
+
+| Command | Description |
+|---------|-------------|
+| `npm run test:report:monocart` | Open Monocart report |
+| `npm run test:report:allure:open` | Open Allure report |
+| `npm run test:report` | Open Playwright HTML report |
+
+### Filtering
+
+| Command | Description |
+|---------|-------------|
+| `npm run test:dev -- --grep "@smoke"` | Run smoke tests |
+| `npm run test:dev -- --grep "@O2C-001"` | Run specific test |
+| `npm run test:dev -- e2e/features/o2c/` | Run O2C module tests |
+| `npm run test:dev -- --project=iacs-md` | Run as specific user |
+
+---
+
+## 📚 Documentation
+
+### Essential Reading
+
+- **[Training Materials](docs/training/README.md)** - Start here for new team members
+- **[Framework Architecture](docs/knowledge-base/architecture.md)** - Understand the framework
+- **[Database Schema](docs/knowledge-base/database-schema.md)** - Database and test data
+- **[Business Rules](docs/knowledge-base/business-rules.md)** - Business logic
+- **[Glossary](docs/knowledge-base/glossary.md)** - Terms and definitions
+
+### Framework Documentation
 
 - **[Documentation Index](docs/README.md)** - Main documentation hub
-- **[Setup Guide](docs/framework/setup/SETUP_GUIDE.md)** - Getting started
-- **[Environment Setup](docs/framework/setup/ENV_SETUP_GUIDE.md)** - Configuration guide
-- **[Test Execution Guide](docs/framework/usage/TEST_EXECUTION.md)** - Execution modes (production/debug/development)
-- **[Module Documentation](docs/modules/)** - Module-specific knowledge and test cases
+- **[Framework Enhancements](docs/framework-enhancements/README.md)** - Navigation index
+- **[Module Documentation](docs/modules/)** - Module-specific knowledge
 
-## Contributing
+### Cursor AI Rules
 
-Follow the standards defined in `.cursor/rules/`:
-- `sqa-standards.mdc`: Automation standards and best practices
-- `sqa-generator.mdc`: Guidelines for generating POMs and steps
-- `context-awareness.mdc`: Context-aware test generation requirements
-- `docs-management.mdc`: Documentation maintenance standards
+- **[Sr Automation Engineer Persona](. cursor/rules/sr-automation-engineer-persona.mdc)** - Main AI persona
+- **[Automation Patterns](.cursor/rules/automation-patterns.mdc)** - Technical patterns
+- **[Framework Workflows](.cursor/rules/framework-workflows.mdc)** - Process workflows
 
-**Before creating tests:**
-1. Read module knowledge: `docs/modules/[module]/knowledge.md`
-2. Check existing tests: `docs/modules/[module]/test-cases.md`
-3. Review source code: `../web_app/src/app/[module]/`
-4. Follow established patterns
+---
 
-## Support
+## 🤝 Contributing
 
-For issues or questions:
-- Check [Documentation](docs/README.md)
-- Review [Setup Guide](docs/framework/setup/SETUP_GUIDE.md)
-- Contact the DAEE QA team
+### Before Creating Tests
+
+1. **Read module knowledge**: `docs/modules/[module]/knowledge.md`
+2. **Check existing tests**: `docs/modules/[module]/test-cases.md`
+3. **Review source code**: `../web_app/src/app/[module]/`
+4. **Follow established patterns**
+
+### Test Creation Workflow
+
+1. Context gathering (read docs, source code)
+2. Create feature file (.feature)
+3. Generate BDD files (`npm run bdd:generate`)
+4. Create Page Object Model (*Page.ts)
+5. Create step definitions (*-steps.ts)
+6. Run test (`npm run test:dev`)
+7. Update documentation (test-cases.md, knowledge.md)
+
+**[📖 Detailed Contributing Guide](docs/training/04-creating-tests.md)**
+
+---
+
+## 🆘 Support
+
+### Getting Help
+
+- **Documentation**: Check [docs/](docs/README.md) for comprehensive guides
+- **Training**: Follow [training materials](docs/training/README.md)
+- **Team**: Contact DAEE QA team for assistance
+
+### Troubleshooting
+
+**Common Issues**:
+- **"npm install" fails**: Check Node.js version (v18+), clear npm cache
+- **"Playwright browsers not installed"**: Run `npx playwright install`
+- **"Test fails with auth error"**: Verify credentials in `.env.local`
+- **"Monocart report doesn't open"**: Run `npm run test:report:monocart`
+
+**[📖 Full Troubleshooting Guide](docs/training/07-debugging-guide.md)**
+
+---
+
+## 🎯 Best Practices
+
+### ✅ Do This
+
+- Use semantic locators (getByRole, getByLabel, getByPlaceholder)
+- Use component library for ShadCN/Radix interactions
+- Use TestDataLocator for stable prerequisite data
+- Prefix test data with `AUTO_QA_${Date.now()}_`
+- Implement Sandwich Method for database verification
+- Update documentation immediately after creating tests
+
+### ❌ Don't Do This
+
+- CSS class selectors (Tailwind classes change)
+- Hardcoded test data (use TestDataLocator)
+- Skip documentation updates
+- Create tests without reading module knowledge
+- Duplicate step definitions
+
+**[📖 Complete Best Practices Guide](docs/training/08-best-practices.md)**
+
+---
+
+## 📈 Framework Health
+
+### Quality Gates
+
+**Before Committing**:
+- [ ] Test passes consistently (run 3 times)
+- [ ] No linter errors
+- [ ] Documentation updated
+- [ ] Follows all patterns
+
+**Before PR**:
+- [ ] All tests pass in production mode
+- [ ] Allure report generated successfully
+- [ ] No flaky tests (run 5 times)
+- [ ] Module knowledge updated
+
+---
+
+## 📄 License
+
+Internal use only - DAEE Platform
+
+---
+
+## 🚀 Quick Links
+
+- **[Training Path](docs/training/README.md)** - Start here for new team members
+- **[Architecture](docs/knowledge-base/architecture.md)** - Framework architecture
+- **[Test Creation](docs/training/04-creating-tests.md)** - Create new tests
+- **[Debugging](docs/training/07-debugging-guide.md)** - Debug failing tests
+- **[Best Practices](docs/training/08-best-practices.md)** - Anti-patterns and quality gates
+
+---
+
+**Ready to start?** Follow the [Quick Start](#-quick-start-5-minutes) guide above, then dive into the [Training Path](docs/training/README.md)!
