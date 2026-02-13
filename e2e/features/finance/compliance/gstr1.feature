@@ -23,3 +23,30 @@ Feature: GSTR-1 Review Page
       | IACS MD User     | the GSTR-1 Review page |
       # TODO: Add non-compliance user (e.g., Viewer) when user profile is available
       # | Viewer           | access denied          |
+
+  @GSTR1-DAEE-100-TC-004 @DAEE-100 @regression @p1 @iacs-md
+  Scenario: Filing Period dropdown visible with current month options
+    Given I am on the GSTR-1 Review page
+    Then I should see the GSTR-1 Review page
+    And the Filing Period dropdown should be visible with current month options
+
+  @GSTR1-DAEE-100-TC-005 @DAEE-100 @regression @p1 @iacs-md
+  Scenario: Seller GSTIN dropdown displays GSTIN and State Name format
+    Given I am on the GSTR-1 Review page
+    Then I should see the GSTR-1 Review page
+    And the Seller GSTIN dropdown should display GSTIN and State Name format
+
+  @GSTR1-DAEE-100-TC-006 @DAEE-100 @smoke @regression @p0 @iacs-md
+  Scenario: Selecting filters loads data and removes empty state
+    Given I am on the GSTR-1 Review page
+    Then I should see the GSTR-1 Review page
+    When I select Seller GSTIN "first" and Return Period "previous"
+    Then data should load and empty state should disappear
+
+  @GSTR1-DAEE-100-TC-007 @DAEE-100 @smoke @regression @p0 @iacs-md
+  Scenario: Return Period card shows human-readable format
+    Given I am on the GSTR-1 Review page
+    Then I should see the GSTR-1 Review page
+    When I select Seller GSTIN "first" and Return Period "previous"
+    Then data should load and empty state should disappear
+    And the Return Period card should show human-readable format

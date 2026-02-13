@@ -25,9 +25,9 @@ Track progress per scenario using the **Status** column in each table. Update st
 
 | Status | Count |
 |--------|--------|
-| To Start | 47 |
+| To Start | 43 |
 | In Progress | 0 |
-| Automated | 2 |
+| Automated | 6 |
 | To Be Ignored | 1 |
 | Blocked | 0 |
 
@@ -105,10 +105,10 @@ Feature file location (per framework): `e2e/features/finance/compliance/gstr1.fe
 
 | TC ID | Scenario | Smoke / Regression | Tags | Status | Auto | Notes |
 |-------|----------|--------------------|------|--------|------|--------|
-| GSTR1-DAEE-100-TC-004 | Filing Period: Month/Year picker visible and includes current/open month | Regression | @DAEE-100 @regression @p1 | To Start | ✅ | Assert combobox/label; options include recent months. |
-| GSTR1-DAEE-100-TC-005 | Supplier GSTIN dropdown displays "GSTIN - State Name" (e.g. 37GHZPK0145J1ZQ - Andhra Pradesh) | Regression | @DAEE-100 @regression @p1 | To Start | ✅ | Regression DEF-003 (was city e.g. Kurnook). |
-| GSTR1-DAEE-100-TC-006 | Selecting GSTIN and Period loads data and removes empty state | **Smoke** | @DAEE-100 @smoke @regression @p0 | To Start | ✅ | After select both, summary/tabs or data area visible. |
-| GSTR1-DAEE-100-TC-007 | Return Period summary card shows human-readable period (e.g. "December 2025"), not raw "122025" | **Smoke** | @DAEE-100 @smoke @regression @p0 | To Start | ✅ | Regression DEF-004. |
+| GSTR1-DAEE-100-TC-004 | Filing Period: Month/Year picker visible and includes current/open month | Regression | @DAEE-100 @regression @p1 | Automated | ✅ | Assert combobox/label; options include recent months. |
+| GSTR1-DAEE-100-TC-005 | Supplier GSTIN dropdown displays "GSTIN - State Name" (e.g. 37GHZPK0145J1ZQ - Andhra Pradesh) | Regression | @DAEE-100 @regression @p1 | Automated | ✅ | Regression DEF-003 (was city e.g. Kurnook). |
+| GSTR1-DAEE-100-TC-006 | Selecting GSTIN and Period loads data and removes empty state | **Smoke** | @DAEE-100 @smoke @regression @p0 | Automated | ✅ | After select both, summary/tabs or data area visible. |
+| GSTR1-DAEE-100-TC-007 | Return Period summary card shows human-readable period (e.g. "December 2025"), not raw "122025" | **Smoke** | @DAEE-100 @smoke @regression @p0 | Automated | ✅ | Regression DEF-004. |
 
 ---
 

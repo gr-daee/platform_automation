@@ -132,3 +132,7 @@ await gstr1Page.verifyAccessDenied(); // Checks for redirect or error
 - ✅ TC-001: User with compliance.read can open page - Automated
 - ❌ TC-002: Page shows empty state until filters applied - **Invalid Scenario** (removed - unreliable empty state behavior)
 - ✅ TC-003: User access control (partial - needs non-compliance user) - Automated
+- ✅ TC-004: Filing Period dropdown visible with current month options - Automated
+- ✅ TC-005: Seller GSTIN dropdown displays "GSTIN - State Name" format - Automated
+- ✅ TC-006: Selecting filters loads data and removes empty state - Automated (Smoke)
+- ✅ TC-007: Return Period card shows human-readable format - Automated (Smoke)

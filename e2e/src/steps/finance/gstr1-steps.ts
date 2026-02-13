@@ -102,3 +102,85 @@ Then('the empty state should no longer be visible', async function({ page }) {
   await gstr1Page.verifyEmptyStateHidden();
   console.log('✅ Empty state hidden - data loaded');
 });
+
+// Global Filters steps (TC-004 to TC-007)
+Then('the Filing Period dropdown should be visible with current month options', async function({ page }) {
+  const gstr1Page = (this as any).gstr1Page || new GSTR1Page(page);
+  await gstr1Page.verifyFilingPeriodDropdownVisible();
+  console.log('✅ Verified Filing Period dropdown is visible with current/open month');
+});
+
+Then('the Seller GSTIN dropdown should display GSTIN and State Name format', async function({ page }) {
+  const gstr1Page = (this as any).gstr1Page || new GSTR1Page(page);
+  await gstr1Page.verifySellerGSTINFormat();
+  console.log('✅ Verified Seller GSTIN dropdown displays "GSTIN - State Name" format');
+});
+
+When('I select Seller GSTIN {string} and Return Period {string}', async function({ page }, gstin: string, monthYear: string) {
+  const gstr1Page = (this as any).gstr1Page || new GSTR1Page(page);
+  
+  // Handle special values: "first" means select first available GSTIN
+  let actualGSTIN = gstin;
+  if (gstin === 'first') {
+    // Open dropdown to get first GSTIN
+    const label = page.locator('label').filter({ hasText: /seller gstin/i });
+    const combobox = label.locator('..').getByRole('combobox').first();
+    await combobox.click();
+    await page.waitForSelector('[role="listbox"]', { timeout: 5000 });
+    
+    // Get first GSTIN option (skip "All GSTINs" if present)
+    const options = page.locator('[role="listbox"]').locator('[role="option"]');
+    const firstOption = options.first();
+    const optionText = await firstOption.textContent();
+    
+    // If first option is "All GSTINs", get second option
+    if (optionText?.includes('All GSTINs')) {
+      const secondOption = options.nth(1);
+      const gstinSpan = secondOption.locator('span.font-mono');
+      actualGSTIN = (await gstinSpan.textContent()) || '';
+    } else {
+      const gstinSpan = firstOption.locator('span.font-mono');
+      actualGSTIN = (await gstinSpan.textContent()) || '';
+    }
+    
+    await page.keyboard.press('Escape'); // Close dropdown
+    await page.waitForTimeout(300);
+  }
+  
+  // Select GSTIN
+  await gstr1Page.selectSellerGSTIN(actualGSTIN);
+  console.log(`✅ Selected Seller GSTIN: ${actualGSTIN}`);
+  
+  // Wait a bit for GSTIN selection to process
+  await page.waitForTimeout(500);
+  
+  // Handle special values: "previous" means select previous month (default)
+  let actualMonthYear = monthYear;
+  if (monthYear === 'previous') {
+    // Previous month is the default, format: "YYYY-MM"
+    const previousDate = new Date();
+    previousDate.setMonth(previousDate.getMonth() - 1);
+    const year = previousDate.getFullYear();
+    const month = String(previousDate.getMonth() + 1).padStart(2, '0');
+    actualMonthYear = `${year}-${month}`;
+  }
+  
+  // Select Return Period
+  await gstr1Page.selectFilingPeriod(actualMonthYear);
+  console.log(`✅ Selected Return Period: ${actualMonthYear}`);
+  
+  // Store in context for reuse
+  (this as any).gstr1Page = gstr1Page;
+});
+
+Then('data should load and empty state should disappear', async function({ page }) {
+  const gstr1Page = (this as any).gstr1Page || new GSTR1Page(page);
+  await gstr1Page.verifyDataLoadedAfterFilters();
+  console.log('✅ Verified data loaded after selecting filters');
+});
+
+Then('the Return Period card should show human-readable format', async function({ page }) {
+  const gstr1Page = (this as any).gstr1Page || new GSTR1Page(page);
+  await gstr1Page.verifyReturnPeriodCardFormat();
+  console.log('✅ Verified Return Period card shows human-readable format');
+});

@@ -267,4 +267,193 @@ export class GSTR1Page extends BasePage {
   async verifyEmptyStateHidden(): Promise<void> {
     await expect(this.emptyStateMessage).toBeHidden({ timeout: 10000 });
   }
+  
+  /**
+   * Verify Filing Period dropdown is visible and contains current/open month
+   * TC-004: Assert combobox/label visible; options include recent months
+   */
+  async verifyFilingPeriodDropdownVisible(): Promise<void> {
+    const returnPeriodLabel = this.page.locator('label').filter({ hasText: /return period/i });
+    await expect(returnPeriodLabel).toBeVisible({ timeout: 5000 });
+    
+    const combobox = returnPeriodLabel.locator('..').getByRole('combobox').first();
+    await expect(combobox).toBeVisible({ timeout: 5000 });
+    
+    // Open dropdown to verify options
+    await combobox.click();
+    await this.page.waitForSelector('[role="listbox"]', { timeout: 5000 });
+    
+    // Verify dropdown contains current month and previous month (default)
+    const currentDate = new Date();
+    const previousMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+    const currentMonthLabel = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+    const previousMonthLabel = `${monthNames[previousMonth.getMonth()]} ${previousMonth.getFullYear()}`;
+    
+    // Check if current or previous month is in options (dropdown shows last 24 months)
+    const listbox = this.page.locator('[role="listbox"]');
+    const hasCurrentMonth = await listbox.getByRole('option', { name: currentMonthLabel }).isVisible().catch(() => false);
+    const hasPreviousMonth = await listbox.getByRole('option', { name: previousMonthLabel }).isVisible().catch(() => false);
+    
+    if (!hasCurrentMonth && !hasPreviousMonth) {
+      // Get all option texts for debugging
+      const options = await listbox.locator('[role="option"]').allTextContents();
+      throw new Error(
+        `Filing Period dropdown does not contain current/open month. ` +
+        `Looking for: "${currentMonthLabel}" or "${previousMonthLabel}". ` +
+        `Available options: ${options.slice(0, 5).join(', ')}...`
+      );
+    }
+    
+    // Close dropdown
+    await this.page.keyboard.press('Escape');
+    await expect(this.page.locator('[role="listbox"]')).toBeHidden({ timeout: 2000 });
+    
+    console.log(`✅ Verified Filing Period dropdown contains current/open month`);
+  }
+  
+  /**
+   * Verify Seller GSTIN dropdown displays "GSTIN - State Name" format
+   * TC-005: Regression DEF-003 (was city e.g. Kurnook, now shows state name)
+   */
+  async verifySellerGSTINFormat(): Promise<void> {
+    const sellerGSTINLabel = this.page.locator('label').filter({ hasText: /seller gstin/i });
+    const combobox = sellerGSTINLabel.locator('..').getByRole('combobox').first();
+    
+    await combobox.click();
+    await this.page.waitForSelector('[role="listbox"]', { timeout: 5000 });
+    
+    const listbox = this.page.locator('[role="listbox"]');
+    
+    // Get all GSTIN options (skip "All GSTINs" if present)
+    const options = listbox.locator('[role="option"]');
+    const optionCount = await options.count();
+    
+    if (optionCount === 0) {
+      throw new Error('No GSTIN options found in dropdown');
+    }
+    
+    // Check at least one GSTIN option follows "GSTIN - State Name" format
+    // Format: GSTIN (monospace) on first line, State Name on second line
+    let foundValidFormat = false;
+    
+    for (let i = 0; i < Math.min(optionCount, 5); i++) { // Check first 5 options
+      const option = options.nth(i);
+      const optionText = await option.textContent();
+      
+      // Skip "All GSTINs" option
+      if (optionText?.includes('All GSTINs')) continue;
+      
+      // Check if option has GSTIN format (15 chars alphanumeric) and state name
+      // Options are structured as: <span>GSTIN</span><span>State Name</span>
+      const gstinSpan = option.locator('span.font-mono');
+      const stateSpan = option.locator('span.text-xs.text-muted-foreground');
+      
+      const hasGSTIN = await gstinSpan.isVisible().catch(() => false);
+      const hasStateName = await stateSpan.isVisible().catch(() => false);
+      
+      if (hasGSTIN && hasStateName) {
+        const gstinText = await gstinSpan.textContent();
+        const stateText = await stateSpan.textContent();
+        
+        // Verify GSTIN format (15 chars alphanumeric)
+        if (gstinText && /^[A-Z0-9]{15}$/.test(gstinText.trim())) {
+          foundValidFormat = true;
+          console.log(`✅ Verified GSTIN format: "${gstinText}" - "${stateText}"`);
+          break;
+        }
+      }
+    }
+    
+    // Close dropdown
+    await this.page.keyboard.press('Escape');
+    await expect(this.page.locator('[role="listbox"]')).toBeHidden({ timeout: 2000 });
+    
+    if (!foundValidFormat) {
+      throw new Error('Seller GSTIN dropdown does not display "GSTIN - State Name" format');
+    }
+  }
+  
+  /**
+   * Verify data loads after selecting filters and empty state disappears
+   * TC-006: After selecting both GSTIN and Period, summary/tabs or data area visible
+   */
+  async verifyDataLoadedAfterFilters(): Promise<void> {
+    // Wait for loading to complete
+    await this.page.waitForLoadState('networkidle', { timeout: 15000 });
+    
+    // Wait for loading spinner to disappear
+    const loadingSpinner = this.page.locator('text=Loading data...');
+    await expect(loadingSpinner).toBeHidden({ timeout: 10000 });
+    
+    // Verify empty state is hidden
+    await expect(this.emptyStateMessage).toBeHidden({ timeout: 10000 });
+    
+    // Verify "Data Loaded" status appears
+    const dataLoadedStatus = this.page.locator('text=Data Loaded');
+    await expect(dataLoadedStatus).toBeVisible({ timeout: 10000 });
+    
+    // Verify summary cards or tabs are visible (data area)
+    const summaryCards = this.page.locator('[data-slot="card-title"]').filter({ hasText: /Return Period|Total Liability|B2B/i });
+    const hasSummaryCards = await summaryCards.first().isVisible().catch(() => false);
+    
+    // Alternative: Check for tabs (Summary, B2B, B2CL, etc.)
+    const tabs = this.page.locator('[role="tablist"]');
+    const hasTabs = await tabs.isVisible().catch(() => false);
+    
+    if (!hasSummaryCards && !hasTabs) {
+      throw new Error('Data area not visible after selecting filters. Summary cards or tabs should appear.');
+    }
+    
+    console.log('✅ Verified data loaded and empty state removed');
+  }
+  
+  /**
+   * Verify Return Period summary card shows human-readable format
+   * TC-007: Regression DEF-004 - Shows "December 2025" not raw "122025"
+   */
+  async verifyReturnPeriodCardFormat(): Promise<void> {
+    // Wait for data to load
+    await this.page.waitForLoadState('networkidle', { timeout: 15000 });
+    
+    // Find Return Period card
+    const returnPeriodCard = this.page.locator('[data-slot="card-title"]')
+      .filter({ hasText: /return period/i })
+      .locator('..')
+      .locator('..'); // Go up to Card level
+    
+    await expect(returnPeriodCard).toBeVisible({ timeout: 10000 });
+    
+    // Find the period value (large text in card)
+    const periodValue = returnPeriodCard.locator('.text-2xl.font-bold');
+    await expect(periodValue).toBeVisible({ timeout: 5000 });
+    
+    const periodText = await periodValue.textContent();
+    
+    // Verify format: "Month Year" (e.g., "December 2025")
+    // Should NOT be raw format like "122025"
+    if (!periodText) {
+      throw new Error('Return Period card value is empty');
+    }
+    
+    // Check if it's raw format (6 digits) - should NOT be
+    if (/^\d{6}$/.test(periodText.trim())) {
+      throw new Error(
+        `Return Period card shows raw format "${periodText}" instead of human-readable format. ` +
+        `Expected format: "Month Year" (e.g., "December 2025")`
+      );
+    }
+    
+    // Verify it matches human-readable format: "Month Year"
+    const humanReadablePattern = /^(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}$/;
+    if (!humanReadablePattern.test(periodText.trim())) {
+      throw new Error(
+        `Return Period card format is incorrect: "${periodText}". ` +
+        `Expected format: "Month Year" (e.g., "December 2025")`
+      );
+    }
+    
+    console.log(`✅ Verified Return Period card shows human-readable format: "${periodText.trim()}"`);
+  }
 }
