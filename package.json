@@ -9,12 +9,12 @@
     "test:report:allure": "npx allure generate allure-results -o allure-report && npx allure open allure-report",
     "test:report:allure:generate": "npx allure generate allure-results -o allure-report",
     "test:report:allure:open": "npx allure open allure-report",
+    "test:report:monocart": "npx monocart show-report monocart-report/index.html",
     "test:allure": "npx allure run -- npm run test",
     "bdd:generate": "bddgen",
     "prebdd:generate": "echo 'Generating BDD step files...'",
     "pretest": "npm run bdd:generate",
     "verify:db": "node scripts/verify-db-connection.js",
-    
     "comment1": "===== EXECUTION MODE SCRIPTS =====",
     "test:regression": "TEST_EXECUTION_MODE=production playwright test",
     "test:smoke": "TEST_EXECUTION_MODE=production playwright test --grep '@smoke'",
@@ -23,46 +23,38 @@
     "test:debug": "TEST_EXECUTION_MODE=debug TEST_WORKERS=1 playwright test",
     "test:debug:headed": "TEST_EXECUTION_MODE=debug TEST_WORKERS=1 TEST_HEADED=true playwright test",
     "test:dev": "TEST_EXECUTION_MODE=development TEST_WORKERS=1 TEST_HEADED=true playwright test",
-    
     "comment2": "===== PRIORITY & SPEED TAGS =====",
     "test:p0": "TEST_EXECUTION_MODE=production playwright test --grep '@p0'",
     "test:p1": "TEST_EXECUTION_MODE=production playwright test --grep '@p1'",
     "test:p2": "TEST_EXECUTION_MODE=production playwright test --grep '@p2'",
     "test:fast": "TEST_EXECUTION_MODE=production playwright test --grep '@fast'",
     "test:slow": "TEST_EXECUTION_MODE=production playwright test --grep '@slow'",
-    
     "comment3": "===== TENANT-SPECIFIC TESTS =====",
     "test:tenant:iacs": "TEST_EXECUTION_MODE=production playwright test --grep '@tenant:iacs'",
     "test:tenant:demo": "TEST_EXECUTION_MODE=production playwright test --grep '@tenant:demo'",
-    
     "comment4": "===== ROLE-SPECIFIC TESTS =====",
     "test:role:md": "TEST_EXECUTION_MODE=production playwright test --grep '@role:md'",
     "test:role:finance": "TEST_EXECUTION_MODE=production playwright test --grep '@role:finance'",
     "test:role:warehouse": "TEST_EXECUTION_MODE=production playwright test --grep '@role:warehouse'",
     "test:role:admin": "TEST_EXECUTION_MODE=production playwright test --grep '@role:admin'",
-    
     "comment5": "===== MULTI-USER TESTS =====",
     "test:multi-user": "TEST_EXECUTION_MODE=production playwright test --grep '@multi-user'",
     "test:multi-user:dev": "TEST_EXECUTION_MODE=development TEST_WORKERS=1 TEST_HEADED=true playwright test --grep '@multi-user'",
-    
     "comment6": "===== USER PROJECT TESTS =====",
     "test:iacs-md": "TEST_EXECUTION_MODE=production playwright test --project=iacs-md",
     "test:iacs-finance": "TEST_EXECUTION_MODE=production playwright test --project=iacs-finance",
     "test:iacs-warehouse": "TEST_EXECUTION_MODE=production playwright test --project=iacs-warehouse",
     "test:super-admin": "TEST_EXECUTION_MODE=production playwright test --project=super-admin",
     "test:iacs-md:dev": "TEST_EXECUTION_MODE=development TEST_WORKERS=1 TEST_HEADED=true playwright test --project=iacs-md",
-    
     "comment7": "===== MODULE-SPECIFIC TESTS =====",
     "test:o2c": "TEST_EXECUTION_MODE=production playwright test e2e/features/o2c/",
     "test:o2c:dev": "TEST_EXECUTION_MODE=development TEST_WORKERS=1 TEST_HEADED=true playwright test e2e/features/o2c/",
     "test:finance": "TEST_EXECUTION_MODE=production playwright test e2e/features/finance/",
     "test:warehouse": "TEST_EXECUTION_MODE=production playwright test e2e/features/warehouse/",
-    
     "comment8": "===== COMBINED FILTERS (Examples) =====",
     "test:smoke:iacs": "TEST_EXECUTION_MODE=production playwright test --grep '@smoke.*@tenant:iacs'",
     "test:critical:o2c": "TEST_EXECUTION_MODE=production playwright test --grep '@critical' e2e/features/o2c/",
     "test:p0:multi-user": "TEST_EXECUTION_MODE=production playwright test --grep '@p0.*@multi-user'",
-    
     "comment9": "===== UTILITY SCRIPTS =====",
     "test:feature": "playwright test",
     "test:scenario": "playwright test --grep",
@@ -92,6 +84,7 @@
     "@types/pg": "^8.11.10",
     "allure": "^3.1.0",
     "allure-playwright": "^3.4.5",
+    "monocart-reporter": "^2.10.0",
     "typescript": "^5.8.0"
   }
 }

@@ -5,6 +5,22 @@ This directory contains all documentation for the DAEE Platform test automation 
 
 ## Documentation Structure
 
+### 🎓 [Training Materials](training/) **← START HERE FOR NEW TEAM MEMBERS**
+**Purpose**: Structured learning path for new engineers joining the automation team.
+
+Progressive training modules covering setup, architecture, test creation, and best practices.
+
+**Learning Path:**
+- [Training Index](training/README.md) - Complete learning path (Week 1-2)
+- [01 - Getting Started](training/01-getting-started.md) - Setup and first test (2h)
+- [02 - Framework Architecture](training/02-framework-architecture.md) - BDD, POM, Sandwich Method (2h)
+- [03 - Running Tests](training/03-running-tests.md) - Execution modes and reports (2h)
+- [04 - Creating Tests](training/04-creating-tests.md) - Test creation workflow (2h)
+- [05 - Multi-User Testing](training/05-multi-user-testing.md) - 70/30 split strategy (2h)
+- [06 - Advanced Patterns](training/06-advanced-patterns.md) - Component library, TestDataLocator (2h)
+- [07 - Debugging Guide](training/07-debugging-guide.md) - Debug failures effectively (2h)
+- [08 - Best Practices](training/08-best-practices.md) - Anti-patterns and quality gates (1h)
+
 ### 📚 [Framework Documentation](framework/)
 **Purpose**: Core framework documentation for engineers setting up and using the framework.
 
@@ -70,12 +86,18 @@ Each module contains:
 Cross-module knowledge including architecture, database schema, and business rules.
 
 **Key Documents:**
-- `database-schema.md` - Database structure and relationships
-- `business-rules.md` - Business logic and rules
-- `architecture.md` - System architecture overview
-- `api-endpoints.md` - API documentation
+- [Architecture](knowledge-base/architecture.md) - Framework architecture and design patterns
+- [Database Schema](knowledge-base/database-schema.md) - Database structure and test data strategy
+- [Business Rules](knowledge-base/business-rules.md) - Business logic and validation rules
+- [Glossary](knowledge-base/glossary.md) - Terms and definitions
 
 ## Quick Navigation
+
+### For New Team Members 🆕
+1. **Start with [Training Materials](training/README.md)** - Complete learning path
+2. Follow [Getting Started](training/01-getting-started.md) - Setup and first test
+3. Progress through [Training Modules](training/) - Week 1-2 curriculum
+4. Reference [Cursor Rules](../.cursor/rules/sr-automation-engineer-persona.mdc) - AI assistance
 
 ### For Test Developers
 1. Start with [Framework Setup Guide](framework/setup/SETUP_GUIDE.md)
@@ -160,8 +182,9 @@ This documentation structure works with Cursor rules (3 consolidated rules):
 
 ## Need Help?
 
+- **New to framework?** Start with [Training Materials](training/README.md) 🎓
 - Check [Framework Setup Guide](framework/setup/SETUP_GUIDE.md) for setup issues
-- **Search [Troubleshooting](troubleshooting/) for common errors** ✨ NEW
+- **Search [Troubleshooting](troubleshooting/) for common errors** ✨
 - Review [Module Knowledge](modules/) for domain understanding
 - Consult [Cursor Rules](../.cursor/rules/) for code generation standards
 - Contact DAEE QA team for questions

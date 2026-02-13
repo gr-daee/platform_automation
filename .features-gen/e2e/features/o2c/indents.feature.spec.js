@@ -4,7 +4,7 @@ import { test } from "playwright-bdd";
 test.describe("O2C Indent Management", () => {
 
   test.beforeEach(async ({ Given, page }) => {
-    await Given("I am logged in as \"IACS MD User\"", null, { page });
+    await Given("I am logged in to the Application", null, { page });
   });
 
   test("User searches and selects dealer from Create Indent modal", { tag: ["@O2C-INDENT-TC-012", "@regression", "@dealer-search", "@iacs-tenant", "@iacs-md"] }, async ({ Given, page, When, Then, And }) => {

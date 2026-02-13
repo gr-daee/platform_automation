@@ -4,7 +4,7 @@ Feature: O2C Indent Management
   So that I can process dealer orders efficiently
 
   Background:
-    Given I am logged in as "IACS MD User"
+    Given I am logged in to the Application
 
   @O2C-INDENT-TC-012 @regression @dealer-search @iacs-tenant @iacs-md
   Scenario: User searches and selects dealer from Create Indent modal

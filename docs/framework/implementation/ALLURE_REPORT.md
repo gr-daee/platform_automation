@@ -1,5 +1,17 @@
 # Allure Report 3
 
+## Conditional behavior
+
+Allure is **only generated in production mode** (`TEST_EXECUTION_MODE=production` or unset). In development or debug mode, the Monocart reporter is used instead and Allure generation is skipped.
+
+| Mode          | Allure generated | Report to use        |
+|---------------|------------------|----------------------|
+| `production`  | Yes              | Allure (+ Playwright HTML) |
+| `development` | No               | Monocart (auto-opens)      |
+| `debug`       | No               | Monocart (auto-opens)      |
+
+See [MONOCART_REPORT.md](MONOCART_REPORT.md) for dev/debug reporting.
+
 ## What it is
 
 [Allure Report 3](https://allurereport.org/docs/v3/) is an additional HTML report for the DAEE Playwright-BDD framework. It provides:
@@ -19,10 +31,12 @@ Unchanged. Use your usual commands:
 - `npm run test:dev -- e2e/features/auth/login.feature` – development mode, single feature
 - `npm run test:smoke`, `npm run test:critical`, etc.
 
-After each run:
+After each **production** run:
 1. The **allure-playwright** reporter writes raw results into `allure-results/`
 2. **Global teardown automatically generates** the Allure HTML report (like Extent Reports)
-3. Report is ready immediately - no manual generation needed!
+3. Report is ready - open with `npm run test:report:allure:open`
+
+In **development** or **debug** mode, Allure is not generated; the Monocart report is used and auto-opens instead.
 
 ## Automatic Report Generation
 

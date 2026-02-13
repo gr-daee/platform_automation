@@ -2,29 +2,53 @@ import { createBdd } from 'playwright-bdd';
 
 /**
  * Shared Authentication Background Steps
- * 
- * These steps handle user authentication for tests that require specific user roles.
- * Most tests use pre-authenticated sessions via storageState, but some scenarios
- * need explicit user context validation.
+ *
+ * - "Given I am logged in" (generic): Use for single-user flows. The user is determined
+ *   by the Playwright project (e.g. iacs-md → IACS MD User). No hardcoded role in the feature.
+ * - "Given I am logged in as {string}" (explicit): Use only for multi-user Scenario Outlines
+ *   where the same scenario runs with different users per row.
  */
 
 const { Given } = createBdd();
 
 /**
- * Verify user is authenticated with specific role
- * 
- * This step documents which user role the test is using.
- * Actual authentication is handled by Playwright's storageState.
- * 
+ * User is logged in to the Application (generic – recommended for single-user tests).
+ *
+ * Who is logged in is determined by the Playwright project (storageState).
+ * Use this in Background for most features; keep feature files generic.
+ *
+ * @example
+ * Background:
+ *   Given I am logged in to the Application
+ */
+Given('I am logged in to the Application', async function({ page }) {
+  // Authentication is via project's storageState (global setup).
+  // Ensure app context is loaded so session is active.
+  await page.goto('/');
+  await page.waitForLoadState('domcontentloaded');
+});
+
+/**
+ * User is logged in as a specific role (use only for multi-user Scenario Outline).
+ *
+ * Use when the same scenario runs with different users (Examples table).
+ * For single-user tests, prefer "Given I am logged in" and let the project define the user.
+ *
  * Supported user roles:
  * - "IACS MD User" - Managing Director with full O2C access
  * - "Super Admin" - System administrator with all permissions
  * - "Finance Manager" - Finance & Accounts module access
  * - "Warehouse Manager" - Warehouse operations access
- * 
+ *
  * @example
- * Given I am logged in as "IACS MD User"
- * Given I am logged in as "Super Admin"
+ * Scenario Outline: User permissions for indent deletion
+ *   Given I am logged in as "<User>"
+ *   When I try to delete an indent
+ *   Then I should see "<Result>"
+ *   Examples:
+ *     | User           | Result  |
+ *     | IACS MD User   | Success |
+ *     | Finance Manager| Denied  |
  */
 Given('I am logged in as {string}', async function({ page }, userRole: string) {
   // This step is primarily for documentation and auditing

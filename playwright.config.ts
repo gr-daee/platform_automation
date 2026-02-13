@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 import { defineBddConfig } from 'playwright-bdd';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import * as os from 'os';
 
 // Load environment variables from .env.local
 dotenv.config({ path: path.resolve(__dirname, '.env.local') });
@@ -108,44 +109,74 @@ const chromeConfig = {
 };
 
 /**
+ * Reporter configuration: Monocart for dev/debug (video, network metrics), Allure for production (BDD steps).
+ * - Development/Debug: Monocart when os.cpus() is available; else Playwright HTML (auto-open on failure).
+ * - Production: Playwright HTML + Allure (generated in teardown).
+ * Monocart can throw in some environments (e.g. empty os.cpus()); fallback avoids getting stuck.
+ */
+const useMonocartInDev =
+  (isDevelopmentMode || isDebugMode) &&
+  typeof os.cpus === 'function' &&
+  os.cpus().length > 0;
+
+const reporterConfig = useMonocartInDev
+  ? [
+      ['list'],
+      [
+        'monocart-reporter',
+        {
+          name: 'DAEE Test Report',
+          outputFile: './monocart-report/index.html',
+          copyAttachments: true,
+          traceViewerUrl: 'https://trace.playwright.dev/?trace={traceUrl}',
+        },
+      ],
+    ]
+  : (isDevelopmentMode || isDebugMode)
+    ? [
+        ['list'],
+        ['html', { open: 'on-failure' }],
+      ]
+    : [
+      ['list'],
+      ['html', { open: 'never' }],
+      [
+        'allure-playwright',
+        {
+          resultsDir: 'allure-results',
+          detail: true,
+          suiteTitle: true,
+          environmentInfo: {
+            node_version: process.version,
+            playwright_version: process.env.npm_package_dependencies__playwright_test?.replace('^', '') ?? 'unknown',
+          },
+        },
+      ],
+    ];
+
+/**
  * Playwright configuration for DAEE Platform E2E Testing
- * 
+ *
  * Features:
  * - BDD/Cucumber integration via playwright-bdd
- * - Playwright HTML reporter (trace viewer link)
- * - Allure Report 3 (allure-playwright) for steps, attachments, and Allure 3 UI
+ * - Conditional reporters: Monocart (dev/debug), Playwright HTML + Allure (production)
  * - Multi-environment support (local, staging)
  * - Pre-authenticated sessions via global setup
  */
 export default defineConfig({
   testDir,
-  
+
   /* Timeouts (optimized by execution mode) */
   timeout: timeouts.test,
-  
+
   /* Test execution settings */
   fullyParallel: !isDebugMode && !isDevelopmentMode, // Sequential in debug/dev mode
   forbidOnly: !!process.env.CI,
   retries: retries,
   workers: workers,
-  
-  /* Reporter configuration */
-  reporter: [
-    ['list'],
-    ['html', { open: 'never' }],
-    [
-      'allure-playwright',
-      {
-        resultsDir: 'allure-results',
-        detail: true,
-        suiteTitle: true,
-        environmentInfo: {
-          node_version: process.version,
-          playwright_version: process.env.npm_package_dependencies__playwright_test?.replace('^', '') ?? 'unknown',
-        },
-      },
-    ],
-  ],
+
+  /* Reporter configuration (mode-based) */
+  reporter: reporterConfig,
   
   /* Global setup and teardown */
   globalSetup: require.resolve('./e2e/src/support/global.setup.ts'),
@@ -164,14 +195,14 @@ export default defineConfig({
     /* Headed mode: visible browser in development mode, headless in production */
     headless: !headed,
     
-    /* Debug mode: capture everything, Normal mode: only on failure/retry */
-    trace: isDebugMode ? 'on' : 'on-first-retry',
+    /* Debug/Dev mode: capture everything for Monocart report; Production: only on failure/retry */
+    trace: isDebugMode || isDevelopmentMode ? 'on' : 'on-first-retry',
     
-    /* Screenshot: on every step in debug mode, only on failure in normal mode */
-    screenshot: isDebugMode ? 'on' : 'only-on-failure',
+    /* Screenshot: on every step in dev/debug (for Monocart); production: only on failure */
+    screenshot: isDebugMode || isDevelopmentMode ? 'on' : 'only-on-failure',
     
-    /* Video: record all in debug mode, only on failure in normal mode */
-    video: isDebugMode ? 'on' : 'retain-on-failure',
+    /* Video: record all in dev/debug (for Monocart); production: only on failure */
+    video: isDebugMode || isDevelopmentMode ? 'on' : 'retain-on-failure',
     
     /* Navigation timeout (optimized by mode) */
     navigationTimeout: timeouts.navigation,
