@@ -15,6 +15,13 @@ GSTR-1 Review Page allows Compliance Officers to review GST sales data in a dash
 - **Key Behavior**:
   - Displays empty state until filters (GSTIN + Period) are selected
   - Shows summary cards, tabs (B2B, B2CL, B2CS, CDNR, CDNUR, HSN, Docs)
+  - CDNR tab: columns Note Type, Note No., Date, Original Invoice, Buyer GSTIN, Reason, Taxable Value, IGST, CGST, SGST, Total Tax, Note Value; note values shown as positive (Math.abs) per DEF-007 (TC-023, TC-024)
+  - HSN tab: sections B2B Supplies / B2C Supplies; columns HSN Code, Description, UQC, Quantity, Rate (%), Total Value, Taxable Value, CGST, SGST, IGST, Total Tax; grouped by HSN+UQC+Rate; empty state "No HSN summary for this period" (TC-025–TC-029). TC-028 expects no Description/Product Name—app currently has Description.
+  - Docs tab: Document Summary; columns Document Type, Series Prefix, From Number, To Number, Total Issued, Cancelled, Net Issued; separate rows per series (INV vs Credit Note); Net Issued = Total − Cancelled; empty state "No document summary for this period" (TC-030–TC-033).
+  - Export: Button opens menu "Export Excel" / "Export JSON" (single GSTIN) or "Export ZIP" / "Export JSON" (All GSTINs). Excel filename GSTR1_<GSTIN>_<MMYYYY>.xlsx; ZIP GSTR1_ALL_<MMYYYY>.zip. Exported Excel has ≥20 sheets; data starts at row 5 (TC-034–TC-037, TC-040). B2B/CDNR row 4 headers exclude "Tax Amount" columns; HSN row 4 includes "Integrated Tax Amount", "Central Tax Amount", "State/UT Tax Amount" (TC-038, AC6). Date in B2B row 5 col 5 is dd-mmm-yyyy (text); POS col 7 is Code-StateName e.g. 29-Karnataka (TC-039). When step "all" selects All GSTINs for ZIP export.
+  - Tabs: Summary, B2B, B2CL, B2CS, CDNR, CDNUR, HSN, Docs. Each tab shows content or empty state (TC-042). Summary tab has section totals (B2B, B2CL, B2CS, CDNR, CDNUR) and Total Tax (Liability) (TC-043). DoD: Summary Total Liability matches sum of HSN Total Tax from TOTAL rows (TC-044).
+  - Error & Loading: On fetch, loading state shows "Loading GSTR-1 data..." or "Loading data..." then content (TC-045). During export, Export button is disabled and shows Loader2 spinner (TC-047). TC-046 (error message when API fails) To Be Ignored in automation.
+  - DoD (Section 12): Changing period (e.g. to "current") updates Return Period card (TC-048). B2CS tab shows "B2C Small Summary" and "Invoices in X Groups" (TC-049). Template fidelity: sheets + row 5 covered by TC-036/TC-037 (TC-050).
   - Handles Excel/JSON export with government schema compliance
 - **State Management**: React hooks (useState, useEffect, useCallback)
 - **Access Control**: Wrapped in `ProtectedPageWrapper` with `module="compliance"` and `requiredActions=["read"]`
@@ -136,3 +143,24 @@ await gstr1Page.verifyAccessDenied(); // Checks for redirect or error
 - ✅ TC-005: Seller GSTIN dropdown displays "GSTIN - State Name" format - Automated
 - ✅ TC-006: Selecting filters loads data and removes empty state - Automated (Smoke)
 - ✅ TC-007: Return Period card shows human-readable format - Automated (Smoke)
+- ✅ TC-008: Total Liability (Total Tax) card visible and numeric - Automated
+- ✅ TC-009: Total Taxable Value (Total Outward) card visible and numeric - Automated
+- ✅ TC-010: Validation Errors (Validation Status) card visible with error count - Automated
+- ✅ TC-011: E-Invoice Status card visible with IRN status - Automated
+- ✅ TC-012: Net Taxable Value card visible and correct formula - Automated
+- ✅ TC-013: Collapsible Fix Required/Review Recommended banner when issues exist - Automated (data-dependent)
+- ✅ TC-014: Banner lists specific issues (document/message) - Automated (data-dependent)
+- ✅ TC-015: Banner hidden when zero validation errors - Automated (requires clean data)
+- ✅ TC-016: B2B tab column headers - Automated
+- ✅ TC-017: B2B Status column e-invoice status - Automated
+- ✅ TC-018: B2B Inv Type R for IWT - Automated
+- ✅ TC-019: B2B Rate column percentage - Automated
+- ✅ TC-020: IWT rows Buyer Name not Unknown - Automated
+- ✅ TC-021: B2B Buyer Name full/wrap - Automated
+- ✅ TC-022: B2B filters and pagination - Automated
+- ✅ TC-045: Loading state shown then content - Automated
+- ⏭️ TC-046: Error message displayed when API returns error — **To Be Ignored** (removed from automation)
+- ✅ TC-047: Export button disabled/loading during export - Automated
+- ✅ TC-048: Dashboard data scope for selected GSTIN/Period - Automated
+- ✅ TC-049: B2CS grouped summary (not individual invoices) - Automated
+- ✅ TC-050: Template fidelity (TC-036 + TC-037) - Automated
