@@ -909,6 +909,10 @@ For deep-dive information, reference these specialized rules:
 → See `docs/framework-enhancements/02-documentation-system/01-COMPLETE_GUIDE.md` for comprehensive guide
 → See `docs/framework-enhancements/02-documentation-system/02-QUICK_START.md` for daily reference ⭐
 
+### For Cycle (Sprint) Observations and Framework Updates
+→ See `docs/cycle/README.md` for cycle documentation purpose and structure
+→ At end of cycle: update `docs/cycle/cycle-N-YYYY-MM.md` with gaps, bad practices, learnings, and framework recommendations; use to drive persona/QUICK_START/LOCATOR_STRATEGY updates
+
 ---
 
 ## Success Indicators
@@ -961,6 +965,15 @@ docs/test-cases/
 └── test-impact-matrix.md              # Test-to-code traceability
 ```
 
+### Per Cycle (Agile Sprint)
+```
+docs/cycle/
+├── README.md                           # Index; what to capture each cycle
+├── cycle-N-YYYY-MM.md                  # Observations for cycle N (gaps, bad practices, learnings, framework recommendations)
+└── cycle-N+1-YYYY-MM.md                # Placeholder for next cycle
+```
+**When**: At end of each cycle, create/update the cycle doc with observations (gaps, bad practices, learnings) and framework update recommendations. Use this to review and update the framework (persona, QUICK_START, LOCATOR_STRATEGY) before the next cycle. See `docs/cycle/README.md`.
+
 ### Available Templates
 - `docs/implementations/templates/implementation-template.md` - IMPL-### structure
 - `docs/implementations/templates/feature-analysis-template.md` - FEATURE-### structure
@@ -982,6 +995,9 @@ docs/test-cases/
 7. ✅ Create feature analysis in `features/FEATURE-###-analysis.md` (if new feature)
 8. ✅ Update `implementation-history.md` - Link to IMPL-###
 9. ✅ Create implementation document in `implementations/YYYY-MM/`
+
+**At End of Cycle (Sprint)**:
+10. ✅ Update `docs/cycle/cycle-N-YYYY-MM.md` with observations (gaps, bad practices, learnings, framework recommendations). Create placeholder `cycle-N+1-YYYY-MM.md` for next cycle. See `docs/cycle/README.md`.
 
 **Safety Checks (MANDATORY)**:
 

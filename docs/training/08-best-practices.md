@@ -99,6 +99,11 @@ const indentName = `AUTO_QA_${Date.now()}_Indent`;
 - Review and refactor Page Objects
 - Update documentation
 
+**End of cycle (sprint)**:
+- Update [Cycle Observations](../cycle/README.md) for the current cycle (gaps, bad practices, learnings, framework recommendations)
+- Create placeholder for next cycle in `docs/cycle/`
+- Use cycle doc to drive updates to persona, QUICK_START, LOCATOR_STRATEGY as needed
+
 **Quarterly**:
 - Framework health check
 - Performance optimization

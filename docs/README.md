@@ -62,6 +62,16 @@ Documentation of specific test case implementations, including technical details
 - `implementations/2026-02/` - February 2026 implementations
 - `implementations/templates/` - Templates for new implementations
 
+### 🔄 [Cycle (Sprint) Observations](cycle/)
+**Purpose**: Consolidate learnings from each agile cycle so that at end of cycle we can review and update the framework appropriately.
+
+**Structure:**
+- [Cycle README](cycle/README.md) - Index; what to capture each cycle; end-of-cycle review
+- `cycle-N-YYYY-MM.md` - Observations for cycle N (gaps, bad practices, learnings, framework recommendations)
+- Placeholder for next cycle (e.g. `cycle-5-feb-2026.md`)
+
+**When**: At end of each sprint, update the current cycle doc; create placeholder for next cycle; use observations to drive persona, QUICK_START, LOCATOR_STRATEGY updates.
+
 ### 🧪 [Test Cases](test-cases/)
 Test case documentation organized by automation and manual testing.
 
@@ -110,6 +120,11 @@ Cross-module knowledge including architecture, database schema, and business rul
 2. Check [Automation Patterns](../.cursor/rules/automation-patterns.mdc)
 3. Review [Framework Workflows](../.cursor/rules/framework-workflows.mdc)
 4. Update [Knowledge Base](knowledge-base/) as needed
+
+### For End-of-Cycle Review (Sprint)
+1. Update [Cycle Observations](cycle/README.md) for current cycle (gaps, bad practices, learnings, framework recommendations)
+2. Create placeholder for next cycle in `cycle/`
+3. Use cycle doc to update persona, [QUICK_START](framework-enhancements/02-documentation-system/02-QUICK_START.md), [LOCATOR_STRATEGY](framework/LOCATOR_STRATEGY.md) as needed
 
 ### For Understanding Framework Evolution
 1. Review [Framework Enhancements](framework-enhancements/README.md)

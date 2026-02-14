@@ -5,6 +5,8 @@
 **Permissions:** `compliance.read`, `compliance.export`  
 **Framework:** Playwright-BDD, BasePage, semantic locators ([Playwright MCP](https://github.com/executeautomation/mcp-playwright) for snapshots/locator discovery). See [PLAYWRIGHT_MCP_INTEGRATION.md](../../../framework/PLAYWRIGHT_MCP_INTEGRATION.md).
 
+**Automation completed** (Cycle 4, Feb 2026). 47 scenarios automated; 3 To Be Ignored. Use the **Status** column for ongoing maintenance. Cycle observations: [docs/cycle/cycle-4-feb-2026.md](../../cycle/cycle-4-feb-2026.md).
+
 This document lists test scenarios for automation, **segregated into Smoke and Regression**, with a **test case ID strategy** and **@DAEE-100 tagging** so all DAEE-100 tests can be run together or filtered by smoke. It also acts as a **living document** — use the **Status** column to track development progress for each scenario.
 
 ---
@@ -302,11 +304,9 @@ Scenario: User without compliance permission cannot access GSTR-1 page
 
 ---
 
-## Next Steps (After Review)
+## Next Steps (Post–Automation Completion)
 
-1. Confirm smoke set (8) and priority (p0/p1/p2).
-2. Create `docs/modules/finance/compliance/knowledge.md` and `test-cases.md`.
-3. Add GSTR1 page object and step definitions under `e2e/src/pages/finance/`, `e2e/src/steps/finance/`.
-4. Implement feature file `e2e/features/finance/compliance/gstr1.feature` with all scenarios tagged **@DAEE-100** and smoke/regression as above.
-5. Add compliance user profile if needed; tag scenarios with user tag.
-6. Use Playwright MCP for live DOM/snapshots at GSTR-1 URL when debugging or adding locators.
+1. **Maintenance**: When GSTR-1 UI or export logic changes, run change impact and update POM/step defs (see [test-impact-matrix](../../test-cases/test-impact-matrix.md) once GSTR1 entries added).
+2. **Framework improvements**: Address Cycle 4 observations (Tailwind locators, `waitForTimeout`, TEST_CASE_REGISTRY/test-impact-matrix gaps) — see [cycle-4-feb-2026.md](../../cycle/cycle-4-feb-2026.md).
+3. Add compliance-specific user profile if needed; extend multi-user tests (e.g. TC-003 denied case).
+4. Use Playwright MCP for live DOM/snapshots at GSTR-1 URL when debugging or adding locators.

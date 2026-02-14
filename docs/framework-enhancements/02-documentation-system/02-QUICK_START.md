@@ -17,6 +17,9 @@
 5. Update gap-analysis: Mark gaps ✅ resolved
 6. Update test-impact-matrix: Map test to source files
 
+**At end of cycle (sprint)**:
+7. Update `docs/cycle/cycle-N-YYYY-MM.md` with observations (gaps, bad practices, learnings, framework recommendations). Create placeholder for next cycle. See [docs/cycle/README.md](../../cycle/README.md).
+
 ---
 
 ## Quick Reference Card
