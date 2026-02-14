@@ -51,8 +51,6 @@
     "test:o2c:dev": "TEST_EXECUTION_MODE=development TEST_WORKERS=1 TEST_HEADED=true playwright test e2e/features/o2c/",
     "test:finance": "TEST_EXECUTION_MODE=production playwright test e2e/features/finance/",
     "test:warehouse": "TEST_EXECUTION_MODE=production playwright test e2e/features/warehouse/",
-    "test:gstr1:sections-8-12": "TEST_EXECUTION_MODE=production playwright test e2e/features/finance/compliance/gstr1.feature --grep \"TC-03[0-7]|TC-040|TC-04[2-9]|TC-050\"",
-    "test:gstr1:sections-8-12:dev": "TEST_EXECUTION_MODE=development TEST_WORKERS=1 TEST_HEADED=true playwright test e2e/features/finance/compliance/gstr1.feature --grep \"TC-03[0-7]|TC-040|TC-04[2-9]|TC-050\"",
     "comment8": "===== COMBINED FILTERS (Examples) =====",
     "test:smoke:iacs": "TEST_EXECUTION_MODE=production playwright test --grep '@smoke.*@tenant:iacs'",
     "test:critical:o2c": "TEST_EXECUTION_MODE=production playwright test --grep '@critical' e2e/features/o2c/",
