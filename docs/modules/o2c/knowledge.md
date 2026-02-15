@@ -7,13 +7,21 @@ The O2C module handles the complete order-to-cash process including indent creat
 
 ### Indents
 - **Purpose**: Purchase requisitions from dealers
-- **Status Flow**: draft → submitted → approved → processed
-- **Key Fields**: dealer_id, products, quantities, status
+- **Status Flow**: draft → submitted → approved → processed / converted / back_order_created
+- **Key Fields**: dealer_id, products, quantities, status, preferred_warehouse_id, transporter
 
-### Orders
+### Orders (Sales Orders)
 - **Purpose**: Confirmed purchase orders
-- **Created From**: Approved indents
+- **Created From**: Approved indents via "Process Workflow"
 - **Key Fields**: indent_id, order_number, status
+
+### Indent → Sales Order Flow (Full Lifecycle)
+1. **Indent raised** for dealer (Create Indent → select dealer → land on detail or existing draft).
+2. **Edit Indent** (draft only): Add Product → search by product name/code (Add Products modal) → product added → quantity adjusted → **Save**.
+3. **Submit Indent**: Button "Submit Indent" (enabled when items present and total amount > 0); status → **submitted**.
+4. **Warehouse & Transporter**: For **submitted** indent, "Warehouse Selection" card is shown; user must select warehouse before **Approve** is enabled. Transporter can be pre-filled from dealer's preferred transporter.
+5. **Approve / Reject**: Buttons visible for submitted indent (with `indents:approve` permission). **Approve** (optional comments) or **Reject** (comments required). Dialog: "Approve Indent" / "Reject Indent" with Comments textarea. Approval is blocked if dealer has any invoice with pending payment 90+ days; **credit limit** is also checked (UI shows "Credit OK" / "Credit Warning").
+6. **Process Workflow** (approved indent only): Button "Process Workflow" opens dialog; "Confirm & Process" creates **Sales Order** for in-stock items and **Back Order** for items with no stock. Stock is evaluated for the selected warehouse.
 
 ## Business Rules
 
@@ -24,14 +32,17 @@ The O2C module handles the complete order-to-cash process including indent creat
 - Dealer must be active and approved
 
 ### Indent Submission
-- All required fields must be filled
-- Products must have valid quantities
-- Dealer must be selected
+- All required fields must be filled (items, total amount > 0)
+- Submit Indent button disabled when no items or zero amount
+- Dealer is already selected (from create flow)
 
 ### Indent Approval
-- Requires appropriate permissions
-- Can be rejected with reason
-- Updates dealer credit limits
+- Requires `indents:approve` permission
+- **Warehouse must be selected** before Approve is enabled (submitted indent)
+- Reject requires comments; Approve comments optional
+- **Blocked if** dealer has pending invoice 90+ days (server-side)
+- **Credit limit** checked; UI shows Credit OK vs Credit Warning
+- Can approve with back orders (partial/zero stock) – "Approve with Back Orders" when inventory insufficient
 
 ## Database Schema
 
