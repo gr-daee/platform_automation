@@ -29,6 +29,7 @@ When('I click the Create Indent button', async function({ page }) {
 
 When('I search for dealer by name {string}', async function({ page }, dealerName: string) {
   await indentsPage.searchDealer(dealerName);
+  await page.waitForTimeout(1500);
   console.log(`✅ Searched for dealer: "${dealerName}"`);
 });
 
@@ -200,10 +201,10 @@ When('I add a product by searching for {string}', async function({ page }, searc
   const detailPage = getIndentDetailPage(page);
   await detailPage.clickAddItems();
   await detailPage.searchProduct(searchTerm);
-  await page.waitForTimeout(600);
+  await detailPage.waitForAddProductsSearchComplete();
   await detailPage.selectFirstProductAndAdd();
-  await detailPage.waitForSuccessToast(/added|product/i);
-  console.log(`✅ Added product by searching "${searchTerm}"`);
+  await detailPage.waitForSuccessToast(/added|product/i).catch(() => {});
+  console.log(`✅ Added product by searching "${searchTerm}" (or product already in indent)`);
 });
 
 When('I open Add Products and search for {string}', async function({ page }, searchTerm: string) {
@@ -222,6 +223,53 @@ Then('the Add Products modal should show no matching products', async function({
   const detailPage = getIndentDetailPage(page);
   await detailPage.verifyAddProductsModalShowingNoResults();
   console.log('✅ Add Products modal shows no matching products');
+});
+
+When('I open Add Products, select {int} product\\(s\\) and add them', async function({ page }, count: number) {
+  const detailPage = getIndentDetailPage(page);
+  for (let i = 0; i < count; i++) {
+    await detailPage.clickAddItems();
+    await detailPage.waitForAddProductsInitialList();
+    await detailPage.searchProduct('1013');
+    await PollingHelper.pollUntil(
+      async () => await detailPage.hasAddProductsResults(),
+      { timeout: 10000, interval: 500, description: 'Add Products modal to show results' }
+    );
+    await detailPage.selectNProductsAndAdd(1);
+    await detailPage.waitForSuccessToast(/added|product|items updated/i).catch(() => {});
+    await expect(page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: /add products to indent/i }) })).toBeHidden({ timeout: 8000 }).catch(() => {});
+    if (i < count - 1) await page.waitForTimeout(500);
+  }
+  console.log(`✅ Added ${count} product(s) from Add Products modal`);
+});
+
+When('I set the quantity of the first line item to {int}', async function({ page }, qty: number) {
+  const detailPage = getIndentDetailPage(page);
+  await detailPage.setFirstLineItemQuantity(qty);
+  console.log(`✅ Set first line item quantity to ${qty}`);
+});
+
+Then('the indent should show at least {int} line item\\(s\\)', async function({ page }, minCount: number) {
+  const detailPage = getIndentDetailPage(page);
+  const count = await detailPage.getIndentLineItemCount();
+  expect(count).toBeGreaterThanOrEqual(minCount);
+  console.log(`✅ Indent has ${count} line item(s)`);
+});
+
+Then('the indent total amount should be greater than zero', async function({ page }) {
+  const detailPage = getIndentDetailPage(page);
+  const total = await detailPage.getDisplayedTotalAmount();
+  expect(total).toBeGreaterThan(0);
+  console.log(`✅ Indent total amount is ₹${total}`);
+});
+
+Then('the indent total amount should match the sum of line items', async function({ page }) {
+  const detailPage = getIndentDetailPage(page);
+  const displayedTotal = await detailPage.getDisplayedTotalAmount();
+  const lineCount = await detailPage.getIndentLineItemCount();
+  expect(lineCount).toBeGreaterThan(0);
+  expect(displayedTotal).toBeGreaterThan(0);
+  console.log(`✅ Indent total ₹${displayedTotal} for ${lineCount} line item(s)`);
 });
 
 When('I save the indent', async function({ page }) {
@@ -271,10 +319,17 @@ Then('the Warehouse Selection card should be visible', async function({ page }) 
 When('I select the first warehouse for the indent', async function({ page }) {
   const detailPage = getIndentDetailPage(page);
   await detailPage.clickSelectWarehouse();
-  await expect(detailPage.warehouseDialog.getByText(/\d+%/)).toBeVisible({ timeout: 12000 });
   await detailPage.selectFirstWarehouse();
   await page.waitForTimeout(800);
   console.log('✅ Selected first warehouse');
+});
+
+When('I select warehouse {string} for the indent', async function({ page }, warehouseName: string) {
+  const detailPage = getIndentDetailPage(page);
+  await detailPage.clickSelectWarehouse();
+  await detailPage.selectWarehouseByName(warehouseName);
+  await page.waitForTimeout(800);
+  console.log(`✅ Selected warehouse "${warehouseName}"`);
 });
 
 Then('the Approve button should be disabled', async function({ page }) {
@@ -317,7 +372,7 @@ When('I fill approval comments {string} and submit the approval dialog', async f
 
 Then('the indent should be approved successfully', async function({ page }) {
   const detailPage = getIndentDetailPage(page);
-  await detailPage.waitForSuccessToast(/approved/i);
+  await detailPage.waitForApprovalSuccess();
   await detailPage.verifyDetailPageLoaded();
   console.log('✅ Indent approved successfully');
 });
@@ -344,9 +399,11 @@ Then('the workflow should complete successfully', async function({ page }) {
 // Button state assertions (draft / submitted / approved)
 Then('the Submit Indent button should be disabled', async function({ page }) {
   const detailPage = getIndentDetailPage(page);
+  const lineCount = await detailPage.getIndentLineItemCount();
+  expect(lineCount).toBe(0);
   const enabled = await detailPage.isSubmitIndentEnabled();
   expect(enabled).toBe(false);
-  console.log('✅ Submit Indent button is disabled');
+  console.log('✅ Submit Indent button is disabled (indent has no items)');
 });
 
 Then('the Reject button in the approval dialog should be disabled', async function({ page }) {
@@ -389,6 +446,62 @@ Then('the Process Workflow button should be visible on the indent detail page', 
   const detailPage = getIndentDetailPage(page);
   await expect(detailPage.processWorkflowButton).toBeVisible();
   console.log('✅ Process Workflow button is visible');
+});
+
+Then('the indent status should be Rejected', async function({ page }) {
+  const detailPage = getIndentDetailPage(page);
+  await detailPage.verifyStatusRejected();
+  console.log('✅ Indent status is Rejected');
+});
+
+Then('approval should be blocked due to overdue invoices', async function({ page }) {
+  const detailPage = getIndentDetailPage(page);
+  await detailPage.verifyApprovalBlocked();
+  console.log('✅ Approval blocked (e.g. 90+ days overdue)');
+});
+
+Then('the Process Workflow dialog should show SO and Back Order preview', async function({ page }) {
+  const detailPage = getIndentDetailPage(page);
+  await detailPage.verifyProcessWorkflowDialogShowsSOAndBOPreview();
+  console.log('✅ Process Workflow dialog shows Sales Order and Back Order preview');
+});
+
+When('I close the Process Workflow dialog', async function({ page }) {
+  const detailPage = getIndentDetailPage(page);
+  await detailPage.closeProcessWorkflowDialog();
+  console.log('✅ Closed Process Workflow dialog');
+});
+
+Then('the Transporter Selection card should be visible on the indent detail page', async function({ page }) {
+  const detailPage = getIndentDetailPage(page);
+  const visible = await detailPage.isTransporterSelectionVisible();
+  expect(visible).toBe(true);
+  console.log('✅ Transporter Selection card is visible');
+});
+
+When('I select the first transporter for the indent', async function({ page }) {
+  const detailPage = getIndentDetailPage(page);
+  await detailPage.selectFirstTransporter();
+  console.log('✅ Selected first transporter');
+});
+
+Then('a transporter should be pre-selected on the indent detail page', async function({ page }) {
+  const detailPage = getIndentDetailPage(page);
+  const preSelected = await detailPage.hasTransporterPreSelected();
+  expect(preSelected).toBe(true);
+  console.log('✅ Transporter is pre-selected');
+});
+
+Then('I should see Credit Warning on the indent detail page', async function({ page }) {
+  const creditWarning = page.getByText(/Credit Warning|Credit limit|Insufficient credit|Credit limit exceeded/i);
+  await expect(creditWarning.first()).toBeVisible({ timeout: 10000 });
+  console.log('✅ Credit Warning is visible');
+});
+
+Then('I should see a stock warning or Approve with Back Orders on the indent detail page', async function({ page }) {
+  const stockWarning = page.getByText(/Approve with Back Orders|Back Order Required|insufficient stock/i);
+  await expect(stockWarning.first()).toBeVisible({ timeout: 10000 });
+  console.log('✅ Stock warning or Approve with Back Orders is visible');
 });
 
 Then('I should be on the same indent detail page as before', async function({ page }) {

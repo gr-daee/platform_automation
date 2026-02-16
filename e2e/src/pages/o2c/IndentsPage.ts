@@ -154,13 +154,13 @@ export class IndentsPage extends BasePage {
   
   /**
    * Verify dealer modal shows no matching dealers (empty search result).
-   * Waits for "No dealers found matching your search." or dealer count 0.
+   * When there are no results the UI shows a message and NO table (table is not in DOM).
+   * Do NOT call getDealerCount() here — it expects a table and would throw.
    */
   async verifyDealerModalShowingNoResults(): Promise<void> {
+    await this.page.waitForTimeout(1500);
     const noResultsText = this.dealerModal.getByText(/no dealers found matching your search/i);
-    await expect(noResultsText).toBeVisible({ timeout: 10000 });
-    const count = await this.getDealerCount();
-    expect(count).toBe(0);
+    await expect(noResultsText).toBeVisible({ timeout: 15000 });
   }
 
   /**
@@ -175,13 +175,13 @@ export class IndentsPage extends BasePage {
     // Find Select button in the first matching row
     const selectButton = firstMatchingRow.getByRole('button', { name: /select/i });
     await selectButton.click();
-    
+
     console.log(`✅ Selected dealer: "${dealerName}" (first match)`);
-      
-      // Wait for modal to close
-      await this.dialogComponent.waitForClose();
-    }
-  
+
+    // Wait for navigation to indent detail (modal closes on navigation)
+    await expect(this.page).toHaveURL(/\/o2c\/indents\/[a-f0-9-]+/, { timeout: 15000 });
+  }
+
   /**
    * Verify user is on indent creation/details page with dealer pre-selected
    */

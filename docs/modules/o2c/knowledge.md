@@ -92,10 +92,20 @@ The O2C module handles the complete order-to-cash process including indent creat
 - **Products**: Indents include product line items
 - **Inventory**: Affects inventory levels
 
+## Test Data (Tenant-Specific)
+
+- **Products**: **1013** and **1041** are available for Add Products search and in stock at Kurnook Warehouse.
+- **NPK**: Product **NPK** is **not** in stock at Kurnook (used for TC-051 stock-warning scenario).
+- **Kurnook Warehouse**: Has **1013** and **1041** in stock; **NPK** is not in stock.
+- **TC-051 (Stock warning)**: Add products 1013, 1041 and NPK to the indent; select Kurnook Warehouse → stock warning / "Approve with Back Orders" appears for NPK.
+
 ## Known Issues / Gaps
 - [To be documented as discovered]
 
 ## Test Coverage
-- ⏳ Indent creation (pending)
-- ⏳ Indent submission (pending)
-- ⏳ Indent approval (pending)
+- ✅ Indent creation and navigation (TC-001, TC-002, TC-003, TC-006, TC-007, TC-008)
+- ✅ Edit indent, add product, save, submit (TC-004, TC-005, TC-009, TC-010, TC-011)
+- ✅ Full straight path: list → create → products → submit → warehouse → approve → Process Workflow → SO (TC-012)
+- ✅ Reject flow and approval blocked 90+ days (TC-013, TC-014, TC-015)
+- ✅ Transporter, credit warning, stock warning, Process Workflow dialog (TC-016–TC-020)
+- **Source:** [test-cases.md](test-cases.md) (TC-001–TC-020)

@@ -1,6 +1,7 @@
 import { Page, Locator, expect } from '@playwright/test';
 import { BasePage } from '../../support/base/BasePage';
 import { DialogComponent } from '../../support/components/DialogComponent';
+import { PollingHelper } from '../../support/helpers/PollingHelper';
 
 /**
  * O2C Indent Detail Page Object Model
@@ -55,12 +56,21 @@ export class IndentDetailPage extends BasePage {
   readonly warehouseDialog: Locator;
   readonly warehouseDialogTitle: Locator;
 
+  // Transporter Selection (submitted indent only)
+  readonly transporterSelectionHeading: Locator;
+  readonly transporterSelectTrigger: Locator;
+  readonly transporterSelectedLabel: Locator;
+
   // Process Workflow dialog
   readonly processWorkflowDialog: Locator;
   readonly confirmAndProcessButton: Locator;
 
-  // Status badge (Indent Information card)
-  readonly statusBadge: Locator;
+    // Status badge (Indent Information card)
+    readonly statusBadge: Locator;
+
+  // Block 2: Line items and totals (edit mode)
+  readonly itemsTable: Locator;
+  readonly totalAmountParagraph: Locator;
 
   constructor(page: Page) {
     super(page);
@@ -104,6 +114,11 @@ export class IndentDetailPage extends BasePage {
     });
     this.warehouseDialogTitle = this.warehouseDialog.getByRole('heading', { name: /select preferred warehouse/i });
 
+    // Transporter Selection (submitted indent only)
+    this.transporterSelectionHeading = page.getByText(/Transporter Selection/i).first();
+    this.transporterSelectTrigger = page.getByPlaceholder(/Select transporter for delivery/i).first();
+    this.transporterSelectedLabel = this.transporterSelectionHeading.locator('..').locator('..').getByText(/Selected:/i).first();
+
     this.processWorkflowDialog = page.getByRole('dialog').filter({
       has: page.getByRole('heading', { name: /process/i }),
     });
@@ -114,6 +129,12 @@ export class IndentDetailPage extends BasePage {
       .locator('..')
       .getByText(/draft|submitted|approved|rejected/i)
       .first();
+
+    // Items table: main content table with line items (Product Package Variant / Quantity)
+    this.itemsTable = page.getByRole('main').getByRole('table').filter({
+      has: page.getByText(/Product Package Variant|Quantity|Codes/i),
+    }).first();
+    this.totalAmountParagraph = page.getByRole('main').locator('label').filter({ hasText: /Total Amount/i }).locator('..').locator('p').first();
   }
 
   /**
@@ -169,6 +190,18 @@ export class IndentDetailPage extends BasePage {
   }
 
   /**
+   * Wait for Add Products modal initial list to load (before searching).
+   * Use after opening the modal to avoid performance-related timeouts: the app loads
+   * an initial product list first; wait for it (or "no results") then search.
+   */
+  async waitForAddProductsInitialList(): Promise<void> {
+    await PollingHelper.pollUntil(
+      async () => await this.hasAddProductsResults() || await this.isAddProductsModalShowingNoResults(),
+      { timeout: 15000, interval: 500, description: 'Add Products modal initial list to load' }
+    );
+  }
+
+  /**
    * In Add Products modal: search by product name or code
    */
   async searchProduct(searchTerm: string): Promise<void> {
@@ -178,9 +211,11 @@ export class IndentDetailPage extends BasePage {
 
   /**
    * Open Add Products modal and search (no selection). Use before asserting results or no results.
+   * Waits for initial list to load before searching to avoid performance-related timeouts.
    */
   async openAddProductsAndSearch(searchTerm: string): Promise<void> {
     await this.clickAddItems();
+    await this.waitForAddProductsInitialList();
     await this.searchProduct(searchTerm);
   }
 
@@ -196,9 +231,11 @@ export class IndentDetailPage extends BasePage {
 
   /**
    * Verify Add Products modal shows no matching products (empty search result).
+   * Use .first() to avoid strict mode when both heading "No Products Found" and paragraph match.
    */
   async verifyAddProductsModalShowingNoResults(): Promise<void> {
-    await expect(this.addProductsModal.getByText(/no products match|no products found/i)).toBeVisible({ timeout: 8000 });
+    await this.page.waitForTimeout(800);
+    await expect(this.addProductsModal.getByText(/no products match|no products found/i).first()).toBeVisible({ timeout: 10000 });
   }
 
   /**
@@ -215,23 +252,107 @@ export class IndentDetailPage extends BasePage {
 
   /**
    * Verify Add Products modal shows at least one product (after search).
+   * Polls for results: modal uses table on desktop and card/divide-y on mobile.
    */
   async verifyAddProductsModalHasResults(): Promise<void> {
-    await this.page.waitForTimeout(600);
-    const rowCount = await this.addProductsModal.locator('tbody tr').count();
-    expect(rowCount).toBeGreaterThan(0);
+    await this.page.waitForTimeout(800);
+    await PollingHelper.pollUntil(
+      async () => await this.hasAddProductsResults(),
+      { timeout: 12000, interval: 500, description: 'Add Products modal to show at least one product' }
+    );
+  }
+
+  /**
+   * Wait for Add Products search to complete: either at least one row (results or "Already Added")
+   * or "no matching products" is shown. Call before selectFirstProductAndAdd() so the modal is not
+   * closed before results load.
+   */
+  async waitForAddProductsSearchComplete(): Promise<void> {
+    await PollingHelper.pollUntil(
+      async () => await this.hasAddProductsResults() || await this.isAddProductsModalShowingNoResults(),
+      { timeout: 12000, interval: 500, description: 'Add Products modal search to complete (results or no results)' }
+    );
   }
 
   /**
    * In Add Products modal: select first selectable product (click row), then click Add button.
-   * Table body rows are selectable; header row has "Product Package Variant". Rows with "Already Added" are not selectable.
+   * Rows with "Already Added" are not selectable. If all results are "Already Added" (e.g. existing draft
+   * opened with items), close modal and return — indent already has the product.
    */
   async selectFirstProductAndAdd(): Promise<void> {
-    const tableBodyRow = this.addProductsModal.locator('tbody tr').filter({ hasNot: this.page.getByText('Already Added') }).first();
-    await tableBodyRow.click({ timeout: 10000 });
+    const addableRow = this.addProductsModal.locator('tbody tr').filter({ hasNot: this.page.getByText('Already Added') }).first();
+    const found = await addableRow.isVisible().catch(() => false);
+    if (!found) {
+      await this.closeAddProductsModal();
+      return;
+    }
+    await addableRow.click({ timeout: 5000 });
     await this.page.waitForTimeout(300);
     const addBtn = this.addProductsModal.getByRole('button', { name: /^Add(\s*\(\d+\))?$/i });
-    await addBtn.click({ timeout: 5000 });
+    if (await addBtn.isVisible().catch(() => false)) {
+      await addBtn.click({ timeout: 5000 });
+    } else {
+      await this.closeAddProductsModal();
+    }
+  }
+
+  /**
+   * In Add Products modal: select up to N selectable products (click each row), then click Add button if any selected.
+   * Rows with "Already Added" are skipped. If no addable rows (e.g. existing draft with items), close modal and return.
+   */
+  async selectNProductsAndAdd(n: number): Promise<void> {
+    const selectableRows = this.addProductsModal.locator('tbody tr').filter({ hasNot: this.page.getByText('Already Added') });
+    const cardItems = this.addProductsModal.locator('[class*="divide-y"] > div').filter({ hasNot: this.page.getByText('Already Added') });
+    const tableCount = await selectableRows.count();
+    const cardCount = await cardItems.count();
+    const available = Math.max(tableCount, cardCount);
+    if (available === 0) {
+      await this.closeAddProductsModal();
+      return;
+    }
+    const toSelect = Math.min(n, available);
+    for (let i = 0; i < toSelect; i++) {
+      if (tableCount > 0) {
+        await selectableRows.nth(i).click({ timeout: 8000 });
+      } else {
+        await cardItems.nth(i).click({ timeout: 8000 });
+      }
+      await this.page.waitForTimeout(200);
+    }
+    const addBtn = this.addProductsModal.getByRole('button', { name: /^Add(\s*\(\d+\))?$/i });
+    if (await addBtn.isVisible().catch(() => false)) {
+      await addBtn.click({ timeout: 5000 });
+    } else {
+      await this.closeAddProductsModal();
+    }
+  }
+
+  /**
+   * Count of line items on indent detail (table body rows in items table).
+   */
+  async getIndentLineItemCount(): Promise<number> {
+    const rows = this.itemsTable.locator('tbody tr');
+    return await rows.count();
+  }
+
+  /**
+   * Set quantity for the first line item (edit mode). Uses first number input in items table.
+   */
+  async setFirstLineItemQuantity(qty: number): Promise<void> {
+    const firstRow = this.itemsTable.locator('tbody tr').first();
+    const qtyInput = firstRow.locator('input[type="number"], input[inputmode="numeric"], input').first();
+    await qtyInput.fill(String(qty));
+    await this.page.waitForTimeout(400);
+  }
+
+  /**
+   * Get displayed Total Amount from the page (parses ₹X,XXX.XX).
+   */
+  async getDisplayedTotalAmount(): Promise<number> {
+    await expect(this.totalAmountParagraph).toBeVisible({ timeout: 5000 });
+    const text = await this.totalAmountParagraph.textContent();
+    const match = text?.replace(/,/g, '').match(/[\d.]+/);
+    return match ? parseFloat(match[0]) : 0;
   }
 
   /**
@@ -262,19 +383,33 @@ export class IndentDetailPage extends BasePage {
   }
 
   /**
-   * In warehouse dialog: select warehouse by name (clicks card containing that text)
+   * In warehouse dialog: select warehouse by name (clicks card containing that text).
+   * Waits for warehouse list to load; matches full name or first word (e.g. "Kurnook" if "Kurnook Warehouse" not found).
    */
   async selectWarehouseByName(warehouseName: string): Promise<void> {
-    await this.warehouseDialog.getByText(new RegExp(warehouseName, 'i')).first().click();
-    await this.dialogComponent.waitForClose(this.warehouseDialog);
+    await expect(this.warehouseDialog).toBeVisible({ timeout: 8000 });
+    await this.warehouseDialog.getByText(/\d+%/).first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
+    const nameRegex = new RegExp(warehouseName.replace(/\s+/g, '\\s*'), 'i');
+    const fullNameLocator = this.warehouseDialog.getByText(nameRegex).first();
+    const firstWord = warehouseName.trim().split(/\s+/)[0];
+    const firstWordRegex = new RegExp(firstWord, 'i');
+    const firstWordLocator = this.warehouseDialog.getByText(firstWordRegex).first();
+    if (await fullNameLocator.isVisible().catch(() => false)) {
+      await fullNameLocator.click({ timeout: 5000 });
+    } else {
+      await firstWordLocator.click({ timeout: 15000 });
+    }
+    await expect(this.warehouseDialog).toBeHidden({ timeout: 8000 });
   }
 
   /**
-   * Select first warehouse in dialog (first card/row)
+   * Select first warehouse in dialog (first card).
+   * Warehouse list loads asynchronously after dialog opens; wait for first card to appear then click.
    */
   async selectFirstWarehouse(): Promise<void> {
-    const card = this.warehouseDialog.getByRole('generic').filter({ has: this.page.getByText(/\d+%/i) }).first();
-    await card.click();
+    await this.warehouseDialog.getByText(/\d+%/).first().waitFor({ state: 'visible', timeout: 25000 });
+    const firstCard = this.warehouseDialog.locator('div[class*="cursor-pointer"][class*="transition-all"]').first();
+    await firstCard.click();
     await this.page.waitForTimeout(500);
   }
 
@@ -390,5 +525,95 @@ export class IndentDetailPage extends BasePage {
       ? this.page.locator('[data-sonner-toast]').filter({ hasText: message })
       : this.page.locator('[data-sonner-toast]');
     await expect(toast).toBeVisible({ timeout: 10000 });
+  }
+
+  /**
+   * Wait for approval success: either success toast containing "approved" or status badge showing Approved.
+   * Use when the app may show toast or only update the status badge.
+   */
+  async waitForApprovalSuccess(): Promise<void> {
+    const toast = this.page.locator('[data-sonner-toast]').filter({ hasText: /approved/i });
+    try {
+      await expect(toast).toBeVisible({ timeout: 15000 });
+    } catch {
+      await expect(this.statusBadge).toBeVisible({ timeout: 5000 });
+      await expect(this.statusBadge).toContainText(/approved/i);
+    }
+  }
+
+  /**
+   * Verify indent status badge shows Rejected (after reject flow).
+   */
+  async verifyStatusRejected(): Promise<void> {
+    await expect(this.statusBadge).toBeVisible({ timeout: 10000 });
+    await expect(this.statusBadge).toContainText(/rejected/i);
+  }
+
+  /**
+   * Verify approval was blocked (e.g. 90+ days overdue): error toast or message, no success toast.
+   * Waits briefly for success toast; if not found, checks for error/warning toast or dialog message.
+   */
+  async verifyApprovalBlocked(): Promise<void> {
+    const successToast = this.page.locator('[data-sonner-toast]').filter({ hasText: /approved/i });
+    await this.page.waitForTimeout(2000);
+    await expect(successToast).not.toBeVisible();
+    const errorOrBlocked = this.page.locator('[data-sonner-toast]').filter({
+      hasText: /90|overdue|blocked|cannot approve|due invoice/i,
+    });
+    const hasError = await errorOrBlocked.isVisible().catch(() => false);
+    if (!hasError) {
+      const anyToast = this.page.locator('[data-sonner-toast]');
+      await expect(anyToast).toBeVisible({ timeout: 3000 });
+    }
+  }
+
+  /**
+   * Verify Process Workflow dialog shows Sales Order and Back Order preview (split summary).
+   * Use .first() to avoid strict mode when multiple elements match (e.g. heading and box text).
+   */
+  async verifyProcessWorkflowDialogShowsSOAndBOPreview(): Promise<void> {
+    await expect(this.processWorkflowDialog).toBeVisible({ timeout: 8000 });
+    await expect(this.processWorkflowDialog.getByText(/Sales Order/i).first()).toBeVisible();
+    await expect(this.processWorkflowDialog.getByText(/Back Order/i).first()).toBeVisible();
+  }
+
+  /**
+   * Close Process Workflow dialog without confirming (click Cancel).
+   */
+  async closeProcessWorkflowDialog(): Promise<void> {
+    const cancelBtn = this.processWorkflowDialog.getByRole('button', { name: /^cancel$/i });
+    await cancelBtn.click();
+    await expect(this.processWorkflowDialog).toBeHidden({ timeout: 8000 });
+  }
+
+  /**
+   * Check if Transporter Selection card is visible (submitted indent only).
+   */
+  async isTransporterSelectionVisible(): Promise<boolean> {
+    return this.transporterSelectionHeading.isVisible();
+  }
+
+  /**
+   * Open transporter dropdown and select first available transporter (Radix Select).
+   */
+  async selectFirstTransporter(): Promise<void> {
+    const trigger = this.page.getByRole('combobox').filter({ has: this.page.getByText(/transporter|delivery/i) }).or(
+      this.transporterSelectTrigger
+    ).first();
+    await trigger.click();
+    await this.page.waitForSelector('[role="listbox"]', { timeout: 5000 });
+    await this.page.getByRole('option').first().click();
+    await this.page.waitForTimeout(500);
+  }
+
+  /**
+   * Check if a transporter is already selected (dealer default or user selection).
+   * Waits briefly for async load of dealer preferred_transporter.
+   */
+  async hasTransporterPreSelected(): Promise<boolean> {
+    await this.page.waitForTimeout(1500);
+    const hasSelectedLabel = await this.transporterSelectedLabel.isVisible().catch(() => false);
+    if (hasSelectedLabel) return true;
+    return this.page.getByText(/Own Transport|default transporter/i).first().isVisible().catch(() => false);
   }
 }

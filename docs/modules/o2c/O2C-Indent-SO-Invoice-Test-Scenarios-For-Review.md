@@ -25,9 +25,9 @@ Track progress per scenario using the **Status** column in each table.
 
 | Status | Count |
 |--------|--------|
-| To Start | 34 |
+| To Start | 23 |
 | In Progress | 0 |
-| Automated | 26 |
+| Automated | 37 |
 | To Be Ignored | 0 |
 | Blocked | 0 |
 
@@ -73,14 +73,15 @@ npm run test:regression -- --grep "@o2c-flow"
 
 ## 1. Indent Creation — Dealer Selection (Name or Code)
 
+**Numbering:** O2C-INDENT-TC-001 through TC-020 (sequential). See [test-cases.md](./test-cases.md) for full details.
+
 | TC ID | Scenario | Smoke/Reg | Tags | Status | Auto | Feature File | Notes |
 |-------|----------|-----------|------|--------|------|--------------|--------|
-| O2C-INDENT-TC-001 | O2C Indents list page loads with title, status cards, table or empty state | Smoke | @smoke @critical @regression @p0 | Automated | ✅ | indents.feature | |
-| O2C-INDENT-TC-002 | Create Indent by selecting dealer (by name) creates new indent and navigates to detail | Smoke | @smoke @critical @regression @p0 | Automated | ✅ | indents.feature | |
-| O2C-INDENT-TC-003 | Create Indent for dealer with existing draft loads that draft (no duplicate) | Regression | @regression @p1 | Automated | ✅ | indents.feature | |
-| O2C-INDENT-TC-012 | User searches and selects dealer from Create Indent modal (by name) | Regression | @regression @dealer-search @p1 | Automated | ✅ | indents.feature | |
-| O2C-INDENT-TC-039 | User searches dealer by dealer code and selects | Regression | @regression @dealer-search @p1 | Automated | ✅ | indents.feature | |
-| O2C-INDENT-TC-040 | Search non-existent dealer shows no matching dealers | Regression | @regression @dealer-search @p2 | Automated | ✅ | indents.feature | |
+| O2C-INDENT-TC-001 | Create Indent by selecting dealer (by name) creates new indent and navigates to detail | Smoke | @smoke @critical @regression @p0 | Automated | ✅ | indents.feature | |
+| O2C-INDENT-TC-002 | Create Indent for dealer with existing draft loads that draft (no duplicate) | Regression | @regression @p1 | Automated | ✅ | indents.feature | |
+| O2C-INDENT-TC-003 | User searches and selects dealer from Create Indent modal (by name) | Regression | @regression @dealer-search @p1 | Automated | ✅ | indents.feature | |
+| O2C-INDENT-TC-007 | User searches dealer by dealer code and selects | Regression | @regression @dealer-search @p1 | Automated | ✅ | indents.feature | |
+| O2C-INDENT-TC-008 | Search non-existent dealer shows no matching dealers | Regression | @regression @dealer-search @p2 | Automated | ✅ | indents.feature | |
 
 ---
 
@@ -88,16 +89,12 @@ npm run test:regression -- --grep "@o2c-flow"
 
 | TC ID | Scenario | Smoke/Reg | Tags | Status | Auto | Feature File | Notes |
 |-------|----------|-----------|------|--------|------|--------------|--------|
-| O2C-INDENT-TC-024 | Indent detail page loads with heading and Indent Information | Regression | @regression @p1 | Automated | ✅ | indents.feature | |
-| O2C-INDENT-TC-025 | Edit → Add Product (search by name/code) → add → Save persists | Smoke | @regression @p0 | Automated | ✅ | indents.feature | Single product; multi-select in UI. |
-| O2C-INDENT-TC-026 | Submit indent after adding product | Regression | @regression @p1 | Automated | ✅ | indents.feature | |
-| O2C-INDENT-TC-041 | Search product by product code shows results in Add Products modal | Regression | @regression @p1 | Automated | ✅ | indents.feature | |
-| O2C-INDENT-TC-042 | Search non-existent product shows no matching products | Regression | @regression @p2 | Automated | ✅ | indents.feature | |
-| O2C-INDENT-TC-043 | Add multiple products in one Add Products session (multi-select) | Regression | @regression @p1 | To Start | ❌ | indents.feature | Select 2+ products, Add (N). |
-| O2C-INDENT-TC-044 | Adjust quantity for a line item and verify totals update | Regression | @regression @p1 | To Start | ❌ | indents.feature | Edit qty, assert Indent total. |
-| O2C-INDENT-TC-045 | Verify indent totals match sum of line items (unit price × qty) | Regression | @regression @p2 | To Start | ❌ | indents.feature | DB or UI total. |
-| O2C-INDENT-TC-030 | Submit Indent button is disabled when indent has no items | Regression | @regression @p1 | Automated | ✅ | indents.feature | |
-| O2C-INDENT-TC-035 | Draft indent shows Edit and Submit Indent; Approve/Process Workflow not visible | Regression | @regression @p1 | Automated | ✅ | indents.feature | |
+| O2C-INDENT-TC-004 | Edit → Add Product (search by name/code) → add → Save persists | Smoke | @regression @p0 | Automated | ✅ | indents.feature | Single product. |
+| O2C-INDENT-TC-005 | Submit indent after adding product | Regression | @regression @p1 | Automated | ✅ | indents.feature | |
+| O2C-INDENT-TC-009 | Search non-existent product shows no matching products | Regression | @regression @p2 | Automated | ✅ | indents.feature | |
+| O2C-INDENT-TC-010 | Submit Indent button is disabled when indent has no items | Regression | @regression @p1 | Automated | ✅ | indents.feature | |
+| O2C-INDENT-TC-011 | Draft indent shows Edit and Submit Indent; Approve/Process Workflow not visible | Regression | @regression @p1 | Automated | ✅ | indents.feature | |
+| O2C-INDENT-TC-012 | Full straight path: list → create → detail → add 2 products → submit → warehouse → approve → Process Workflow → SO | Smoke | @smoke @critical @regression @p0 | Automated | ✅ | indents.feature | Consolidates former list/detail/product/approval scenarios. |
 
 ---
 
@@ -105,10 +102,8 @@ npm run test:regression -- --grep "@o2c-flow"
 
 | TC ID | Scenario | Smoke/Reg | Tags | Status | Auto | Feature File | Notes |
 |-------|----------|-----------|------|--------|------|--------------|--------|
-| O2C-INDENT-TC-027 | Submitted indent shows Warehouse Selection; selecting warehouse enables Approve | Regression | @regression @p1 | Automated | ✅ | indents.feature | |
-| O2C-INDENT-TC-031 | Approve button is disabled when warehouse not selected (submitted indent) | Regression | @regression @p1 | Automated | ✅ | indents.feature | |
-| O2C-INDENT-TC-046 | Select transporter when dealer has no default transporter | Regression | @regression @p1 | To Start | ❌ | indents.feature | Submitted state; Transporter selector. |
-| O2C-INDENT-TC-047 | Dealer with default transporter shows pre-selected transporter | Regression | @regression @p2 | To Start | ❌ | indents.feature | |
+| O2C-INDENT-TC-016 | Select transporter when dealer has no default transporter | Regression | @regression @p1 | Automated | ✅ | indents.feature | Dealer IACS3039 (no transporter). |
+| O2C-INDENT-TC-017 | Dealer with default transporter shows pre-selected transporter | Regression | @regression @p2 | Automated | ✅ | indents.feature | Ramesh ningappa diggai (Own Transport). |
 
 ---
 
@@ -116,10 +111,8 @@ npm run test:regression -- --grep "@o2c-flow"
 
 | TC ID | Scenario | Smoke/Reg | Tags | Status | Auto | Feature File | Notes |
 |-------|----------|-----------|------|--------|------|--------------|--------|
-| O2C-INDENT-TC-028 | Approve indent with optional comments after selecting warehouse | Regression | @regression @p1 | Automated | ✅ | indents.feature | |
-| O2C-INDENT-TC-032 | Reject button in approval dialog is disabled until comment provided | Regression | @regression @p1 | Automated | ✅ | indents.feature | |
-| O2C-INDENT-TC-048 | Reject indent with required comments and verify status → Rejected | Regression | @regression @p1 | To Start | ❌ | indents.feature | Full reject flow; status badge. |
-| O2C-INDENT-TC-036 | Submitted indent shows Warehouse Selection and Approve and Reject buttons | Regression | @regression @p1 | Automated | ✅ | indents.feature | |
+| O2C-INDENT-TC-013 | Reject button in approval dialog is disabled until comment provided | Regression | @regression @p1 | Automated | ✅ | indents.feature | |
+| O2C-INDENT-TC-014 | Reject indent with required comments and verify status → Rejected | Regression | @regression @p1 | Automated | ✅ | indents.feature | Full reject flow; status badge. |
 
 ---
 
@@ -127,9 +120,9 @@ npm run test:regression -- --grep "@o2c-flow"
 
 | TC ID | Scenario | Smoke/Reg | Tags | Status | Auto | Feature File | Notes |
 |-------|----------|-----------|------|--------|------|--------------|--------|
-| O2C-INDENT-TC-049 | Approval blocked when dealer has due invoices beyond 90 days (server message) | Regression | @regression @p1 | To Start | ❌ | indents.feature | Need test data: dealer with 90+ day due. |
-| O2C-INDENT-TC-050 | Credit limit check: UI shows Credit Warning when insufficient; Approve may block | Regression | @regression @p1 | To Start | ❌ | indents.feature | Badge "Credit Warning" vs "Credit OK". |
-| O2C-INDENT-TC-051 | Stock warning shown when selected warehouse has insufficient stock (partial/full) | Regression | @regression @p1 | To Start | ❌ | indents.feature | "Approve with Back Orders" / warning banner. |
+| O2C-INDENT-TC-015 | Approval blocked when dealer has due invoices beyond 90 days (server message) | Regression | @regression @p1 | Automated | ✅ | indents.feature | Uses VAYUPUTRA AGENCIES (90+ day due). |
+| O2C-INDENT-TC-018 | Credit limit check: UI shows Credit Warning when insufficient | Regression | @regression @p1 | Automated | ✅ | indents.feature | Dealer IACS1650 (insufficient credit). |
+| O2C-INDENT-TC-019 | Stock warning shown when selected warehouse has insufficient stock (partial/full) | Regression | @regression @p1 | Automated | ✅ | indents.feature | Add 1013, 1041 (in stock at Kurnook) and NPK (not in stock); select Kurnook → stock warning for NPK. |
 
 ---
 
@@ -137,9 +130,9 @@ npm run test:regression -- --grep "@o2c-flow"
 
 | TC ID | Scenario | Smoke/Reg | Tags | Status | Auto | Feature File | Notes |
 |-------|----------|-----------|------|--------|------|--------------|--------|
-| O2C-INDENT-TC-029 | Process Workflow creates Sales Order or Back Order from approved indent | Smoke | @regression @p0 | Automated | ✅ | indents.feature | Toast/workflow success. |
-| O2C-INDENT-TC-037 | Approved indent shows Process Workflow button | Regression | @regression @p1 | Automated | ✅ | indents.feature | |
-| O2C-INDENT-TC-052 | Process Workflow dialog shows SO vs Back Order split (preview) before Confirm | Regression | @regression @p2 | To Start | ❌ | indents.feature | |
+| O2C-INDENT-TC-012 | Full straight path includes Process Workflow → SO created | Smoke | @smoke @critical @p0 | Automated | ✅ | indents.feature | |
+| O2C-INDENT-TC-006 | Back from indent detail returns to list | Regression | @regression @p1 | Automated | ✅ | indents.feature | |
+| O2C-INDENT-TC-020 | Process Workflow dialog shows SO vs Back Order split (preview) before Confirm | Regression | @regression @p2 | Automated | ✅ | indents.feature | Assert dialog then cancel. |
 
 ---
 
@@ -234,11 +227,11 @@ npm run test:regression -- --grep "@o2c-flow"
 | Chapter | To Start | Automated | Total |
 |---------|----------|-----------|--------|
 | 1. Indent Creation (Dealer) | 0 | 6 | 6 |
-| 2. Edit / Add Product / Totals | 3 | 7 | 10 |
-| 3. Warehouse & Transporter | 2 | 2 | 4 |
-| 4. Approve / Reject | 1 | 3 | 4 |
-| 5. Approval Checks | 3 | 0 | 3 |
-| 6. Process Workflow | 1 | 2 | 3 |
+| 2. Edit / Add Product / Totals | 0 | 10 | 10 |
+| 3. Warehouse & Transporter | 0 | 4 | 4 |
+| 4. Approve / Reject | 0 | 4 | 4 |
+| 5. Approval Checks | 0 | 3 | 3 |
+| 6. Process Workflow | 0 | 3 | 3 |
 | 7. Back Order | 2 | 0 | 2 |
 | 8. Credit Hold SO | 2 | 0 | 2 |
 | 9. SO Creation & Verify | 4 | 0 | 4 |
@@ -247,7 +240,7 @@ npm run test:regression -- --grep "@o2c-flow"
 | 12. Impact on SO | 3 | 0 | 3 |
 | 13. Impact on Invoice | 5 | 0 | 5 |
 | 14. List & Navigation | 0 | 6 | 6 |
-| **Total** | **34** | **26** | **60** |
+| **Total** | **31** | **29** | **60** |
 
 *(Counts: 26 Automated = existing indent tests; 34 To Start. Update Progress summary at top when scenario Status changes.)*
 
@@ -267,9 +260,48 @@ npm run test:regression -- --grep "@o2c-flow"
 ## Framework Assumptions
 
 - **Users:** IACS MD User (or equivalent) with `indents` create/update/approve; same for SO/Invoice when implemented.
-- **Test data:** Active dealer (e.g. VAYUPUTRA AGENCIES), products (e.g. search "NPK"), warehouse(s), transporter; use `AUTO_QA_` prefix for transactional data.
+- **Test data:** Active dealer (e.g. VAYUPUTRA AGENCIES), products (e.g. search product code "1013"), warehouse(s), transporter; use `AUTO_QA_` prefix for transactional data.
 - **Read-only DB for assertions:** SELECT only; Sandwich Method where applicable for counts/state.
 - **Feature files:** `e2e/features/o2c/indents.feature` (current); `sales-orders.feature` and `invoices.feature` to be added.
+
+---
+
+## Test Design & Data Strategy (Reduce Indent Creation)
+
+**Problem:** Current tests create many indents per run; reuse of existing drafts causes "Already Added" and flakiness.
+
+**Design doc:** [FEATURE-001_indent-test-design-and-data-profiles.md](features/FEATURE-001_indent-test-design-and-data-profiles.md) — Test Data Profiles, journey-based E2E, and scenario grouping.
+
+**Principles:**
+- **Test Data Profile:** Each use case has a named profile (dealer + product + warehouse where needed). One profile = one set of test data.
+- **One indent per journey:** E2E journey scenarios create **one** indent and validate multiple steps (create → add product → submit → warehouse → approve → process).
+- **Focused scenarios by profile:** Scenarios that need specific data (90-day block, credit warning, stock warning) use their **dedicated profile** and create **one indent** for that validation only.
+- **List/navigation: no new indent:** List load, search, filter, row click, back — use existing list data.
+
+**Profiles (summary):**
+
+| Profile | Dealer | Use for |
+|---------|--------|---------|
+| P-APPROVAL | Ramesh ningappa diggai | Approval flow, Process Workflow, default transporter |
+| P-REJECT / P-90DAY | VAYUPUTRA AGENCIES | Reject flow; 90+ days approval block |
+| P-NO-TRANSPORT | IACS3039 | Select transporter when no default |
+| P-DEFAULT-TRANSPORT | Ramesh ningappa diggai | Pre-selected transporter |
+| P-CREDIT-WARN | IACS1650 | Credit Warning |
+| P-STOCK-WARN | Ramesh + 1013, 1041, NPK + Kurnook Warehouse | Stock warning (1013/1041 in stock; NPK not in stock at Kurnook) |
+| P-EMPTY-DRAFT | Dealer with no existing draft | Submit disabled when no items |
+
+**Implementation:** Tag scenarios with `@profile-P-APPROVAL`, `@profile-P-REJECT`, etc.; add one E2E journey scenario (one indent for create → approve → Process Workflow preview); consolidate focused scenarios by profile. See FEATURE-001 for full design and proposed feature structure.
+
+---
+
+## Test Data (indent scenarios — resolved)
+
+| Scenario | Test data used |
+|----------|----------------|
+| **TC-046** (Select transporter when no default) | Dealer **IACS3039** (no preferred transporter) |
+| **TC-047** (Dealer with default transporter) | Dealer **Ramesh ningappa diggai** (Own Transport 37AAECI9906Q1ZR) |
+| **TC-050** (Credit Warning) | Dealer **IACS1650** (insufficient credit limit) |
+| **TC-051** (Stock warning) | Add products **1013**, **1041** (in stock at Kurnook) and **NPK** (not in stock); select **Kurnook Warehouse** → stock warning / Approve with Back Orders for NPK. |
 
 ---
 

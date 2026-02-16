@@ -27,44 +27,30 @@ This registry tracks all automated test cases with their unique identifiers for 
 
 ### Indent SubModule (INDENT)
 
+**Numbering:** O2C-INDENT-TC-001 through TC-020 (sequential). See [O2C test-cases.md](../../modules/o2c/test-cases.md) for full details.
+
 | Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
 |--------------|--------|-----------|---------------|--------------|------|--------|
-| O2C-INDENT-TC-001 | O2C | INDENT | O2C Indents list page loads with title, status cards, table or empty state | e2e/features/o2c/indents.feature | @smoke @critical | ✅ |
-| O2C-INDENT-TC-002 | O2C | INDENT | Create Indent for dealer creates new indent and navigates to detail page | e2e/features/o2c/indents.feature | @smoke @critical | ✅ |
-| O2C-INDENT-TC-003 | O2C | INDENT | Create Indent for dealer with existing draft navigates to that draft | e2e/features/o2c/indents.feature | @regression | ✅ |
-| O2C-INDENT-TC-004 | O2C | INDENT | Search indents by dealer name or indent number filters the list | e2e/features/o2c/indents.feature | @regression | ✅ |
-| O2C-INDENT-TC-005 | O2C | INDENT | Filter by Status shows only matching indents | e2e/features/o2c/indents.feature | @regression | ✅ |
-| O2C-INDENT-TC-006 | O2C | INDENT | Clear filters restores the full list | e2e/features/o2c/indents.feature | @regression | ✅ |
-| O2C-INDENT-TC-008 | O2C | INDENT | Clicking an indent row navigates to indent detail page | e2e/features/o2c/indents.feature | @regression | ✅ |
-| O2C-INDENT-TC-023 | O2C | INDENT | When no indents match the filter the empty state is shown | e2e/features/o2c/indents.feature | @regression | ✅ |
-| O2C-INDENT-TC-012 | O2C | INDENT | User searches and selects dealer from Create Indent modal | e2e/features/o2c/indents.feature | @regression @dealer-search | ✅ |
-| O2C-INDENT-TC-024 | O2C | INDENT | Indent detail page loads with heading and Indent Information | e2e/features/o2c/indents.feature | @regression | ✅ |
-| O2C-INDENT-TC-025 | O2C | INDENT | Edit indent add product by search and save | e2e/features/o2c/indents.feature | @regression | ✅ |
-| O2C-INDENT-TC-026 | O2C | INDENT | Submit indent after adding product | e2e/features/o2c/indents.feature | @regression | ✅ |
-| O2C-INDENT-TC-038 | O2C | INDENT | Back from indent detail returns to list | e2e/features/o2c/indents.feature | @regression | ✅ |
-| O2C-INDENT-TC-039 | O2C | INDENT | User searches dealer by dealer code and selects | e2e/features/o2c/indents.feature | @regression @dealer-search | ✅ |
-| O2C-INDENT-TC-040 | O2C | INDENT | Search non-existent dealer shows no matching dealers | e2e/features/o2c/indents.feature | @regression @dealer-search | ✅ |
-| O2C-INDENT-TC-041 | O2C | INDENT | Search product by product code shows results in Add Products modal | e2e/features/o2c/indents.feature | @regression | ✅ |
-| O2C-INDENT-TC-042 | O2C | INDENT | Search non-existent product shows no matching products in Add Products modal | e2e/features/o2c/indents.feature | @regression | ✅ |
-| O2C-INDENT-TC-027 | O2C | INDENT | Submitted indent shows Warehouse Selection and selecting warehouse enables Approve | e2e/features/o2c/indents.feature | @regression | ✅ |
-| O2C-INDENT-TC-028 | O2C | INDENT | Approve indent with optional comments after selecting warehouse | e2e/features/o2c/indents.feature | @regression | ✅ |
-| O2C-INDENT-TC-029 | O2C | INDENT | Process Workflow creates Sales Order or Back Order from approved indent | e2e/features/o2c/indents.feature | @regression | ✅ |
-| O2C-INDENT-TC-030 | O2C | INDENT | Submit Indent button is disabled when indent has no items | e2e/features/o2c/indents.feature | @regression | ✅ |
-| O2C-INDENT-TC-031 | O2C | INDENT | Approve button is disabled when warehouse not selected on submitted indent | e2e/features/o2c/indents.feature | @regression | ✅ |
-| O2C-INDENT-TC-032 | O2C | INDENT | Reject button in approval dialog is disabled until comment is provided | e2e/features/o2c/indents.feature | @regression | ✅ |
-| O2C-INDENT-TC-035 | O2C | INDENT | Draft indent shows Edit and Submit Indent but not Approve or Process Workflow | e2e/features/o2c/indents.feature | @regression | ✅ |
-| O2C-INDENT-TC-036 | O2C | INDENT | Submitted indent shows Warehouse Selection and Approve and Reject buttons | e2e/features/o2c/indents.feature | @regression | ✅ |
-| O2C-INDENT-TC-037 | O2C | INDENT | Approved indent shows Process Workflow button | e2e/features/o2c/indents.feature | @regression | ✅ |
-| O2C-INDENT-TC-043 | O2C | INDENT | Add multiple products in one Add Products session (multi-select) | e2e/features/o2c/indents.feature | @regression | 📋 To Start |
-| O2C-INDENT-TC-044 | O2C | INDENT | Adjust quantity for a line item and verify totals update | e2e/features/o2c/indents.feature | @regression | 📋 To Start |
-| O2C-INDENT-TC-045 | O2C | INDENT | Verify indent totals match sum of line items | e2e/features/o2c/indents.feature | @regression | 📋 To Start |
-| O2C-INDENT-TC-046 | O2C | INDENT | Select transporter when dealer has no default transporter | e2e/features/o2c/indents.feature | @regression | 📋 To Start |
-| O2C-INDENT-TC-047 | O2C | INDENT | Dealer with default transporter shows pre-selected transporter | e2e/features/o2c/indents.feature | @regression | 📋 To Start |
-| O2C-INDENT-TC-048 | O2C | INDENT | Reject indent with required comments and verify status Rejected | e2e/features/o2c/indents.feature | @regression | 📋 To Start |
-| O2C-INDENT-TC-049 | O2C | INDENT | Approval blocked when dealer has due invoices beyond 90 days | e2e/features/o2c/indents.feature | @regression | 📋 To Start |
-| O2C-INDENT-TC-050 | O2C | INDENT | Credit limit check: UI shows Credit Warning when insufficient | e2e/features/o2c/indents.feature | @regression | 📋 To Start |
-| O2C-INDENT-TC-051 | O2C | INDENT | Stock warning when warehouse has insufficient stock | e2e/features/o2c/indents.feature | @regression | 📋 To Start |
-| O2C-INDENT-TC-052 | O2C | INDENT | Process Workflow dialog shows SO vs Back Order split before Confirm | e2e/features/o2c/indents.feature | @regression | 📋 To Start |
+| O2C-INDENT-TC-001 | O2C | INDENT | Create Indent for dealer creates new indent and navigates to detail page | e2e/features/o2c/indents.feature | @smoke @critical | ✅ |
+| O2C-INDENT-TC-002 | O2C | INDENT | Create Indent for dealer with existing draft navigates to that draft | e2e/features/o2c/indents.feature | @regression | ✅ |
+| O2C-INDENT-TC-003 | O2C | INDENT | User searches and selects dealer from Create Indent modal | e2e/features/o2c/indents.feature | @regression @dealer-search | ✅ |
+| O2C-INDENT-TC-004 | O2C | INDENT | Edit indent add product by search and save | e2e/features/o2c/indents.feature | @regression | ✅ |
+| O2C-INDENT-TC-005 | O2C | INDENT | Submit indent after adding product | e2e/features/o2c/indents.feature | @regression | ✅ |
+| O2C-INDENT-TC-006 | O2C | INDENT | Back from indent detail returns to list | e2e/features/o2c/indents.feature | @regression | ✅ |
+| O2C-INDENT-TC-007 | O2C | INDENT | User searches dealer by dealer code and selects | e2e/features/o2c/indents.feature | @regression @dealer-search | ✅ |
+| O2C-INDENT-TC-008 | O2C | INDENT | Search non-existent dealer shows no matching dealers | e2e/features/o2c/indents.feature | @regression @dealer-search | ✅ |
+| O2C-INDENT-TC-009 | O2C | INDENT | Search non-existent product shows no matching products in Add Products modal | e2e/features/o2c/indents.feature | @regression | ✅ |
+| O2C-INDENT-TC-010 | O2C | INDENT | Submit Indent button is disabled when indent has no items | e2e/features/o2c/indents.feature | @regression | ✅ |
+| O2C-INDENT-TC-011 | O2C | INDENT | Draft indent shows Edit and Submit Indent but not Approve or Process Workflow | e2e/features/o2c/indents.feature | @regression | ✅ |
+| O2C-INDENT-TC-012 | O2C | INDENT | Full straight path from list to Sales Order creation | e2e/features/o2c/indents.feature | @smoke @critical @regression | ✅ |
+| O2C-INDENT-TC-013 | O2C | INDENT | Reject button in approval dialog is disabled until comment is provided | e2e/features/o2c/indents.feature | @regression | ✅ |
+| O2C-INDENT-TC-014 | O2C | INDENT | Reject indent with required comments and verify status Rejected | e2e/features/o2c/indents.feature | @regression | ✅ |
+| O2C-INDENT-TC-015 | O2C | INDENT | Approval blocked when dealer has due invoices beyond 90 days | e2e/features/o2c/indents.feature | @regression | ✅ |
+| O2C-INDENT-TC-016 | O2C | INDENT | Select transporter when dealer has no default transporter | e2e/features/o2c/indents.feature | @regression | ✅ |
+| O2C-INDENT-TC-017 | O2C | INDENT | Dealer with default transporter shows pre-selected transporter | e2e/features/o2c/indents.feature | @regression | ✅ |
+| O2C-INDENT-TC-018 | O2C | INDENT | Credit limit check shows Credit Warning when insufficient | e2e/features/o2c/indents.feature | @regression | ✅ |
+| O2C-INDENT-TC-019 | O2C | INDENT | Stock warning shown when selected warehouse has insufficient stock | e2e/features/o2c/indents.feature | @regression | ✅ |
+| O2C-INDENT-TC-020 | O2C | INDENT | Process Workflow dialog shows SO and Back Order preview before Confirm | e2e/features/o2c/indents.feature | @regression | ✅ |
 
 ### Sales Order SubModule (SO)
 
