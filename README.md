@@ -367,6 +367,7 @@ platform_automation/
 - **[Documentation Index](docs/README.md)** - Main documentation hub
 - **[Framework Enhancements](docs/framework-enhancements/README.md)** - Navigation index
 - **[Module Documentation](docs/modules/)** - Module-specific knowledge
+- **[Cycle (Sprint) Observations](docs/cycle/README.md)** - End-of-cycle learnings and framework updates
 
 ### Cursor AI Rules
 

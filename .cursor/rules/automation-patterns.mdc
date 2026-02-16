@@ -181,22 +181,24 @@ Prefer waiting for the specific condition (element visible, URL, response) rathe
 
 ## 3. Semantic Locator Strategies
 
-### Priority Order (Highest to Lowest)
+**📚 Comprehensive Guide**: See `docs/framework/LOCATOR_STRATEGY.md` for detailed explanations, decision matrix, pros/cons, and real-world examples.
+
+**Quick Reference** (Priority Order):
 
 #### 1. data-testid (if available)
 ```typescript
 page.locator('[data-testid="submit-order-btn"]')
 ```
-**Use when**: Component has explicit test ID in source code.
+**Use when**: Component has explicit test ID in source code. **Request from frontend team for critical flows.**
 
-#### 2. getByRole with name
+#### 2. getByRole with name (Recommended Default)
 ```typescript
 page.getByRole('button', { name: 'Submit Order' })
 page.getByRole('textbox', { name: 'Email Address' })
 page.getByRole('combobox', { name: 'Select Category' })
 page.getByRole('link', { name: 'View Details' })
 ```
-**Use when**: Element has accessible role and name/label.
+**Use when**: Element has accessible role and name/label. **Default choice for most elements.**
 
 #### 3. getByLabel
 ```typescript
@@ -226,6 +228,8 @@ page.locator('input#email')
 page.locator('#submit-button')
 ```
 **Use when**: No better semantic option available.
+
+**📚 For detailed guidance**: See `docs/framework/LOCATOR_STRATEGY.md` for decision matrix, pros/cons, and when to use each strategy.
 
 ### ❌ Forbidden Selectors
 

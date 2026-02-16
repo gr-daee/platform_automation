@@ -249,14 +249,14 @@ export default defineConfig({
 
     // ===== PRIMARY USER PROJECTS (70% single-user tests) =====
     
-    // IACS MD User - Primary for O2C tests
+    // IACS MD User - Primary for O2C tests + Finance tests (has finance:read permission)
     {
       name: 'iacs-md',
       use: {
         ...chromeConfig,
         storageState: 'e2e/.auth/iacs-md.json',
       },
-      testMatch: /o2c[/\\].*\.spec\.js$/,        // File path routing (matches generated .spec.js files)
+      testMatch: /(o2c|finance)[/\\].*\.spec\.js$/,  // File path routing: O2C + Finance (matches generated .spec.js files)
       grep: /@iacs-md/,                          // Tag filtering
       grepInvert: /@skip-iacs-md/,               // Skip exclusions
       dependencies: ['setup'],
@@ -342,7 +342,9 @@ export default defineConfig({
       dependencies: ['setup'],
     },
 
-    // ===== CROSS-BROWSER (Super Admin, smoke tests only) =====
+    // ===== CROSS-BROWSER (Super Admin, smoke tests only - Production mode only) =====
+    // Note: Firefox/WebKit projects only run in production mode (not dev/debug)
+    // Dev mode should use Chrome only for faster iteration
     {
       name: 'firefox',
       use: {
@@ -352,6 +354,8 @@ export default defineConfig({
       grep: /@cross-browser|@smoke/,
       dependencies: ['setup'],
       testIgnore: /login\.spec\.js/,
+      // Only run in production mode (skip in dev/debug)
+      ...(isDevelopmentMode || isDebugMode ? { testMatch: /$^/ } : {}), // Empty regex = no matches
     },
 
     {
@@ -363,6 +367,8 @@ export default defineConfig({
       grep: /@cross-browser|@smoke/,
       dependencies: ['setup'],
       testIgnore: /login\.spec\.js/,
+      // Only run in production mode (skip in dev/debug)
+      ...(isDevelopmentMode || isDebugMode ? { testMatch: /$^/ } : {}), // Empty regex = no matches
     },
 
     /* Mobile viewports for responsive testing */

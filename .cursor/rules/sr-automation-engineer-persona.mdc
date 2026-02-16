@@ -661,41 +661,51 @@ DAEE is multi-tenant, multi-role. Tests run as different users based on Playwrig
 
 ## Semantic Locator Strategy (Priority Order)
 
+**📚 Comprehensive Guide**: See `docs/framework/LOCATOR_STRATEGY.md` for detailed explanations, decision matrix, and best practices.
+
+**Quick Reference** (Priority Order):
+
 ### 1. data-testid (Highest Priority - if available)
 ```typescript
 page.locator('[data-testid="submit-button"]')
 ```
+**Use for**: Critical flows, complex components, when semantic locators fail. Request from frontend team.
 
-### 2. getByRole with accessible name
+### 2. getByRole with accessible name (Recommended Default)
 ```typescript
 page.getByRole('button', { name: 'Submit Order' })
 page.getByRole('textbox', { name: 'Email Address' })
 page.getByRole('combobox', { name: 'Select Category' })
 ```
+**Use for**: Most elements. Verifies accessibility and user experience.
 
 ### 3. getByPlaceholder
 ```typescript
 page.getByPlaceholder('Enter your email')
 page.getByPlaceholder('Search products...')
 ```
+**Use for**: Input fields with placeholder text.
 
 ### 4. getByText (with exact matching)
 ```typescript
 page.getByText('Submit', { exact: true })
 page.getByText(/Successfully created/i)
 ```
+**Use for**: Content verification, messages, labels (not for interaction).
 
 ### 5. getByLabel (for form fields)
 ```typescript
 page.getByLabel('Product Name')
 page.getByLabel('Quantity')
 ```
+**Use for**: Form inputs with associated `<label>` elements.
 
 ### 6. ID selectors (last resort)
 ```typescript
 page.locator('input#email')
 page.locator('#submit-btn')
 ```
+**Use for**: Only when semantic locators don't work.
 
 ### ❌ FORBIDDEN (Never Use)
 ```typescript
@@ -706,6 +716,8 @@ page.locator('.text-gray-900')
 // XPath selectors (brittle)
 page.locator('//div[@class="container"]/button')
 ```
+
+**Recommendation**: Use semantic locators (`getByRole`, `getByLabel`) as default. Request `data-testid` for critical flows and complex components. See `docs/framework/LOCATOR_STRATEGY.md` for detailed guidance.
 
 ---
 
@@ -872,6 +884,10 @@ When analyzing code or user requests, automatically suggest:
 
 For deep-dive information, reference these specialized rules:
 
+### For Locator Strategy & Best Practices
+→ See `docs/framework/LOCATOR_STRATEGY.md` for comprehensive guide with decision matrix, pros/cons, and real-world examples
+→ Quick reference above in "Semantic Locator Strategy" section
+
 ### For POM Generation Details
 → See `automation-patterns.mdc` section "Page Object Model Patterns"
 → See `docs/framework-enhancements/01-consolidated-rules/02-QUICK_START.md` for infrastructure examples
@@ -892,6 +908,10 @@ For deep-dive information, reference these specialized rules:
 ### For Complete Documentation System
 → See `docs/framework-enhancements/02-documentation-system/01-COMPLETE_GUIDE.md` for comprehensive guide
 → See `docs/framework-enhancements/02-documentation-system/02-QUICK_START.md` for daily reference ⭐
+
+### For Cycle (Sprint) Observations and Framework Updates
+→ See `docs/cycle/README.md` for cycle documentation purpose and structure
+→ At end of cycle: update `docs/cycle/cycle-N-YYYY-MM.md` with gaps, bad practices, learnings, and framework recommendations; use to drive persona/QUICK_START/LOCATOR_STRATEGY updates
 
 ---
 
@@ -945,6 +965,15 @@ docs/test-cases/
 └── test-impact-matrix.md              # Test-to-code traceability
 ```
 
+### Per Cycle (Agile Sprint)
+```
+docs/cycle/
+├── README.md                           # Index; what to capture each cycle
+├── cycle-N-YYYY-MM.md                  # Observations for cycle N (gaps, bad practices, learnings, framework recommendations)
+└── cycle-N+1-YYYY-MM.md                # Placeholder for next cycle
+```
+**When**: At end of each cycle, create/update the cycle doc with observations (gaps, bad practices, learnings) and framework update recommendations. Use this to review and update the framework (persona, QUICK_START, LOCATOR_STRATEGY) before the next cycle. See `docs/cycle/README.md`.
+
 ### Available Templates
 - `docs/implementations/templates/implementation-template.md` - IMPL-### structure
 - `docs/implementations/templates/feature-analysis-template.md` - FEATURE-### structure
@@ -966,6 +995,9 @@ docs/test-cases/
 7. ✅ Create feature analysis in `features/FEATURE-###-analysis.md` (if new feature)
 8. ✅ Update `implementation-history.md` - Link to IMPL-###
 9. ✅ Create implementation document in `implementations/YYYY-MM/`
+
+**At End of Cycle (Sprint)**:
+10. ✅ Update `docs/cycle/cycle-N-YYYY-MM.md` with observations (gaps, bad practices, learnings, framework recommendations). Create placeholder `cycle-N+1-YYYY-MM.md` for next cycle. See `docs/cycle/README.md`.
 
 **Safety Checks (MANDATORY)**:
 
@@ -1042,6 +1074,9 @@ Every test you create:
 ---
 
 ## 📖 Additional Resources
+
+### Framework Guides
+**Locator Strategy**: `docs/framework/LOCATOR_STRATEGY.md` - Comprehensive locator strategy guide with decision matrix and best practices
 
 ### Framework Enhancements Documentation
 **Start Here**: `docs/framework-enhancements/README.md` - Navigation index for all enhancements
