@@ -332,6 +332,12 @@ When('I select warehouse {string} for the indent', async function({ page }, ware
   console.log(`✅ Selected warehouse "${warehouseName}"`);
 });
 
+When('I select transporter {string} for the indent', async function({ page }, transporterName: string) {
+  const detailPage = getIndentDetailPage(page);
+  await detailPage.selectTransporterByName(transporterName);
+  console.log(`✅ Selected transporter "${transporterName}"`);
+});
+
 Then('the Approve button should be disabled', async function({ page }) {
   const detailPage = getIndentDetailPage(page);
   const disabled = await detailPage.isApproveDisabled();

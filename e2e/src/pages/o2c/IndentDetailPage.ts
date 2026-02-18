@@ -432,11 +432,19 @@ export class IndentDetailPage extends BasePage {
   }
 
   /**
-   * Fill approval/reject comments and submit dialog
+   * Fill approval/reject comments and submit dialog.
+   * Waits for the dialog Approve/Reject button to be visible and enabled, then clicks it.
    */
   async fillApprovalCommentsAndSubmit(comments: string): Promise<void> {
+    await expect(this.approvalDialog).toBeVisible({ timeout: 5000 });
     await this.approvalCommentsTextarea.fill(comments);
-    await this.approvalDialogSubmitButton.click();
+    // Ensure the Submit button (Approve/Reject) in the dialog is visible and enabled before clicking
+    const submitBtn = this.approvalDialog.getByRole('button', { name: /^approve$|^reject$/i });
+    await expect(submitBtn).toBeVisible({ timeout: 5000 });
+    await expect(submitBtn).toBeEnabled({ timeout: 10000 }); // wait for Processing... to clear if any
+    await submitBtn.scrollIntoViewIfNeeded();
+    await this.page.waitForTimeout(200);
+    await submitBtn.click();
   }
 
   /**
@@ -615,5 +623,37 @@ export class IndentDetailPage extends BasePage {
     const hasSelectedLabel = await this.transporterSelectedLabel.isVisible().catch(() => false);
     if (hasSelectedLabel) return true;
     return this.page.getByText(/Own Transport|default transporter/i).first().isVisible().catch(() => false);
+  }
+
+  /**
+   * Open transporter dropdown and select transporter by display name (Radix Select).
+   * Matches option text containing the given name (e.g. "Just In Time Shipper").
+   * Waits for transporter selection section to be visible (only shown for submitted indents).
+   * Handles both cases: placeholder visible (no selection) or value already selected (e.g. "Own Transport").
+   */
+  async selectTransporterByName(name: string): Promise<void> {
+    // Wait for transporter selection section to be visible (submitted indent only)
+    await expect(this.transporterSelectionHeading).toBeVisible({ timeout: 10000 });
+    await this.page.waitForTimeout(500);
+    
+    // Find transporter combobox: when value is selected (e.g. "Own Transport"), placeholder is hidden
+    // So find combobox within the Transporter Selection section (more reliable than placeholder)
+    const transporterSection = this.transporterSelectionHeading.locator('..').locator('..');
+    const trigger = transporterSection.getByRole('combobox').first();
+    
+    await expect(trigger).toBeVisible({ timeout: 10000 });
+    await trigger.click();
+    
+    // Wait for dropdown to open
+    await this.page.waitForSelector('[role="listbox"]', { timeout: 5000 });
+    await this.page.waitForTimeout(300);
+    
+    // Select option matching the name (flexible regex for spaces and company suffixes)
+    // "Just In Time Shipper" or "Just in time Shippers Pvt Limited" should both match
+    const namePattern = name.replace(/\s+/g, '\\s*').replace(/[Pp]vt\s*[Ll]imited/i, '[Pp]vt\\.?\\s*[Ll]imited?');
+    const option = this.page.getByRole('option', { name: new RegExp(namePattern, 'i') });
+    await expect(option).toBeVisible({ timeout: 5000 });
+    await option.click();
+    await this.page.waitForTimeout(500);
   }
 }

@@ -23,6 +23,9 @@ The O2C module handles the complete order-to-cash process including indent creat
 5. **Approve / Reject**: Buttons visible for submitted indent (with `indents:approve` permission). **Approve** (optional comments) or **Reject** (comments required). Dialog: "Approve Indent" / "Reject Indent" with Comments textarea. Approval is blocked if dealer has any invoice with pending payment 90+ days; **credit limit** is also checked (UI shows "Credit OK" / "Credit Warning").
 6. **Process Workflow** (approved indent only): Button "Process Workflow" opens dialog; "Confirm & Process" creates **Sales Order** for in-stock items and **Back Order** for items with no stock. Stock is evaluated for the selected warehouse.
 
+### System E2E Flow (O2C-E2E-TC-001)
+One system-level E2E test runs the full pipeline with fixed data: **Dealer IACS5509** (Ramesh ningappa diggai), **Product 1013**, **Warehouse Kurnook**, **Transporter "Just In Time Shipper"**. Flow: (1) DB note inventory for product 1013 at Kurnook and dealer credit for IACS5509; (2) Create indent → add product 1013 → save → submit → select warehouse "Kurnook Warehouse" → select transporter "Just In Time Shipper" → approve → Process Workflow; (3) Navigate to SO (by indent_id from URL + DB lookup), verify dealer/warehouse/source indent, allocation and dealer credit unchanged; (4) Generate eInvoice (Transport tab, transporter), wait for invoice link, SO status updated; (5) Navigate to Invoice, Generate Custom eInvoice PDF, download; (6) DB: stock reduced, dealer credit updated; (7) Dealer Ledger: select dealer IACS5509, assert invoice transaction. All DB usage is read-only (SELECT). See `e2e/features/o2c/o2c-e2e-indent-so-invoice.feature` and `e2e/src/steps/o2c/o2c-e2e-steps.ts`.
+
 ## Business Rules
 
 ### Indent Creation
@@ -45,6 +48,8 @@ The O2C module handles the complete order-to-cash process including indent creat
 - Can approve with back orders (partial/zero stock) – "Approve with Back Orders" when inventory insufficient
 
 ## Database Schema
+
+**Inventory-related tables (for E2E DB helpers):** See **`docs/database/o2c-inventory-tables.md`** for table names, columns, and data types for `inventory`, `product_variant_packages`, and `warehouses`. Product "1013" is resolved via `product_variant_packages.material_code` or `package_code`; warehouse "Kurnook" via `warehouses.warehouse_name` / `warehouse_code`.
 
 ### indents
 - `id`: UUID (primary key)

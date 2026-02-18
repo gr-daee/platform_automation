@@ -52,6 +52,14 @@ This registry tracks all automated test cases with their unique identifiers for 
 | O2C-INDENT-TC-019 | O2C | INDENT | Stock warning shown when selected warehouse has insufficient stock | e2e/features/o2c/indents.feature | @regression | ✅ |
 | O2C-INDENT-TC-020 | O2C | INDENT | Process Workflow dialog shows SO and Back Order preview before Confirm | e2e/features/o2c/indents.feature | @regression | ✅ |
 
+### E2E SubModule (E2E)
+
+*System-level E2E: Indent → SO → eInvoice → Invoice PDF → Dealer Ledger. Feature file: `e2e/features/o2c/o2c-e2e-indent-so-invoice.feature`.*
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| O2C-E2E-TC-001 | O2C | E2E | Full E2E flow with Dealer IACS5509, Product 1013, Warehouse Kurnook, Transporter Just In Time Shipper | e2e/features/o2c/o2c-e2e-indent-so-invoice.feature | @o2c-flow @smoke @critical @p0 @iacs-md | ✅ |
+
 ### Sales Order SubModule (SO)
 
 *Feature file to add: `e2e/features/o2c/sales-orders.feature`. Master plan: [O2C-Indent-SO-Invoice-Test-Scenarios-For-Review.md](../../modules/o2c/O2C-Indent-SO-Invoice-Test-Scenarios-For-Review.md).*
@@ -92,18 +100,41 @@ This registry tracks all automated test cases with their unique identifiers for 
 
 ## Usage
 
-### Running Tests by Test Case ID
+### Running Tests by Test Case ID (Tag)
+
+You can run any specific test by its tag **without changing package.json**. Use `--` so npm passes your arguments to Playwright.
 
 ```bash
-# Run specific test case
+# Run a specific test by tag (any test case ID)
+npm run test:tc -- "@O2C-E2E-TC-001"
 npm run test:tc -- "@AUTH-LOGIN-TC-001"
+npm run test:tc -- "@O2C-INDENT-TC-012"
 
-# Run all tests in a module
-npm run test:tc -- "@AUTH-"
+# Run in dev mode (headed, single worker) by tag
+npm run test:dev -- --grep "@O2C-E2E-TC-001"
+
+# Run in production/regression mode by tag
+npm run test:regression -- --grep "@O2C-E2E-TC-001"
+
+# Run all tests matching a pattern (e.g. all O2C Indent tests)
+npm run test:tc -- "@O2C-INDENT-"
 
 # Run all critical tests
 npm run test:tc -- "@critical"
 ```
+
+**Important:** The `--` is required. Without it, npm does not forward arguments to the script and you get "No tests found."
+
+| Goal | Command |
+|------|--------|
+| Run one test by tag | `npm run test:tc -- "@TAG_ID"` |
+| Run one test by tag (dev, headed) | `npm run test:dev -- --grep "@TAG_ID"` |
+| Run one test by tag (production) | `npm run test:regression -- --grep "@TAG_ID"` |
+| Run by project + tag | `npm run test:dev -- --project=iacs-md --grep "@TAG_ID"` |
+| Run by path (e.g. all O2C) | `npm run test:regression -- e2e/features/o2c/` |
+| Run all tests with a tag pattern | `npm run test:tc -- "@O2C-INDENT-"` |
+
+Package.json keeps only core execution modes (test:dev, test:regression, test:tc, etc.); all tag/project/path filtering is done via the run command.
 
 ### Linking to Linear Issues
 

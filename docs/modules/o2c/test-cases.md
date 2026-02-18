@@ -311,6 +311,26 @@ Scenario: User searches and selects dealer from Create Indent modal
 
 ---
 
+## System E2E Tests (O2C-E2E-TC-001)
+
+### @O2C-E2E-TC-001 - Full E2E flow with Dealer IACS5509, Product 1013, Warehouse Kurnook, Transporter Just In Time Shipper
+- **Feature File**: `e2e/features/o2c/o2c-e2e-indent-so-invoice.feature`
+- **Scenario**: Full E2E flow with Dealer IACS5509, Product 1013, Warehouse Kurnook, Transporter Just In Time Shipper
+- **Coverage**: System-level flow: DB note (inventory + dealer credit) → Indent (create, add product 1013, save, submit, warehouse Kurnook, transporter Just In Time Shipper, approve, Process Workflow) → SO (navigate, verify dealer/warehouse/source indent, allocation, dealer credit unchanged) → eInvoice (Generate with Transport, wait for link, SO status) → Invoice (navigate, Generate Custom eInvoice PDF, download) → DB (stock reduced, dealer credit updated) → Dealer Ledger (select dealer IACS5509, assert invoice transaction)
+- **Status**: ✅ Automated
+- **Tags**: @o2c-flow @smoke @critical @p0 @iacs-tenant @iacs-md
+- **Last Updated**: 2026-02-16
+
+**Test Data (Fixed)**:
+- Dealer: Code **IACS5509**, Name **Ramesh ningappa diggai**
+- Product: **1013** (add by search)
+- Warehouse: **Kurnook** (use "Kurnook Warehouse" in UI)
+- Transporter: **Just In Time Shipper**
+
+**Notes**: Single-user; reuses indent steps from `indent-steps.ts`; E2E-specific steps in `o2c-e2e-steps.ts`; DB helpers in `o2c-db-helpers.ts` (read-only). POMs: SalesOrderDetailPage, InvoiceDetailPage, DealerLedgerPage.
+
+---
+
 ## Manual Test References
 - Manual test cases documented in: `docs/test-cases/manual/o2c/`
 

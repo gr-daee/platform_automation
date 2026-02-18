@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-02-16
 **Module**: Order-to-Cash (O2C)
-**Overall Coverage**: Indent flow 20/20 automated (TC-001–TC-020); SO/Invoice not yet automated.
+**Overall Coverage**: Indent flow 20/20 automated (TC-001–TC-020); system E2E (Indent→SO→Invoice→Ledger) covered by O2C-E2E-TC-001; individual SO/Invoice scenarios not yet automated.
 
 ---
 
@@ -23,6 +23,7 @@ Tracks test coverage gaps for the Order-to-Cash module, including indents, order
 | Transporter / Credit / Stock | 4 | 4 | 0 | 100% |
 | Sales Order (O2C-SO-TC-*) | 11 | 0 | 11 | 0% |
 | Invoice (O2C-INV-TC-*) | 13 | 0 | 13 | 0% |
+| System E2E (O2C-E2E-TC-001) | 1 | 1 | 0 | 100% |
 | **Indent total** | **20** | **20** | **0** | **100%** |
 
 ---
@@ -34,6 +35,11 @@ Tracks test coverage gaps for the Order-to-Cash module, including indents, order
 ### ✅ GAP-O2C-P0-001: No test for indent approval workflow — Resolved
 - **Resolved**: 2026-02-16
 - **Resolution**: TC-012 (full straight path) includes approve with comments → Process Workflow → SO; TC-015 covers approval blocked when dealer has 90+ days overdue.
+- **Status**: ✅ Resolved
+
+### ✅ GAP-O2C-P0-002: No system E2E (Indent→SO→Invoice→Ledger) — Resolved
+- **Resolved**: 2026-02-16
+- **Resolution**: O2C-E2E-TC-001 in `e2e/features/o2c/o2c-e2e-indent-so-invoice.feature` covers full flow: DB note (inventory + dealer credit) → Indent (create, add product 1013, Kurnook, transporter Just In Time Shipper, approve, Process Workflow) → SO verification → eInvoice → Invoice PDF download → stock/dealer credit DB checks → Dealer Ledger invoice entry.
 - **Status**: ✅ Resolved
 
 ---
@@ -171,7 +177,7 @@ Tracks test coverage gaps for the Order-to-Cash module, including indents, order
 - **Resolution**: TC-012 (full straight path) and TC-015 (approval blocked 90+ days) cover approval flow
 - **Notes**: Indent numbering consolidated to TC-001–TC-020
 
-### ✅ GAP-O2C-P0-002: No test for indent creation
+### ✅ GAP-O2C-P0-003: No test for indent creation
 - **Resolved**: 2026-01-20
 - **Resolution**: Created test O2C-INDENT-TC-001 (create + detail)
 - **Implementation**: IMPL-005
