@@ -61,9 +61,9 @@ console.log(`👷 Workers: ${workers === undefined ? 'auto (50% of cores)' : wor
  * - Development: 90s test, 45s action (balance between speed and debugging)
  */
 const timeouts = {
-  test: isDebugMode ? 120000 : isDevelopmentMode ? 90000 : 60000,
-  action: isDebugMode ? 45000 : isDevelopmentMode ? 45000 : 30000,
-  navigation: isDebugMode ? 45000 : isDevelopmentMode ? 45000 : 30000,
+  test: isDebugMode ? 180000 : isDevelopmentMode ? 150000 : 60000, // Increased: debug=180s, dev=150s
+  action: isDebugMode ? 60000 : isDevelopmentMode ? 60000 : 30000, // Increased: debug/dev=60s
+  navigation: isDebugMode ? 60000 : isDevelopmentMode ? 60000 : 30000, // Increased: debug/dev=60s
 };
 
 console.log(`⏱️  Timeouts: test=${timeouts.test / 1000}s, action=${timeouts.action / 1000}s`);

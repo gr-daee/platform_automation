@@ -154,6 +154,50 @@ Each entry maps:
 
 ---
 
+## O2C Reports - Hierarchical Sales
+
+### `../web_app/src/app/o2c/reports/hierarchical-sales/page.tsx`
+**Affected Tests**:
+- `O2C-HSR-TC-001`, `O2C-HSR-TC-002` (documented only): Page access / access denied
+- `O2C-HSR-TC-003`–`O2C-HSR-TC-028`: All Hierarchical Sales Report tests
+  - **Interaction**: POM (`e2e/src/pages/o2c/HierarchicalSalesReportPage.ts`)
+  - **Last Verified**: 2026-02-18
+
+**Change Risk**: 🔴 High - 26+ tests affected
+
+---
+
+### `../web_app/src/app/o2c/reports/hierarchical-sales/components/HierarchicalSalesContent.tsx`
+**Affected Tests**:
+- `O2C-HSR-TC-003`–`O2C-HSR-TC-028`: Filters, quick period, Generate Report, summary cards, hierarchy, Expand/Collapse All, Export Excel, empty/no-data states
+  - **Interaction**: POM (`e2e/src/pages/o2c/HierarchicalSalesReportPage.ts`)
+  - **Locators Used**: heading "Hierarchical Sales Report", labels "From Date *", "To Date *", "State (GSTIN)", "Region", "Territory", buttons "This Month", "This Quarter", "This Year", "Generate Report", "Expand All", "Collapse All", "Export Excel", "No Report Generated", "No Sales Data Found", "GRAND TOTAL"
+  - **Last Verified**: 2026-02-18
+
+**Change Risk**: 🔴 High - 26 tests affected
+
+---
+
+### `../web_app/src/app/o2c/reports/actions/hierarchicalSalesReportActions.ts`
+**Affected Tests**:
+- `O2C-HSR-TC-011`–`O2C-HSR-TC-015`, `O2C-HSR-TC-025`–`O2C-HSR-TC-028`: Report generation, summary, empty/no-data, optional DB consistency
+  - **Interaction**: Server action (via UI Generate Report)
+  - **Last Verified**: 2026-02-18
+
+**Change Risk**: 🟡 Medium - 10+ tests affected
+
+---
+
+### `../web_app/src/utils/exportUtils.ts` (exportHierarchicalSalesToExcel)
+**Affected Tests**:
+- `O2C-HSR-TC-022`–`O2C-HSR-TC-024`: Export Excel disabled when no data; export with data; Exporting... state
+  - **Interaction**: Client-side export (via UI Export Excel button)
+  - **Last Verified**: 2026-02-18
+
+**Change Risk**: 🟡 Medium - 3 tests affected
+
+---
+
 ## API Routes
 
 ### `../web_app/src/app/api/auth/login/route.ts`

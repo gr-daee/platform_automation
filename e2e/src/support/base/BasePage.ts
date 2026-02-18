@@ -46,7 +46,7 @@ export abstract class BasePage {
    */
   async navigateTo(path: string): Promise<void> {
     await this.page.goto(path);
-    await this.page.waitForLoadState('networkidle');
+    await this.page.waitForLoadState('load');
   }
 
   /**
@@ -54,7 +54,7 @@ export abstract class BasePage {
    */
   async goBack(): Promise<void> {
     await this.page.goBack();
-    await this.page.waitForLoadState('networkidle');
+    await this.page.waitForLoadState('load');
   }
 
   /**
@@ -62,7 +62,7 @@ export abstract class BasePage {
    */
   async reload(): Promise<void> {
     await this.page.reload();
-    await this.page.waitForLoadState('networkidle');
+    await this.page.waitForLoadState('load');
   }
 
   // ==========================================
