@@ -92,6 +92,14 @@ One system-level E2E test runs the full pipeline with fixed data: **Dealer IACS5
 2. **UI ACTION**: Create indent
 3. **DB AFTER**: Verify new indent with correct data
 
+## Reports → Hierarchical Sales
+
+- **Route**: `/o2c/reports/hierarchical-sales`
+- **Purpose**: Sales data by State → Region → Territory → Dealer with Gross/Returns/Net; quick period, filters, Excel export.
+- **Permission**: `sales_reports.read` (UI); backend uses `invoices.read`.
+- **Full knowledge**: [reports/hierarchical-sales/knowledge.md](reports/hierarchical-sales/knowledge.md)
+- **Test cases**: [reports/hierarchical-sales/test-cases.md](reports/hierarchical-sales/test-cases.md)
+
 ## Related Modules
 - **Dealers**: Indents require dealer selection
 - **Products**: Indents include product line items
@@ -114,3 +122,4 @@ One system-level E2E test runs the full pipeline with fixed data: **Dealer IACS5
 - ✅ Reject flow and approval blocked 90+ days (TC-013, TC-014, TC-015)
 - ✅ Transporter, credit warning, stock warning, Process Workflow dialog (TC-016–TC-020)
 - **Source:** [test-cases.md](test-cases.md) (TC-001–TC-020)
+- ✅ Hierarchical Sales Report: filters, generate, summary, hierarchy, export (O2C-HSR-TC-003–TC-028); access tests (TC-001, TC-002) documented only. **Source:** [reports/hierarchical-sales/test-cases.md](reports/hierarchical-sales/test-cases.md)

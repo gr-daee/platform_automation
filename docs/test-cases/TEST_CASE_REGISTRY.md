@@ -60,6 +60,17 @@ This registry tracks all automated test cases with their unique identifiers for 
 |--------------|--------|-----------|---------------|--------------|------|--------|
 | O2C-E2E-TC-001 | O2C | E2E | Full E2E flow with Dealer IACS5509, Product 1013, Warehouse Kurnook, Transporter Just In Time Shipper | e2e/features/o2c/o2c-e2e-indent-so-invoice.feature | @o2c-flow @smoke @critical @p0 @iacs-md | ✅ |
 
+### Reports / Hierarchical Sales SubModule (HSR)
+
+*Feature file: `e2e/features/o2c/reports/hierarchical-sales.feature`. TC-001/002 documented only (Pending).*
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| O2C-HSR-TC-001 | O2C | HSR | User with sales_reports.read can open page | e2e/features/o2c/reports/hierarchical-sales.feature | @smoke @p0 | ⏳ Pending |
+| O2C-HSR-TC-002 | O2C | HSR | User without sales_reports.read is denied | e2e/features/o2c/reports/hierarchical-sales.feature | @critical @p0 @multi-user | ⏳ Pending |
+| O2C-HSR-TC-003 | O2C | HSR | Generate Report disabled when From or To date missing | e2e/features/o2c/reports/hierarchical-sales.feature | @regression | ✅ |
+| O2C-HSR-TC-004–TC-028 | O2C | HSR | Filters, quick period, report gen, hierarchy, export, empty/no-data, optional DB | e2e/features/o2c/reports/hierarchical-sales.feature | @regression @smoke | ✅ |
+
 ### Sales Order SubModule (SO)
 
 *Feature file to add: `e2e/features/o2c/sales-orders.feature`. Master plan: [O2C-Indent-SO-Invoice-Test-Scenarios-For-Review.md](../../modules/o2c/O2C-Indent-SO-Invoice-Test-Scenarios-For-Review.md).*
