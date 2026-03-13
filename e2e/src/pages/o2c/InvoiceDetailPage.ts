@@ -104,4 +104,16 @@ export class InvoiceDetailPage extends BasePage {
   async waitForDownloadCustomInvoicePdfButton(timeoutMs: number = 60000): Promise<void> {
     await expect(this.downloadCustomInvoicePdfButton).toBeVisible({ timeout: timeoutMs });
   }
+
+  /** Verify invoice status badge shows Paid. */
+  async verifyStatusPaid(): Promise<void> {
+    await expect(this.page.getByText('Paid', { exact: true }).first()).toBeVisible({ timeout: 10000 });
+  }
+
+  /** Verify balance is zero or Paid (PaymentHistoryCard shows "Paid" when balance <= 0.01). */
+  async verifyPaidWithBalanceZero(): Promise<void> {
+    await this.verifyStatusPaid();
+    const paidOrZero = this.page.getByText(/Paid|0\.00|₹\s*0/).first();
+    await expect(paidOrZero).toBeVisible({ timeout: 10000 });
+  }
 }

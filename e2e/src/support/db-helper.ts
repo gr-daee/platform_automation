@@ -1,9 +1,19 @@
 import { Pool, QueryResult } from 'pg';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import * as fs from 'fs';
 
-// Load environment variables
-dotenv.config({ path: path.resolve(__dirname, '../../../.env.local') });
+// Load .env.local from project root so O2C and Finance (VAN) tests use the same DB config.
+// Try both (1) path relative to this file and (2) cwd, so workers always get env regardless of run context.
+const fromDir = path.resolve(__dirname, '../../../.env.local');
+const fromCwd = path.resolve(process.cwd(), '.env.local');
+if (fs.existsSync(fromDir)) {
+  dotenv.config({ path: fromDir });
+} else if (fs.existsSync(fromCwd)) {
+  dotenv.config({ path: fromCwd });
+} else {
+  dotenv.config({ path: fromDir }); // may still load nothing; connectToDatabase() will validate
+}
 
 /**
  * Database Helper for DAEE Platform E2E Tests
@@ -46,12 +56,10 @@ export function connectToDatabase(): Pool {
     connectionTimeoutMillis: 10000,
   };
 
-  // Validate required configuration
+  // Validate required configuration (same .env.local used by O2C and Finance/VAN tests)
   if (!config.host || !config.password) {
     throw new Error(
-      'Database configuration missing. Please check .env.local file:\n' +
-      '  - SUPABASE_DB_HOST\n' +
-      '  - SUPABASE_DB_PASSWORD'
+      'Database configuration missing. Ensure .env.local at project root has SUPABASE_DB_HOST and SUPABASE_DB_PASSWORD (same config used by O2C and VAN tests).'
     );
   }
 
@@ -103,6 +111,12 @@ export async function executeQuery<T = any>(
     console.error('❌ Database query failed:', error.message);
     console.error('Query:', query);
     console.error('Params:', params);
+    // Same DB config is used by O2C (o2c-db-helpers) and Finance/VAN (finance-db-helpers). ENOTFOUND = host unreachable (VPN/network/DNS).
+    if (error.message?.includes('ENOTFOUND') || error.code === 'ENOTFOUND') {
+      console.error(
+        '💡 ENOTFOUND: Supabase host is not reachable from this machine. Ensure VPN/network allows access to SUPABASE_DB_HOST and that O2C/Finance tests use the same .env.local.'
+      );
+    }
     throw error;
   }
 }
