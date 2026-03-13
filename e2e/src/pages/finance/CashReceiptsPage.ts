@@ -34,8 +34,11 @@ export class CashReceiptsPage extends BasePage {
   }
 
   async clickNewCashReceipt(): Promise<void> {
-    await this.newCashReceiptButton.click();
-    await this.page.waitForURL(/\/finance\/cash-receipts\/new/, { timeout: 5000 });
+    await expect(this.newCashReceiptButton).toBeVisible({ timeout: 10000 });
+    await Promise.all([
+      this.page.waitForURL(/\/finance\/cash-receipts\/new/, { timeout: 15000 }),
+      this.newCashReceiptButton.click(),
+    ]);
   }
 
   async verifyCashReceiptExists(receiptNumber: string): Promise<void> {

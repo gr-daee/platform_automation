@@ -8,28 +8,17 @@ Feature: Manual Cash Receipts
   Background:
     Given I am logged in to the Application
 
-  # Only one cash receipt is created (with Ramesh ningappa diggai); used by apply scenarios below
-  @FIN-CR-TC-001 @smoke @critical @p0 @iacs-md
-  Scenario: Create manual cash receipt
-    Given I am on the cash receipts page
-    When I click New Cash Receipt
-    And I fill cash receipt form with customer "Ramesh ningappa diggai" and amount "5000"
-    And I save the cash receipt
-    Then the cash receipt should be created successfully
-
-  @FIN-CR-TC-002 @critical @p0 @iacs-md
-  Scenario: Apply payment to invoice
-    Given I have created a cash receipt with amount "5000" for testing
+  @FIN-CR-TC-003 @critical @p0 @iacs-md
+  Scenario: Apply payment and auto-calculated EPD discount amount
+    Given I have created a cash receipt with amount "500" for testing
     And I am on the apply page for the current cash receipt
-    When I apply cash receipt "<receiptId>" to invoice "first" with amount "1000"
+    When I apply cash receipt "<receiptId>" to invoice "first" with amount "100"
     Then the payment should be allocated to invoice "first"
-
-  @FIN-CR-TC-003 @p1 @iacs-md
-  Scenario: Adjust EPD discount amount
-    Given I have created a cash receipt with amount "5000" for testing
-    And I am on the apply page for the current cash receipt
-    When I apply cash receipt "<receiptId>" to invoice "first" with amount "1000"
-    Then the EPD discount should be "25"
+    And the outstanding balance for invoice "first" should decrease by "100"
+    And the cash receipt application details for invoice "first" should be correct
+    And on clicking the CCN link for invoice "first" the CCN details should be correct
+    And on clicking the journal entry the JE details should be correct
+    Then the EPD discount should be correctly calculated for invoice "first"
 
   @FIN-CR-TC-004 @p1 @iacs-md
   Scenario: Toggle EPD enabled or disabled

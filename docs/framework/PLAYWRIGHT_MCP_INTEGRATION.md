@@ -1,6 +1,6 @@
 # Playwright MCP Integration Guide
 
-This project is configured to use the **Playwright MCP Server** (`@executeautomation/playwright-mcp-server`) with Cursor so the AI can interact with a real browser for test authoring and debugging.
+This project is configured to use a **browser MCP server** with Cursor so the AI can interact with a real browser for test authoring and debugging.
 
 ## Config Location
 
@@ -48,9 +48,9 @@ For full MCP setup (Playwright + Linear), see [MCP Setup](./MCP_SETUP.md).
 
 ## MCP Server Details
 
-- **Package:** [@executeautomation/playwright-mcp-server](https://www.npmjs.com/package/@executeautomation/playwright-mcp-server)
-- **Docs:** [executeautomation/mcp-playwright](https://github.com/executeautomation/mcp-playwright)
-- **Stdio mode:** Used here so Cursor can talk to the server without running a separate HTTP process. Logs may go to `~/playwright-mcp-server.log` when running in stdio.
+- **Configured server name:** `cursor-ide-browser`
+- **Config source:** `.cursor/mcp.json` in this repo
+- **Behavior:** Provides browser automation tools (navigate, click, type, snapshot, etc.) that Cursor exposes as `browser_*` tools.
 
 ## Troubleshooting
 

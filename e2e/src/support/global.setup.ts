@@ -120,8 +120,11 @@ async function authenticateUser(
   if (user.tenant) console.log(`🏢 Tenant: ${user.tenant}`);
   if (user.role) console.log(`👤 Role: ${user.role}`);
 
+  // In this repo, npm scripts set TEST_HEADED=true (not HEADED).
+  // Treat either env as an indicator that we should launch headed browsers during auth setup.
+  const headed = process.env.HEADED === 'true' || process.env.TEST_HEADED === 'true';
   const browser = await chromium.launch({
-    headless: process.env.HEADED !== 'true',
+    headless: !headed,
   });
 
   const context = await browser.newContext({ baseURL });

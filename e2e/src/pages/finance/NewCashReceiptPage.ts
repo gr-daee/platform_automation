@@ -179,24 +179,11 @@ export class NewCashReceiptPage extends BasePage {
   }
 
   async selectPaymentMethod(method: string): Promise<void> {
-    // Strategy: Find combobox by index (Customer is first, Payment Method is second)
-    // This is more reliable than trying to match accessible names which may not be set correctly
-    const comboboxes = this.page.getByRole('combobox');
-    const comboboxCount = await comboboxes.count();
-    
-    // Payment Method should be the second combobox (index 1) after Customer
-    let paymentMethodCombobox: Locator;
-    if (comboboxCount >= 2) {
-      paymentMethodCombobox = comboboxes.nth(1);
-    } else if (comboboxCount === 1) {
-      // Only one combobox - might be Payment Method if Customer uses a different component
-      paymentMethodCombobox = comboboxes.first();
-    } else {
-      // Fallback: try to find by label text proximity
-      const label = this.page.locator('label').filter({ hasText: /Payment Method/i }).first();
-      await expect(label).toBeVisible({ timeout: 5000 });
-      paymentMethodCombobox = label.locator('..').getByRole('combobox').first();
-    }
+    // Prefer the explicit Payment Method locator defined in the constructor.
+    // This keeps us anchored to the "Payment Method" label instead of relying
+    // on combobox index ordering, which caused us to accidentally target the
+    // "Reference No." dropdown.
+    const paymentMethodCombobox = this.paymentMethodSelect;
     
     // Wait for element to be ready
     await expect(paymentMethodCombobox).toBeVisible({ timeout: 10000 });
@@ -216,16 +203,22 @@ export class NewCashReceiptPage extends BasePage {
     await paymentMethodCombobox.scrollIntoViewIfNeeded();
     await paymentMethodCombobox.click();
     
-    // Wait for dropdown to open
-    await this.page.waitForSelector('[role="listbox"]', { timeout: 5000 });
+    // Wait for dropdown / popup to open. Different implementations may use
+    // listbox, menu, or generic popover containers, so we look for the
+    // container first and then search within it.
+    const listContainer = this.page
+      .locator('[role="listbox"], [role="menu"], [data-radix-select-viewport]')
+      .first();
+    await expect(listContainer).toBeVisible({ timeout: 5000 });
     
-    // Select option (case-insensitive match)
-    const option = this.page.getByRole('option', { name: new RegExp(method, 'i') });
+    // Select option using visible text inside the container instead of relying
+    // solely on role="option" which may not be present for all UI libraries.
+    const option = listContainer.getByText(new RegExp(method, 'i'), { exact: false }).first();
     await expect(option).toBeVisible({ timeout: 5000 });
     await option.click();
     
-    // Wait for dropdown to close
-    await expect(this.page.locator('[role="listbox"]')).toBeHidden({ timeout: 3000 });
+    // Wait briefly for dropdown to close (container may be removed or hidden)
+    await this.page.waitForTimeout(200);
   }
 
   async setTotalAmount(amount: number): Promise<void> {

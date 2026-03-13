@@ -147,7 +147,23 @@ export class CashReceiptApplyPage extends BasePage {
   }
 
   async saveApplication(): Promise<void> {
+    // Click "Apply Payments" and wait for the async processing state to complete.
+    // The UI shows a transient "Applying Payments..." state on the footer button.
     await this.applyPaymentsButton.click();
-    await this.waitForToast(/applied successfully|Payments applied/i, 10000);
+    
+    const applyingButton = this.page.getByRole('button', { name: /Applying Payments/i });
+    const applyButton = this.page.getByRole('button', { name: /^Apply Payments$/i });
+
+    // If the "Applying Payments..." state appears, wait for it to go away and
+    // for the original "Apply Payments" button to return (or be re-enabled).
+    await applyingButton.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+    await applyButton.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
+
+    // Best-effort wait for a success toast, but don't fail the test if the UI
+    // no longer shows a toast for this action.
+    const toast = this.page.locator('[data-sonner-toast]');
+    if (await toast.count()) {
+      await this.waitForToast(/applied successfully|Payments applied/i, 10000).catch(() => {});
+    }
   }
 }

@@ -143,10 +143,13 @@ When('I apply cash receipt {string} to invoice {string} with amount {string}', a
   
   // Resolve invoice number from selector (supports "first", "second", "third" or actual invoice number)
   const invoiceNumber = await resolveInvoiceNumber(invoiceSelector, this);
-  
+
   await applyPage.selectInvoice(invoiceNumber);
   await applyPage.setAmountToApply(invoiceNumber, parseFloat(amount));
   await applyPage.saveApplication();
+
+  // Store applied amount in context for subsequent EPD/summary assertions
+  (this as any)[`invoice_${invoiceNumber}_applied_amount`] = parseFloat(amount);
 });
 
 Then('the cash receipt should be created successfully', async function ({ page }) {
@@ -173,6 +176,155 @@ Then('the payment should be allocated to invoice {string}', async function ({ pa
   }
 });
 
+Then(
+  'the outstanding balance for invoice {string} should decrease by {string}',
+  async function ({ page }, invoiceSelector: string, amount: string) {
+    const applyPage = (this as any).cashReceiptApplyPage || new CashReceiptApplyPage(page);
+    const decrease = parseFloat(amount);
+
+    // Resolve invoice number from selector using original outstandingInvoices snapshot
+    const invoiceNumber = await resolveInvoiceNumber(invoiceSelector, this);
+    const outstandingInvoices = (this as any).outstandingInvoices as OutstandingInvoiceRow[] | undefined;
+    if (!outstandingInvoices || outstandingInvoices.length === 0) {
+      throw new Error('No outstanding invoices context available to verify outstanding balance.');
+    }
+
+    const invoice = outstandingInvoices.find(
+      (inv) => inv.invoice_number.toLowerCase() === invoiceNumber.toLowerCase()
+    );
+    if (!invoice) {
+      throw new Error(`Invoice "${invoiceNumber}" not found in outstandingInvoices context.`);
+    }
+
+    const originalBalance = invoice.balance_amount;
+    const expectedBalance = Number((originalBalance - decrease).toFixed(2));
+
+    // Re-open the apply page to read the updated outstanding balance from UI
+    const receiptId =
+      (this as any).currentCashReceiptId || page.url().match(/\/cash-receipts\/([a-f0-9-]+)/)?.[1];
+    if (!receiptId) {
+      throw new Error('No current cash receipt ID available to verify outstanding balance.');
+    }
+
+    await applyPage.goto(receiptId);
+    await applyPage.verifyPageLoaded();
+
+    const uiBalance = await getBalanceFromUI(page, invoiceNumber);
+    expect(uiBalance).toBeCloseTo(expectedBalance, 2);
+  }
+);
+
+Then(
+  'the cash receipt application details for invoice {string} should be correct',
+  async function ({ page }, invoiceSelector: string) {
+    const detailPage = (this as any).cashReceiptDetailPage || new CashReceiptDetailPage(page);
+
+    // Resolve invoice number from selector
+    const invoiceNumber = await resolveInvoiceNumber(invoiceSelector, this);
+
+    const receiptId =
+      (this as any).currentCashReceiptId || page.url().match(/\/cash-receipts\/([a-f0-9-]+)/)?.[1];
+    if (!receiptId) {
+      throw new Error('No current cash receipt ID available to verify application details.');
+    }
+
+    // Fetch applications from DB for the current receipt & invoice
+    const applications = await getCashReceiptApplications(receiptId);
+
+    const outstandingInvoices = (this as any).outstandingInvoices as OutstandingInvoiceRow[] | undefined;
+    if (!outstandingInvoices || outstandingInvoices.length === 0) {
+      throw new Error('No outstanding invoices context available to verify application details.');
+    }
+
+    const invoice = outstandingInvoices.find(
+      (inv) => inv.invoice_number.toLowerCase() === invoiceNumber.toLowerCase()
+    );
+    if (!invoice) {
+      throw new Error(`Invoice "${invoiceNumber}" not found in outstandingInvoices context.`);
+    }
+
+    const invoiceApplications = applications.filter(
+      (a) => !a.is_reversed && a.invoice_id === invoice.id
+    );
+    if (invoiceApplications.length === 0) {
+      throw new Error(
+        `No cash_receipt_applications rows found for receipt "${receiptId}" and invoice "${invoiceNumber}".`
+      );
+    }
+
+    const appliedAmount = invoiceApplications.reduce(
+      (total, app) => total + Number(app.amount_applied || 0),
+      0
+    );
+    const discountAmount = invoiceApplications.reduce(
+      (total, app) => total + Number(app.discount_taken || 0),
+      0
+    );
+
+    // Applications to Invoices table is on the receipt detail page, not the apply page.
+    // Navigate to detail so the table and row are in the DOM.
+    await detailPage.goto(receiptId);
+    await detailPage.verifyPageLoaded();
+    await detailPage.verifyApplicationDetails(invoiceNumber, appliedAmount, discountAmount);
+  }
+);
+
+Then(
+  'on clicking the CCN link for invoice {string} the CCN details should be correct',
+  async function ({ page }, invoiceSelector: string) {
+    const detailPage = (this as any).cashReceiptDetailPage || new CashReceiptDetailPage(page);
+
+    const invoiceNumber = await resolveInvoiceNumber(invoiceSelector, this);
+    const receiptId =
+      (this as any).currentCashReceiptId || page.url().match(/\/cash-receipts\/([a-f0-9-]+)/)?.[1];
+    if (!receiptId) {
+      throw new Error('No current cash receipt ID available to verify CCN details.');
+    }
+
+    // Use DB to derive expected CCN amount (discount_taken)
+    const outstandingInvoices = (this as any).outstandingInvoices as OutstandingInvoiceRow[] | undefined;
+    if (!outstandingInvoices || outstandingInvoices.length === 0) {
+      throw new Error('No outstanding invoices context available to verify CCN details.');
+    }
+    const invoice = outstandingInvoices.find(
+      (inv) => inv.invoice_number.toLowerCase() === invoiceNumber.toLowerCase()
+    );
+    if (!invoice) throw new Error(`Invoice "${invoiceNumber}" not found in outstandingInvoices context.`);
+
+    const applications = await getCashReceiptApplications(receiptId);
+    const invoiceApplications = applications.filter(
+      (a) => !a.is_reversed && a.invoice_id === invoice.id
+    );
+    const discountAmount = invoiceApplications.reduce(
+      (total, app) => total + Number(app.discount_taken || 0),
+      0
+    );
+    if (discountAmount <= 0) {
+      throw new Error(`Expected CCN/discount amount > 0 for invoice "${invoiceNumber}", but got ${discountAmount}.`);
+    }
+
+    await detailPage.goto(receiptId);
+    await detailPage.verifyPageLoaded();
+    await detailPage.verifyCCNDetailsFromExpandedRow(invoiceNumber, discountAmount);
+  }
+);
+
+Then(
+  'on clicking the journal entry the JE details should be correct',
+  async function ({ page }) {
+    const detailPage = (this as any).cashReceiptDetailPage || new CashReceiptDetailPage(page);
+    const receiptId =
+      (this as any).currentCashReceiptId || page.url().match(/\/cash-receipts\/([a-f0-9-]+)/)?.[1];
+    if (!receiptId) {
+      throw new Error('No current cash receipt ID available to verify journal entry details.');
+    }
+
+    await detailPage.goto(receiptId);
+    await detailPage.verifyPageLoaded();
+    await detailPage.verifyJournalEntryDetailsFromReceipt();
+  }
+);
+
 Then('I should see cash receipt {string} in the list', async function ({ page }, receiptNumber: string) {
   const cashReceiptsPage = (this as any).cashReceiptsPage || new CashReceiptsPage(page);
   await cashReceiptsPage.goto();
@@ -180,10 +332,60 @@ Then('I should see cash receipt {string} in the list', async function ({ page },
   await cashReceiptsPage.verifyCashReceiptExists(receiptNumber);
 });
 
-Then('the EPD discount should be {string}', async function ({ page }, amount: string) {
-  const detailPage = (this as any).cashReceiptDetailPage || new CashReceiptDetailPage(page);
-  await detailPage.verifyEPDDiscount(parseFloat(amount));
-});
+Then(
+  'the EPD discount should be correctly calculated for invoice {string}',
+  async function ({ page }, invoiceSelector: string) {
+    const detailPage = (this as any).cashReceiptDetailPage || new CashReceiptDetailPage(page);
+
+    // Resolve invoice number from selector ("first", "second", or actual number)
+    const invoiceNumber = await resolveInvoiceNumber(invoiceSelector, this);
+
+    // Get outstanding invoices context (DB-backed) to map invoice number → invoice ID
+    const outstandingInvoices = (this as any).outstandingInvoices as OutstandingInvoiceRow[] | undefined;
+    if (!outstandingInvoices || outstandingInvoices.length === 0) {
+      throw new Error('No outstanding invoices context available to compute expected EPD discount.');
+    }
+
+    const invoice = outstandingInvoices.find(
+      (inv) => inv.invoice_number.toLowerCase() === invoiceNumber.toLowerCase()
+    );
+    if (!invoice || invoice.early_payment_discount_percentage == null) {
+      throw new Error(
+        `Invoice "${invoiceNumber}" not found in outstandingInvoices context. ` +
+          'Ensure apply-page background step populated outstanding invoices correctly.'
+      );
+    }
+
+    // Fetch applications for this cash receipt from DB and derive expected discount
+    const receiptId =
+      (this as any).currentCashReceiptId || page.url().match(/\/cash-receipts\/([a-f0-9-]+)/)?.[1];
+    if (!receiptId) {
+      throw new Error('No current cash receipt ID available in context or URL.');
+    }
+
+    const applications = await getCashReceiptApplications(receiptId);
+    const invoiceApplications = applications.filter(
+      (a) => !a.is_reversed && a.invoice_id === invoice.id
+    );
+
+    if (invoiceApplications.length === 0) {
+      throw new Error(
+        `No cash_receipt_applications rows found for receipt "${receiptId}" and invoice "${invoiceNumber}".`
+      );
+    }
+
+    const expectedDiscount = invoiceApplications.reduce(
+      (total, app) => total + Number(app.discount_taken || 0),
+      0
+    );
+
+    // Ensure we are on the receipt detail page, then read actual discount from the Applications table for this invoice.
+    await detailPage.verifyPageLoaded();
+
+    const actualDiscount = await detailPage.getEPDDiscountAmountForInvoice(invoiceNumber);
+    expect(actualDiscount).toBeCloseTo(expectedDiscount, 2);
+  }
+);
 
 Given('I have created a cash receipt with amount {string} for testing', async function ({ page }, amount: string) {
   const cashReceiptsPage = new CashReceiptsPage(page);
