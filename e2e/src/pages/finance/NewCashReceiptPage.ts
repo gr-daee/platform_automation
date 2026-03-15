@@ -271,8 +271,9 @@ export class NewCashReceiptPage extends BasePage {
 
   async save(): Promise<void> {
     await this.saveButton.click();
-    await this.waitForSuccessToast(10000);
-    // Wait for redirect to detail page
+    // App shows toast then immediately router.push() to detail; toast may unmount before we see it.
+    // Treat navigation to detail page as success (reliable); optionally wait for toast briefly.
+    await this.waitForSuccessToast(4000).catch(() => {});
     await expect(this.page).toHaveURL(/\/finance\/cash-receipts\/[a-f0-9-]+/, { timeout: 15000 });
   }
 

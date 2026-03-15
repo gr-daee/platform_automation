@@ -6,7 +6,7 @@
  *         epd_discount_slabs, tenant_settings (EPD config).
  */
 
-import { executeQuery } from './db-helper';
+import { executeQuery, executeDeleteEpdSlabForTestCleanup, executeUpdateEpdSlabDiscountForTestCleanup } from './db-helper';
 
 export interface CashReceiptRow {
   id: string;
@@ -99,6 +99,29 @@ export async function getCashReceiptApplications(cashReceiptId: string): Promise
   );
 }
 
+/** Application row with invoice_number from join (for matching by number when invoice_id alignment is unclear). */
+export interface CashReceiptApplicationWithInvoiceNumber extends CashReceiptApplicationRow {
+  invoice_number: string;
+}
+
+/**
+ * Get applications for a cash receipt with invoice_number (join invoices) for allocation checks by invoice number.
+ */
+export async function getCashReceiptApplicationsWithInvoiceNumbers(
+  cashReceiptId: string
+): Promise<CashReceiptApplicationWithInvoiceNumber[]> {
+  return executeQuery<CashReceiptApplicationWithInvoiceNumber>(
+    `SELECT cra.id, cra.cash_receipt_header_id as cash_receipt_id, cra.invoice_id, cra.amount_applied, cra.discount_taken,
+            cra.application_date, cra.is_reversed, cra.discount_type, cra.was_within_epd_period,
+            i.invoice_number
+     FROM cash_receipt_applications cra
+     LEFT JOIN invoices i ON i.id = cra.invoice_id
+     WHERE cra.cash_receipt_header_id = $1
+     ORDER BY cra.is_reversed ASC, cra.application_date DESC`,
+    [cashReceiptId]
+  );
+}
+
 /**
  * Get invoice outstanding balance from invoices.balance_amount.
  */
@@ -178,6 +201,137 @@ export async function getEPDSlabsForTenant(tenantId: string): Promise<EPDDiscoun
      ORDER BY days_from ASC`,
     [tenantId]
   );
+}
+
+/**
+ * Get EPD discount slab(s) for a tenant matching a specific days range (any is_active).
+ * Use to check if a slab exists before create or before test cleanup delete.
+ */
+export async function getEPDSlabsByDaysRange(
+  tenantId: string,
+  daysFrom: number,
+  daysTo: number
+): Promise<EPDDiscountSlabRow[]> {
+  return executeQuery<EPDDiscountSlabRow>(
+    `SELECT id, tenant_id, days_from, days_to, discount_percentage, is_active
+     FROM epd_discount_slabs
+     WHERE tenant_id = $1 AND days_from = $2 AND days_to = $3
+     ORDER BY is_active DESC`,
+    [tenantId, daysFrom, daysTo]
+  );
+}
+
+/**
+ * Resolve tenant_id for Finance E2E (IACS_TENANT_ID, E2E_TENANT_ID, or query by name 'IACS').
+ */
+export async function getTenantIdForFinanceE2E(): Promise<string | null> {
+  const fromIacs = process.env.IACS_TENANT_ID;
+  if (fromIacs) return fromIacs;
+  const fromE2e = process.env.E2E_TENANT_ID;
+  if (fromE2e) return fromE2e;
+  try {
+    const rows = await executeQuery<{ id: string }>(
+      "SELECT id FROM tenants WHERE name ILIKE $1 LIMIT 1",
+      ['IACS']
+    );
+    return rows.length > 0 ? rows[0].id : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Test cleanup only: delete epd_discount_slabs row(s) for the given tenant and days range.
+ * Use so E2E can re-run add-slab scenarios (e.g. 91-99) without "overlaps with existing range".
+ *
+ * @param tenantId - Tenant UUID
+ * @param daysFrom - days_from (e.g. 91)
+ * @param daysTo - days_to (e.g. 99)
+ * @returns Number of rows deleted
+ */
+export async function deleteEPDSlabsByDaysRangeForTestCleanup(
+  tenantId: string,
+  daysFrom: number,
+  daysTo: number
+): Promise<number> {
+  return executeDeleteEpdSlabForTestCleanup(tenantId, daysFrom, daysTo);
+}
+
+/**
+ * Get dealer (customer) id by business name for a tenant (ILIKE match).
+ * Used to resolve customer for CR creation (e.g. "Ramesh ningappa diggai").
+ */
+export async function getDealerIdByBusinessName(
+  tenantId: string,
+  businessName: string
+): Promise<string | null> {
+  const rows = await executeQuery<{ id: string }>(
+    `SELECT id FROM master_dealers WHERE tenant_id = $1 AND business_name ILIKE $2 LIMIT 1`,
+    [tenantId, businessName]
+  );
+  return rows.length > 0 ? rows[0].id : null;
+}
+
+/**
+ * Find the active EPD slab that covers the given days (days from invoice).
+ * Returns the slab row or null if none matches.
+ */
+export async function getEPDSlabForDays(
+  tenantId: string,
+  daysFromInvoice: number
+): Promise<EPDDiscountSlabRow | null> {
+  const slabs = await getEPDSlabsForTenant(tenantId);
+  const slab = slabs.find((s) => daysFromInvoice >= s.days_from && daysFromInvoice <= s.days_to);
+  return slab ?? null;
+}
+
+/**
+ * Test only: update EPD slab discount percentage in DB (for TC-007 smart flow).
+ * @returns Number of rows updated
+ */
+export async function updateEPDSlabDiscountForTestCleanup(
+  tenantId: string,
+  daysFrom: number,
+  daysTo: number,
+  discountPercent: number
+): Promise<number> {
+  return executeUpdateEpdSlabDiscountForTestCleanup(tenantId, daysFrom, daysTo, discountPercent);
+}
+
+/**
+ * Result of "oldest allocatable invoice + slab that applies" for smart TC-007.
+ */
+export interface OldestInvoiceAndSlabResult {
+  tenantId: string;
+  dealerId: string;
+  oldestInvoice: OutstandingInvoiceRow;
+  daysFromInvoice: number;
+  slab: EPDDiscountSlabRow;
+}
+
+/**
+ * Find the oldest outstanding invoice for a dealer and the EPD slab that applies to it
+ * (using "today" as payment date; days = days from invoice date).
+ * Use for smart TC-007: update that slab to a test %, run test, restore.
+ */
+export async function getOldestAllocatableInvoiceAndSlab(
+  dealerBusinessName: string
+): Promise<OldestInvoiceAndSlabResult | null> {
+  const tenantId = await getTenantIdForFinanceE2E();
+  if (!tenantId) return null;
+  const dealerId = await getDealerIdByBusinessName(tenantId, dealerBusinessName);
+  if (!dealerId) return null;
+  const invoices = await getOutstandingInvoicesForCustomer(dealerId, tenantId);
+  if (invoices.length === 0) return null;
+  const oldest = invoices[0];
+  const invoiceDate = new Date(oldest.invoice_date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  invoiceDate.setHours(0, 0, 0, 0);
+  const daysFromInvoice = Math.max(0, Math.ceil((today.getTime() - invoiceDate.getTime()) / (1000 * 60 * 60 * 24)));
+  const slab = await getEPDSlabForDays(tenantId, daysFromInvoice);
+  if (!slab) return null;
+  return { tenantId, dealerId, oldestInvoice: oldest, daysFromInvoice, slab };
 }
 
 /**

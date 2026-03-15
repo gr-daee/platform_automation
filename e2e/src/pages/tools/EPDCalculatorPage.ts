@@ -27,12 +27,12 @@ export class EPDCalculatorPage extends BasePage {
   }
 
   async goto(): Promise<void> {
-    await this.navigateTo('/tools/epd-calculator');
+    await this.navigateTo('/finance/epd-calculator');
     await this.page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
   }
 
   async verifyPageLoaded(): Promise<void> {
-    await expect(this.page).toHaveURL(/\/tools\/epd-calculator/, { timeout: 10000 });
+    await expect(this.page).toHaveURL(/\/(finance|tools)\/epd-calculator/, { timeout: 10000 });
     await expect(this.pageTitle.or(this.page.getByText('EPD'))).toBeVisible({ timeout: 10000 }).catch(() => {});
   }
 
@@ -50,6 +50,8 @@ export class EPDCalculatorPage extends BasePage {
   }
 
   async verifyEPDResult(expectedAmount: number): Promise<void> {
-    await expect(this.page.getByText(new RegExp(String(expectedAmount), 'i'))).toBeVisible({ timeout: 5000 });
+    const re = new RegExp(String(expectedAmount), 'i');
+    const locator = this.page.getByText(re);
+    await expect(locator.first()).toBeVisible({ timeout: 5000 });
   }
 }

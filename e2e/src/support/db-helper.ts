@@ -133,6 +133,52 @@ export async function closeConnection(): Promise<void> {
   }
 }
 
+/**
+ * Test cleanup only: DELETE from epd_discount_slabs for a given tenant and days range.
+ * Use to remove E2E-created slabs (e.g. 91-99) so scenarios can run repeatedly.
+ *
+ * @param tenantId - Tenant UUID
+ * @param daysFrom - days_from value
+ * @param daysTo - days_to value
+ * @returns Number of rows deleted (0 or 1)
+ */
+export async function executeDeleteEpdSlabForTestCleanup(
+  tenantId: string,
+  daysFrom: number,
+  daysTo: number
+): Promise<number> {
+  const dbPool = connectToDatabase();
+  const result = await dbPool.query(
+    `DELETE FROM epd_discount_slabs WHERE tenant_id = $1 AND days_from = $2 AND days_to = $3`,
+    [tenantId, daysFrom, daysTo]
+  );
+  const count = result.rowCount ?? 0;
+  if (count > 0) console.log(`✅ Test cleanup: deleted ${count} epd_discount_slabs row(s) for ${daysFrom}-${daysTo} days`);
+  return count;
+}
+
+/**
+ * Test only: UPDATE discount_percentage in epd_discount_slabs for a given tenant and days range.
+ * Use for TC-007 smart flow (set temporary %, then restore after test).
+ *
+ * @returns Number of rows updated (0 or 1)
+ */
+export async function executeUpdateEpdSlabDiscountForTestCleanup(
+  tenantId: string,
+  daysFrom: number,
+  daysTo: number,
+  discountPercent: number
+): Promise<number> {
+  const dbPool = connectToDatabase();
+  const result = await dbPool.query(
+    `UPDATE epd_discount_slabs SET discount_percentage = $4, updated_at = NOW() WHERE tenant_id = $1 AND days_from = $2 AND days_to = $3`,
+    [tenantId, daysFrom, daysTo, discountPercent]
+  );
+  const count = result.rowCount ?? 0;
+  if (count > 0) console.log(`✅ Test: updated epd_discount_slabs ${daysFrom}-${daysTo} to ${discountPercent}%`);
+  return count;
+}
+
 // ==========================================
 // Helper Methods for Common Queries
 // ==========================================

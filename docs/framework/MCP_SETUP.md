@@ -6,7 +6,7 @@ This project configures two MCP servers in `.cursor/mcp.json` for use with Curso
 
 | Server     | Purpose | Config |
 |-----------|---------|--------|
-| **playwright** | Browser automation for test authoring/debugging (snapshots, screenshots, draft flows) | `npx -y @executeautomation/playwright-mcp-server` |
+| **playwright** | Browser automation for test authoring/debugging (snapshots, screenshots, draft flows) | `npx @playwright/mcp@latest` (see `.cursor/mcp.json`) |
 | **linear**     | Linear issue context (read/create issues, link tests to DAEE-114 etc.) | `npx -y mcp-remote https://mcp.linear.app/mcp` |
 
 ## 1. Playwright MCP

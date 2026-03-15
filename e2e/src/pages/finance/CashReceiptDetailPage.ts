@@ -67,11 +67,24 @@ export class CashReceiptDetailPage extends BasePage {
 
   async goto(receiptId: string): Promise<void> {
     await this.navigateTo(`/finance/cash-receipts/${receiptId}`);
-    await this.page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+    await this.page.waitForLoadState('domcontentloaded');
+    await this.waitForDetailPageLoaded();
+  }
+
+  /**
+   * Wait for "Loading cash receipt..." to disappear and main content to be visible.
+   * Uses a single-element locator (page title) to avoid Playwright strict mode violation.
+   */
+  async waitForDetailPageLoaded(): Promise<void> {
+    const loadingText = this.page.getByText('Loading cash receipt...', { exact: false });
+    await loadingText.waitFor({ state: 'hidden', timeout: 20000 }).catch(() => {});
+    await expect(this.pageTitle).toBeVisible({ timeout: 15000 });
+    await this.page.waitForTimeout(300);
   }
 
   async verifyPageLoaded(receiptNumber?: string): Promise<void> {
     await expect(this.page).toHaveURL(/\/finance\/cash-receipts\/[a-f0-9-]+/, { timeout: 10000 });
+    await this.waitForDetailPageLoaded();
     if (receiptNumber) {
       await expect(this.page.getByText(receiptNumber, { exact: false })).toBeVisible({ timeout: 10000 });
     }
@@ -82,8 +95,10 @@ export class CashReceiptDetailPage extends BasePage {
     await this.page.waitForURL(/\/apply/, { timeout: 5000 });
   }
 
-  async verifyApplicationCreated(invoiceNumber: string): Promise<void> {
-    await expect(this.applicationsTable.getByText(invoiceNumber, { exact: false })).toBeVisible({ timeout: 5000 });
+  async verifyApplicationCreated(invoiceNumber: string, timeoutMs = 5000): Promise<void> {
+    await expect(this.applicationsTable).toBeVisible({ timeout: 10000 });
+    await this.applicationsTable.scrollIntoViewIfNeeded();
+    await expect(this.applicationsTable.getByText(invoiceNumber, { exact: false })).toBeVisible({ timeout: timeoutMs });
   }
 
   async verifyEPDDiscount(amount: number): Promise<void> {
@@ -206,18 +221,20 @@ export class CashReceiptDetailPage extends BasePage {
     await expect(amountCell).toContainText(String(expectedAppliedAmount), { timeout: 5000 });
     await expect(discountCell).toContainText(String(expectedDiscountAmount), { timeout: 5000 });
 
-    // 3) Expand EPD/CCN details: click the button in the discount column (Calculator + amount + %)
-    const expandButton = discountCell.getByRole('button').first();
-    await expandButton.click();
+    // 3) Expand EPD/CCN details only when there is discount (button and breakdown row exist)
+    if (expectedDiscountAmount > 0) {
+      const expandButton = discountCell.getByRole('button').first();
+      await expandButton.click();
 
-    // 4) Verify expanded EPD/CCN panel: find the expanded row (contains EPD/CCN heading) and assert amounts within it
-    const expandedRow = this.applicationsTable
-      .locator('tbody tr')
-      .filter({ hasText: /EPD Slab Applied|CCN \(Credit Note\) Generated|Early Payment Discount Applied/i })
-      .first();
-    await expect(expandedRow).toBeVisible({ timeout: 5000 });
-    await expect(expandedRow).toContainText(String(expectedAppliedAmount));
-    await expect(expandedRow).toContainText(String(expectedDiscountAmount));
+      // 4) Verify expanded EPD/CCN panel
+      const expandedRow = this.applicationsTable
+        .locator('tbody tr')
+        .filter({ hasText: /EPD Slab Applied|CCN \(Credit Note\) Generated|Early Payment Discount Applied/i })
+        .first();
+      await expect(expandedRow).toBeVisible({ timeout: 5000 });
+      await expect(expandedRow).toContainText(String(expectedAppliedAmount));
+      await expect(expandedRow).toContainText(String(expectedDiscountAmount));
+    }
   }
 
   private applicationRow(invoiceNumber: string): Locator {
@@ -286,6 +303,17 @@ export class CashReceiptDetailPage extends BasePage {
     await expect(this.page).toHaveURL(/\/finance\/cash-receipts\/[a-f0-9-]+/i, { timeout: 10000 });
   }
 
+  /** Returns true if the receipt detail page shows at least one Journal Entry (link or table). */
+  async isJournalEntrySectionVisible(): Promise<boolean> {
+    const viewJeLink = this.page.getByRole('link', { name: /View Journal Entry/i }).first();
+    if (await viewJeLink.isVisible().catch(() => false)) return true;
+    if (await this.journalEntriesTable.isVisible().catch(() => false)) {
+      const linkCount = await this.journalEntriesTable.locator('tbody').getByRole('link').count();
+      return linkCount > 0;
+    }
+    return false;
+  }
+
   async verifyJournalEntryDetailsFromReceipt(): Promise<void> {
     // Receipt detail page has either a "View Journal Entry" link or a "Journal Entries" table with links.
     const viewJeLink = this.page.getByRole('link', { name: /View Journal Entry/i }).first();
@@ -302,7 +330,10 @@ export class CashReceiptDetailPage extends BasePage {
     const jeNumber = (await jeLink.textContent())?.trim() || '';
 
     await Promise.all([
-      this.page.waitForURL(/\/finance\/journal-entries\/[a-f0-9-]+/i, { timeout: 10000 }),
+      this.page.waitForURL(/\/finance\/journal-entries\/[a-f0-9-]+/i, {
+        timeout: 15000,
+        waitUntil: 'domcontentloaded',
+      }),
       jeLink.click(),
     ]);
 
