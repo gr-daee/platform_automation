@@ -256,7 +256,7 @@ export default defineConfig({
         ...chromeConfig,
         storageState: 'e2e/.auth/iacs-md.json',
       },
-      testMatch: /(o2c|finance)[/\\].*\.spec\.js$/,  // File path routing: O2C + Finance (matches generated .spec.js files)
+      testMatch: /(o2c|finance|p2p)[/\\].*\.spec\.js$/,  // File path routing: O2C + Finance + P2P (matches generated .spec.js files)
       grep: /@iacs-md/,                          // Tag filtering
       grepInvert: /@skip-iacs-md/,               // Skip exclusions
       dependencies: ['setup'],
