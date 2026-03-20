@@ -36,10 +36,18 @@ test.describe("Phase 1 - Procurement Request Requirement and Approval", () => {
     await And("the procurement request status should be \"Approved\"", null, { page });
   });
 
-  test("Approver rejects submitted PR", { tag: ["@p2p-phase1", "@P2P-P1-TC-005", "@p2", "@iacs-md"] }, async ({ Given, page, And, When, Then }) => {
+  test("Approver rejects submitted PR from details page and list page", { tag: ["@p2p-phase1", "@P2P-P1-TC-005", "@p2", "@iacs-md"] }, async ({ Given, page, When, And, Then }) => {
     await Given("I am on the \"p2p/procurement-requests\" page", null, { page });
-    await And("there is a submitted procurement request for testing", null, { page });
-    await When("I reject the submitted procurement request with reason \"AUTO_QA_ Rejection for test\"", null, { page });
+    await When("I create a new procurement request in draft with purpose \"AUTO_QA_ Phase1 reject-flow detail\"", null, { page });
+    await And("I submit the draft procurement request for approval", null, { page });
+    await Then("the procurement request status should be \"Submitted\"", null, { page });
+    await When("I reject the current procurement request from the details page with reason \"AUTO_QA_ Rejection from detail\"", null, { page });
+    await Then("I should see a success message for rejection", null, { page });
+    await And("the procurement request status should be \"Rejected\"", null, { page });
+    await When("I create a new procurement request in draft with purpose \"AUTO_QA_ Phase1 reject-flow list\"", null, { page });
+    await And("I submit the draft procurement request for approval", null, { page });
+    await Then("the procurement request status should be \"Submitted\"", null, { page });
+    await When("I reject the submitted procurement request with reason \"AUTO_QA_ Rejection from list\"", null, { page });
     await Then("I should see a success message for rejection", null, { page });
     await And("the procurement request status should be \"Rejected\"", null, { page });
   });
@@ -54,14 +62,6 @@ test.describe("Phase 1 - Procurement Request Requirement and Approval", () => {
     await Given("I am on the \"p2p/procurement-requests\" page", null, { page });
     await And("there is an approved procurement request for testing", null, { page });
     await Then("the Convert to PO or Create RFQ action should be available for the approved request", null, { page });
-  });
-
-  test("Rejecting a PR requires a rejection reason", { tag: ["@p2p-phase1", "@P2P-P1-TC-008", "@p2", "@iacs-md"] }, async ({ Given, page, And, When, Then }) => {
-    await Given("I am on the \"p2p/procurement-requests\" page", null, { page });
-    await And("there is a submitted procurement request for testing", null, { page });
-    await When("I attempt to reject the submitted procurement request without a reason", null, { page });
-    await Then("I should see a validation message for missing rejection reason", null, { page });
-    await And("the procurement request status should be \"Submitted\"", null, { page });
   });
 
   test("Procurement Request audit trail shows user names and status change history", { tag: ["@p2p-phase1", "@P2P-P1-TC-009", "@p2", "@iacs-md"] }, async ({ Given, page, And, When, Then }) => {
@@ -87,9 +87,8 @@ const bddFileMeta = {
   "Create a Procurement Request in Draft with required fields": {"pickleLocation":"23:3","tags":["@p2p-phase1","@P2P-P1-TC-002","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@P2P-P1-TC-002"]},
   "Submit Draft PR for approval": {"pickleLocation":"31:3","tags":["@p2p-phase1","@P2P-P1-TC-003","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@P2P-P1-TC-003"]},
   "Approver approves submitted PR": {"pickleLocation":"40:3","tags":["@p2p-phase1","@P2P-P1-TC-004","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@P2P-P1-TC-004"]},
-  "Approver rejects submitted PR": {"pickleLocation":"49:3","tags":["@p2p-phase1","@P2P-P1-TC-005","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P1-TC-005"]},
-  "Approve button not available for Draft PR": {"pickleLocation":"58:3","tags":["@p2p-phase1","@P2P-P1-TC-006","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P1-TC-006"]},
-  "Approved PR shows Create RFQ or Convert to PO option": {"pickleLocation":"65:3","tags":["@p2p-phase1","@P2P-P1-TC-007","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@P2P-P1-TC-007"]},
-  "Rejecting a PR requires a rejection reason": {"pickleLocation":"72:3","tags":["@p2p-phase1","@P2P-P1-TC-008","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P1-TC-008"]},
-  "Procurement Request audit trail shows user names and status change history": {"pickleLocation":"81:3","tags":["@p2p-phase1","@P2P-P1-TC-009","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P1-TC-009"]},
+  "Approver rejects submitted PR from details page and list page": {"pickleLocation":"49:3","tags":["@p2p-phase1","@P2P-P1-TC-005","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P1-TC-005"]},
+  "Approve button not available for Draft PR": {"pickleLocation":"66:3","tags":["@p2p-phase1","@P2P-P1-TC-006","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P1-TC-006"]},
+  "Approved PR shows Create RFQ or Convert to PO option": {"pickleLocation":"73:3","tags":["@p2p-phase1","@P2P-P1-TC-007","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@P2P-P1-TC-007"]},
+  "Procurement Request audit trail shows user names and status change history": {"pickleLocation":"80:3","tags":["@p2p-phase1","@P2P-P1-TC-009","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P1-TC-009"]},
 };

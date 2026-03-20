@@ -39,6 +39,7 @@
   "author": "DAEE QA Team",
   "license": "ISC",
   "dependencies": {
+    "@cucumber/cucumber": "^12.7.0",
     "@playwright/test": "^1.48.0",
     "dotenv": "^16.4.7",
     "otpauth": "^9.3.4",
