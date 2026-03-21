@@ -12,9 +12,18 @@ Feature: VAN Cash Receipts
     Given I am logged in to the Application
 
   @FIN-VAN-TC-001 @smoke @critical @p0 @iacs-md
-  Scenario: Valid VAN validation succeeds
-    When I send VAN validation request with VAN "IACS1234" and amount "5000.00"
-    Then VAN validation should succeed with dealer
+  Scenario: End-to-end VAN flow from validation to VAN payment details with receipt and allocation checks
+    When I send VAN validation then posting with amount "234.56"
+    Then VAN payment should be posted successfully
+    And cash receipt should be created for VAN payment "<utr>"
+    And I should see the latest VAN cash receipt on cash receipts page
+    When I open the latest VAN cash receipt details page
+    Then the cash receipt detail should show VAN payment summary and journal details
+    And the cash receipt detail should show auto allocation in FIFO order
+    And the cash receipt detail should validate CCN calculation and hyperlink details when discount exists
+    And the invoice for the last VAN payment should reflect updated outstanding balance
+    Then I should see latest VAN payment on VAN payments page and open details
+    And I should be able to navigate VAN payment detail tabs and see content
 
   @FIN-VAN-TC-002 @negative @iacs-md
   Scenario: Invalid VAN is rejected
@@ -52,15 +61,6 @@ Feature: VAN Cash Receipts
     And cash receipt should be created for VAN payment "<utr>"
     And I open the cash receipt for the last VAN payment
     And the receipt detail shows EPD discount displayed
-
-  @FIN-VAN-TC-008 @smoke @critical @p0 @iacs-md
-  Scenario: VAN payment then verify receipt and invoice in UI
-    When I send VAN validation then posting with unique UTR
-    Then VAN payment should be posted successfully
-    And cash receipt should be created for VAN payment "<utr>"
-    And I open the cash receipt for the last VAN payment
-    And the receipt detail shows amount applied and status
-    And the invoice for the last VAN payment is Paid with balance zero
 
   @FIN-VAN-TC-009 @regression @p1 @iacs-md
   Scenario: Un-apply then re-apply receipt

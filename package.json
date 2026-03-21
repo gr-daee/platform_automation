@@ -15,6 +15,8 @@
     "prebdd:generate": "echo 'Generating BDD step files...'",
     "pretest": "npm run bdd:generate",
     "verify:db": "node scripts/verify-db-connection.js",
+    "test:vapt:van": "node scripts/vapt/run-van-vapt.js",
+    "test:vapt:van:prod": "node scripts/vapt/run-van-vapt.js --mode=prod",
     "comment:execution": "Run by tag: npm run test:dev -- --grep '@O2C-E2E-TC-001' | Run by project: npm run test:dev -- --project=iacs-md | Run by path: npm run test:regression -- e2e/features/o2c/",
     "test:regression": "TEST_EXECUTION_MODE=production playwright test",
     "test:smoke": "TEST_EXECUTION_MODE=production playwright test --grep '@smoke'",

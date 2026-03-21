@@ -45,6 +45,11 @@ export interface VANPaymentCollectionRow {
   created_at: string;
 }
 
+export interface CashReceiptApplicationWithInvoiceDate extends CashReceiptApplicationRow {
+  invoice_number: string | null;
+  invoice_date: string | null;
+}
+
 export interface EPDDiscountSlabRow {
   id: string;
   tenant_id: string;
@@ -158,7 +163,14 @@ export async function getVANPaymentByUTR(utr: string): Promise<VANPaymentCollect
             cash_receipt_header_id as cash_receipt_id,
             created_at
      FROM van_payment_collections
-     WHERE utr = $1
+     WHERE (
+        UPPER(REGEXP_REPLACE(COALESCE(utr, ''), '[^A-Z0-9]', '', 'g')) =
+        UPPER(REGEXP_REPLACE(COALESCE($1, ''), '[^A-Z0-9]', '', 'g'))
+     )
+     OR (
+        UPPER(REGEXP_REPLACE(COALESCE(tran_id, ''), '[^A-Z0-9]', '', 'g')) =
+        UPPER(REGEXP_REPLACE(COALESCE($1, ''), '[^A-Z0-9]', '', 'g'))
+     )
      ORDER BY created_at DESC
      LIMIT 1`,
     [utr]
@@ -185,6 +197,29 @@ export async function getVANPaymentByTransactionId(tranId: string): Promise<VANP
     [tranId]
   );
   return rows.length > 0 ? rows[0] : null;
+}
+
+export async function getCashReceiptApplicationsWithInvoiceDates(
+  cashReceiptId: string
+): Promise<CashReceiptApplicationWithInvoiceDate[]> {
+  return executeQuery<CashReceiptApplicationWithInvoiceDate>(
+    `SELECT cra.id,
+            cra.cash_receipt_header_id as cash_receipt_id,
+            cra.invoice_id,
+            cra.amount_applied,
+            cra.discount_taken,
+            cra.application_date,
+            cra.is_reversed,
+            cra.discount_type,
+            cra.was_within_epd_period,
+            i.invoice_number,
+            i.invoice_date
+     FROM cash_receipt_applications cra
+     LEFT JOIN invoices i ON i.id = cra.invoice_id
+     WHERE cra.cash_receipt_header_id = $1
+     ORDER BY cra.application_date ASC`,
+    [cashReceiptId]
+  );
 }
 
 /**

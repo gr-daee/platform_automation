@@ -7,9 +7,18 @@ test.describe("VAN Cash Receipts", () => {
     await Given("I am logged in to the Application", null, { page });
   });
 
-  test("Valid VAN validation succeeds", { tag: ["@FIN-VAN-TC-001", "@smoke", "@critical", "@p0", "@iacs-md"] }, async ({ When, Then }) => {
-    await When("I send VAN validation request with VAN \"IACS1234\" and amount \"5000.00\"");
-    await Then("VAN validation should succeed with dealer");
+  test("End-to-end VAN flow from validation to VAN payment details with receipt and allocation checks", { tag: ["@FIN-VAN-TC-001", "@smoke", "@critical", "@p0", "@iacs-md"] }, async ({ When, Then, And, page }) => {
+    await When("I send VAN validation then posting with amount \"234.56\"");
+    await Then("VAN payment should be posted successfully");
+    await And("cash receipt should be created for VAN payment \"<utr>\"");
+    await And("I should see the latest VAN cash receipt on cash receipts page", null, { page });
+    await When("I open the latest VAN cash receipt details page", null, { page });
+    await Then("the cash receipt detail should show VAN payment summary and journal details", null, { page });
+    await And("the cash receipt detail should show auto allocation in FIFO order");
+    await And("the cash receipt detail should validate CCN calculation and hyperlink details when discount exists", null, { page });
+    await And("the invoice for the last VAN payment should reflect updated outstanding balance", null, { page });
+    await Then("I should see latest VAN payment on VAN payments page and open details", null, { page });
+    await And("I should be able to navigate VAN payment detail tabs and see content", null, { page });
   });
 
   test("Invalid VAN is rejected", { tag: ["@FIN-VAN-TC-002", "@negative", "@iacs-md"] }, async ({ When, Then }) => {
@@ -49,15 +58,6 @@ test.describe("VAN Cash Receipts", () => {
     await And("the receipt detail shows EPD discount displayed", null, { page });
   });
 
-  test("VAN payment then verify receipt and invoice in UI", { tag: ["@FIN-VAN-TC-008", "@smoke", "@critical", "@p0", "@iacs-md"] }, async ({ When, Then, And, page }) => {
-    await When("I send VAN validation then posting with unique UTR");
-    await Then("VAN payment should be posted successfully");
-    await And("cash receipt should be created for VAN payment \"<utr>\"");
-    await And("I open the cash receipt for the last VAN payment", null, { page });
-    await And("the receipt detail shows amount applied and status", null, { page });
-    await And("the invoice for the last VAN payment is Paid with balance zero", null, { page });
-  });
-
   test("Un-apply then re-apply receipt", { tag: ["@FIN-VAN-TC-009", "@regression", "@p1", "@iacs-md"] }, async ({ When, Then, And, page }) => {
     await When("I send VAN validation then posting with unique UTR");
     await Then("VAN payment should be posted successfully");
@@ -80,13 +80,12 @@ test.use({
 });
 
 const bddFileMeta = {
-  "Valid VAN validation succeeds": {"pickleLocation":"15:3","tags":["@FIN-VAN-TC-001","@smoke","@critical","@p0","@iacs-md"],"ownTags":["@iacs-md","@p0","@critical","@smoke","@FIN-VAN-TC-001"]},
-  "Invalid VAN is rejected": {"pickleLocation":"20:3","tags":["@FIN-VAN-TC-002","@negative","@iacs-md"],"ownTags":["@iacs-md","@negative","@FIN-VAN-TC-002"]},
-  "Invalid signature is rejected": {"pickleLocation":"25:3","tags":["@FIN-VAN-TC-003","@security","@iacs-md"],"ownTags":["@iacs-md","@security","@FIN-VAN-TC-003"]},
-  "Unvalidated payment is rejected on posting": {"pickleLocation":"30:3","tags":["@FIN-VAN-TC-004","@negative","@iacs-md"],"ownTags":["@iacs-md","@negative","@FIN-VAN-TC-004"]},
-  "Successful posting creates cash receipt and FIFO allocation": {"pickleLocation":"35:3","tags":["@FIN-VAN-TC-005","@critical","@p0","@iacs-md"],"ownTags":["@iacs-md","@p0","@critical","@FIN-VAN-TC-005"]},
-  "Duplicate UTR is rejected": {"pickleLocation":"42:3","tags":["@FIN-VAN-TC-006","@edge","@iacs-md"],"ownTags":["@iacs-md","@edge","@FIN-VAN-TC-006"]},
-  "Posted VAN payment shows EPD discount in receipt details": {"pickleLocation":"49:3","tags":["@FIN-VAN-TC-007","@critical","@p0","@iacs-md"],"ownTags":["@iacs-md","@p0","@critical","@FIN-VAN-TC-007"]},
-  "VAN payment then verify receipt and invoice in UI": {"pickleLocation":"57:3","tags":["@FIN-VAN-TC-008","@smoke","@critical","@p0","@iacs-md"],"ownTags":["@iacs-md","@p0","@critical","@smoke","@FIN-VAN-TC-008"]},
+  "End-to-end VAN flow from validation to VAN payment details with receipt and allocation checks": {"pickleLocation":"15:3","tags":["@FIN-VAN-TC-001","@smoke","@critical","@p0","@iacs-md"],"ownTags":["@iacs-md","@p0","@critical","@smoke","@FIN-VAN-TC-001"]},
+  "Invalid VAN is rejected": {"pickleLocation":"29:3","tags":["@FIN-VAN-TC-002","@negative","@iacs-md"],"ownTags":["@iacs-md","@negative","@FIN-VAN-TC-002"]},
+  "Invalid signature is rejected": {"pickleLocation":"34:3","tags":["@FIN-VAN-TC-003","@security","@iacs-md"],"ownTags":["@iacs-md","@security","@FIN-VAN-TC-003"]},
+  "Unvalidated payment is rejected on posting": {"pickleLocation":"39:3","tags":["@FIN-VAN-TC-004","@negative","@iacs-md"],"ownTags":["@iacs-md","@negative","@FIN-VAN-TC-004"]},
+  "Successful posting creates cash receipt and FIFO allocation": {"pickleLocation":"44:3","tags":["@FIN-VAN-TC-005","@critical","@p0","@iacs-md"],"ownTags":["@iacs-md","@p0","@critical","@FIN-VAN-TC-005"]},
+  "Duplicate UTR is rejected": {"pickleLocation":"51:3","tags":["@FIN-VAN-TC-006","@edge","@iacs-md"],"ownTags":["@iacs-md","@edge","@FIN-VAN-TC-006"]},
+  "Posted VAN payment shows EPD discount in receipt details": {"pickleLocation":"58:3","tags":["@FIN-VAN-TC-007","@critical","@p0","@iacs-md"],"ownTags":["@iacs-md","@p0","@critical","@FIN-VAN-TC-007"]},
   "Un-apply then re-apply receipt": {"pickleLocation":"66:3","tags":["@FIN-VAN-TC-009","@regression","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@regression","@FIN-VAN-TC-009"]},
 };
