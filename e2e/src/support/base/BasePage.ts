@@ -79,7 +79,7 @@ export abstract class BasePage {
    * await this.waitForToast('Order created successfully');
    * await this.waitForToast(); // Any success message
    */
-  async waitForToast(message?: string, timeout: number = 5000): Promise<void> {
+  async waitForToast(message?: string | RegExp, timeout: number = 5000): Promise<void> {
     const toast = this.page.locator('[data-sonner-toast]');
     
     if (message) {

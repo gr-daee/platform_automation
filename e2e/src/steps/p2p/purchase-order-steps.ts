@@ -61,11 +61,45 @@ async function ensureRfqHasQuoteAndSelectionApproved(
       throw new Error('No RFQ available in list to proceed.');
     }
   } else {
-    await listPage.openFirstRFQ();
-    const rfqDetail = new RFQDetailPage(page);
-    await rfqDetail.verifyDetailLoaded();
-    const rfqId = rfqDetail.getCurrentRfqIdFromUrl();
-    ctx.currentRfqId = rfqId;
+    // Selection approval is subject to segregation of duties:
+    // if the current user selected the winning quote, they may not be allowed to approve it.
+    // To avoid flaky `$test.skip(...)`, try a few RFQs from the list and pick one that is:
+    // - already `Selection Approved`, OR
+    // - currently approvable (Approve Selection button visible)
+    const rows = page.locator('table tbody tr');
+    const rowCount = await rows.count();
+    const maxToTry = Math.min(rowCount, 5);
+
+    let selectedRfqId: string | null = null;
+
+    for (let i = 0; i < maxToTry; i++) {
+      await rows.nth(i).click();
+
+      const rfqDetail = new RFQDetailPage(page);
+      await rfqDetail.verifyDetailLoaded();
+
+      const selectionApprovedNow = await page.getByText(/Selection Approved/i).first().isVisible().catch(() => false);
+      const approveSelectionVisibleNow = await rfqDetail.approveSelectionButton.isVisible().catch(() => false);
+
+      if (selectionApprovedNow || approveSelectionVisibleNow) {
+        selectedRfqId = rfqDetail.getCurrentRfqIdFromUrl();
+        ctx.currentRfqId = selectedRfqId;
+        break;
+      }
+
+      // Not suitable for current user; go back to list and try next row.
+      await page.goto('/p2p/rfq');
+      await page.waitForLoadState('networkidle');
+      await listPage.verifyPageLoaded();
+    }
+
+    if (!selectedRfqId) {
+      // Fallback: keep original behavior (first RFQ).
+      await listPage.openFirstRFQ();
+      const rfqDetail = new RFQDetailPage(page);
+      await rfqDetail.verifyDetailLoaded();
+      ctx.currentRfqId = rfqDetail.getCurrentRfqIdFromUrl();
+    }
   }
 
   let rfqId = ctx.currentRfqId as string;
@@ -114,6 +148,34 @@ async function ensureRfqHasQuoteAndSelectionApproved(
       throw e;
     }
   }
+
+  /**
+   * Segregation of duties: if the current user clicks "Select" on Quote Comparison, they become
+   * `selected_by` and cannot "Approve Selection" (another user must approve). Approve on RFQ
+   * detail *before* opening comparison so we never select-and-block ourselves when approval is
+   * still pending for someone else's selection.
+   */
+  const approveSelectionOnDetailIfPossible = async (): Promise<boolean> => {
+    await page.goto(`/p2p/rfq/${rfqId}`);
+    await page.waitForLoadState('networkidle');
+    const detailForApproval = new RFQDetailPage(page);
+    await detailForApproval.verifyDetailLoaded();
+
+    const alreadyApproved = await page.getByText(/Selection Approved/i).first().isVisible().catch(() => false);
+    if (alreadyApproved) return true;
+
+    const approveVisible = await detailForApproval.approveSelectionButton.isVisible().catch(() => false);
+    if (!approveVisible) return false;
+
+    await detailForApproval.approveSelectionButton.click();
+    const dialog = page.getByRole('dialog').or(page.getByRole('alertdialog'));
+    const confirm = dialog.getByRole('button', { name: /Confirm|Approve/i });
+    if (await confirm.first().isVisible().catch(() => false)) await confirm.first().click();
+    await expect(page.locator('[data-sonner-toast]')).toBeVisible({ timeout: 15000 });
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    return await page.getByText(/Selection Approved/i).first().isVisible().catch(() => false);
+  };
 
   // Go to comparison and select winning quote (if not already selected)
   const compPage = new QuoteComparisonPage(page);
@@ -178,17 +240,32 @@ async function ensureRfqHasQuoteAndSelectionApproved(
   }
   if (noQuotes) throw new Error('No quotes present on Quote Comparison page.');
 
+  // Approve on detail after rfqId is final (may have changed in no-quotes fallback). Then reload comparison for snapshot.
+  const selectionApprovedBeforeCompare = await approveSelectionOnDetailIfPossible();
+  await compPage.goto(rfqId);
+  await compPage.verifyPageLoaded();
+
   // Snapshot supplier + line count for later verification
   const supplierCell = page.locator('table tbody tr').first().locator('td').first();
   const supplierName = (await supplierCell.textContent().catch(() => ''))?.trim() || undefined;
   const rowCount = await page.locator('table tbody tr').count();
   ctx.winningQuoteSnapshot = { supplierName, lineRowCount: rowCount } satisfies WinningQuoteSnapshot;
 
-  // If "Select" is available, select first quote and submit reason.
+  // If "Select" is available, only select when we cannot already approve on detail (SoD).
+  // Selecting as the current user makes this user `selected_by`; they cannot approve their own selection.
   const selectBtn = page.getByRole('button', { name: 'Select' }).first();
-  if (await selectBtn.isVisible().catch(() => false)) {
-    await compPage.selectFirstQuoteAndSubmitReason('AUTO_QA_ Best price and delivery (Phase 4 prerequisite)');
-    await page.waitForLoadState('networkidle');
+  const selectVisible = await selectBtn.isVisible().catch(() => false);
+  if (selectVisible && !selectionApprovedBeforeCompare) {
+    if ($test) {
+      $test.skip(
+        true,
+        'Winning quote selection is still required on this RFQ, but the same user cannot approve their own selection (segregation of duties). Use an RFQ with Selection Approved or with a pending selection awaiting approval by this user (not the selector).'
+      );
+      return;
+    }
+    throw new Error(
+      'Cannot select winning quote as current user: segregation of duties requires another user to approve.'
+    );
   }
 
   // Ensure selection approved on RFQ detail (Approve Selection if visible)
@@ -436,6 +513,22 @@ Then('the attempted approval and routing should be auditable', async function ()
 // -------------------------
 
 Given('there is a draft purchase order for testing', async function ({ page, $test }) {
+  // Prefer an existing Draft PO so we do not depend on RFQ quote-selection + SoD (same user cannot select and approve).
+  const poList = new PurchaseOrdersPage(page);
+  await poList.goto();
+  await poList.verifyPageLoaded();
+  if (await poList.hasAtLeastOnePO()) {
+    const draftRow = page.locator('table tbody tr').filter({ hasText: 'Draft' }).first();
+    if (await draftRow.isVisible().catch(() => false)) {
+      await poList.openFirstByStatus('Draft');
+      const poDetail = new PurchaseOrderDetailPage(page);
+      (this as any).currentPoId = poDetail.getCurrentPoIdFromUrl();
+      await poDetail.verifyStatus('Draft');
+      console.log('✅ [P2P] Reusing existing Draft PO for testing');
+      return;
+    }
+  }
+
   await ensureRfqHasQuoteAndSelectionApproved(page, this as any, $test);
   await page.goto(`/p2p/rfq/${(this as any).currentRfqId}`);
   await page.waitForLoadState('networkidle');
