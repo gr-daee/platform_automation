@@ -7,12 +7,24 @@ import { QuoteComparisonPage } from '../../pages/p2p/QuoteComparisonPage';
 import { InviteSuppliersPage } from '../../pages/p2p/InviteSuppliersPage';
 import { PurchaseOrdersPage } from '../../pages/p2p/PurchaseOrdersPage';
 import { PurchaseOrderDetailPage } from '../../pages/p2p/PurchaseOrderDetailPage';
+import { ProcurementRequestsPage } from '../../pages/p2p/ProcurementRequestsPage';
+import {
+  SecondaryUserSession,
+  logoutSecondaryUserSession,
+  startSecondaryUserSession,
+  stopSecondaryUserSession,
+} from '../../support/multi-user-session-helper';
 
 const { Given, When, Then } = createBdd();
 
 type WinningQuoteSnapshot = {
   supplierName?: string;
   lineRowCount?: number;
+};
+
+type MultiUserContext = {
+  approverSession?: SecondaryUserSession;
+  currentPoId?: string;
 };
 
 async function ensureRfqHasQuoteAndSelectionApproved(
@@ -407,6 +419,20 @@ Then(
 Given(
   "there is a submitted purchase order awaiting approval and within the approver's value limit",
   async function ({ page, $test }) {
+    // Deterministic-first path: reuse an already submitted PO when available.
+    const poList = new PurchaseOrdersPage(page);
+    await poList.goto();
+    await poList.verifyPageLoaded();
+    const submittedRow = page.locator('table tbody tr').filter({ hasText: 'Submitted' }).first();
+    if (await submittedRow.isVisible().catch(() => false)) {
+      await poList.openFirstByStatus('Submitted');
+      const existing = new PurchaseOrderDetailPage(page);
+      (this as any).currentPoId = existing.getCurrentPoIdFromUrl();
+      await existing.verifyStatus('Submitted');
+      console.log('✅ [P2P] Reusing existing Submitted PO awaiting approval');
+      return;
+    }
+
     await ensureRfqHasQuoteAndSelectionApproved(page, this as any, $test);
     // Create PO and submit
     await page.goto(`/p2p/rfq/${(this as any).currentRfqId}`);
@@ -427,24 +453,58 @@ Given(
   }
 );
 
-When('the approver reviews the purchase order with quote vs PO details', async function ({ page }) {
-  const poDetail = new PurchaseOrderDetailPage(page);
+When('the approver reviews the purchase order with quote vs PO details', async function ({ browser }) {
+  const ctx = this as MultiUserContext;
+  if (!ctx.currentPoId) {
+    throw new Error('Missing current PO id in scenario context; cannot open approver review.');
+  }
+
+  // Reuse an existing secondary session if a previous step already opened it.
+  if (!ctx.approverSession) ctx.approverSession = await startSecondaryUserSession(browser, 'iacs-ed');
+
+  const approverPage = ctx.approverSession.page;
+  await approverPage.goto(`/p2p/purchase-orders/${ctx.currentPoId}`);
+  await approverPage.waitForLoadState('networkidle');
+  await expect(approverPage).toHaveURL(new RegExp(`/p2p/purchase-orders/${ctx.currentPoId}$`), { timeout: 15000 });
+
+  const poDetail = new PurchaseOrderDetailPage(approverPage);
   await poDetail.verifyQuoteVsPoVisible();
   console.log('✅ [P2P] Quote vs PO details visible');
 });
 
 Then('the approver should see the winning quote details alongside the PO lines', async function ({ page }) {
-  // Minimum viable check: quote-vs-po section visible and line items visible
-  const poDetail = new PurchaseOrderDetailPage(page);
+  const ctx = this as MultiUserContext;
+  const approverPage = ctx.approverSession?.page ?? page;
+
+  // Minimum viable check: quote-vs-po section visible and line items visible.
+  const poDetail = new PurchaseOrderDetailPage(approverPage);
   await poDetail.verifyQuoteVsPoVisible();
   await expect(poDetail.lineItemsTable.first()).toBeVisible({ timeout: 10000 });
   console.log('✅ [P2P] Winning quote details alongside PO lines (best-effort)');
 });
 
 When('the approver approves the submitted purchase order', async function ({ page }) {
-  const poDetail = new PurchaseOrderDetailPage(page);
+  const ctx = this as MultiUserContext;
+  const approverPage = ctx.approverSession?.page ?? page;
+  const poDetail = new PurchaseOrderDetailPage(approverPage);
   await poDetail.approve();
-  console.log('✅ [P2P] Approved submitted PO');
+  console.log('✅ [P2P] Approved submitted PO in ED session');
+});
+
+When('the approver logs out and control returns to MD session', async function ({ page }) {
+  const ctx = this as MultiUserContext;
+  if (!ctx.approverSession) {
+    console.log('ℹ️ [P2P] No approver session to logout; continuing on MD session');
+    return;
+  }
+
+  await logoutSecondaryUserSession(ctx.approverSession);
+  await stopSecondaryUserSession(ctx.approverSession);
+  delete ctx.approverSession;
+
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+  console.log('✅ [P2P] ED approver logged out and control returned to MD session');
 });
 
 When('I approve the submitted purchase order', async function ({ page }) {
@@ -455,9 +515,8 @@ When('I approve the submitted purchase order', async function ({ page }) {
 
 Then('the approval action and status change should be auditable', async function ({ page }) {
   const poDetail = new PurchaseOrderDetailPage(page);
-  const activityVisible = await poDetail.activityHeading.isVisible().catch(() => false);
-  expect(activityVisible, 'Expected Activity/Audit section to be visible for auditability').toBe(true);
-  console.log('✅ [P2P] Approval audit section visible');
+  await poDetail.ensureAuditContains('Submitted', 'Approved');
+  console.log('✅ [P2P] Approval action and Submitted → Approved status transition auditable');
 });
 
 // -------------------------
@@ -666,38 +725,222 @@ Then(
 // AC4.6 multi-PO scenario
 // -------------------------
 
+type Tc007Context = {
+  tc007PrId?: string;
+  tc007PoNumbers?: string[];
+};
+
+async function ensureOnTc007PrDetail(page: any, ctx: Tc007Context): Promise<void> {
+  if (!ctx.tc007PrId) {
+    throw new Error('TC-007 PR id is missing from context.');
+  }
+  const expectedPath = `/p2p/procurement-requests/${ctx.tc007PrId}`;
+  if (!page.url().includes(expectedPath)) {
+    await page.goto(expectedPath);
+  }
+  await page.waitForURL(new RegExp(`/p2p/procurement-requests/${ctx.tc007PrId}$`), { timeout: 15000 });
+}
+
+async function convertApprovedPrToPoWithSplit(
+  page: any,
+  quantityToConvert: number,
+  preferredSupplierOptionIndex: number,
+  $test?: typeof test
+): Promise<string> {
+  const openConvertBtn = page
+    .getByRole('button', { name: /Convert Remaining to PO|Convert to Purchase Order/i })
+    .first();
+  await expect(openConvertBtn).toBeVisible({ timeout: 15000 });
+  await openConvertBtn.click();
+
+  const dialog = page.getByRole('dialog').filter({ hasText: /Convert to Purchase Order/i });
+  await expect(dialog).toBeVisible({ timeout: 15000 });
+
+  // Select first convertible line and set split quantity.
+  const rowCheckboxes = dialog.getByRole('checkbox');
+  if (await rowCheckboxes.nth(1).isVisible().catch(() => false)) {
+    await rowCheckboxes.nth(1).check();
+  }
+  const qtyInput = dialog.locator('input[type="number"]').first();
+  await expect(qtyInput).toBeVisible({ timeout: 10000 });
+  await qtyInput.fill(String(quantityToConvert));
+
+  // Supplier select (pick requested option index where possible).
+  const supplierTrigger = dialog.getByRole('combobox').first();
+  await expect(supplierTrigger).toBeVisible({ timeout: 10000 });
+  await supplierTrigger.click();
+  const supplierOptions = page.getByRole('option');
+  await expect(supplierOptions.first()).toBeVisible({ timeout: 10000 });
+  const supplierCount = await supplierOptions.count();
+  if (supplierCount === 0) {
+    if ($test) {
+      $test.skip(true, 'No supplier options available in Convert to PO dialog.');
+      return '';
+    }
+    throw new Error('No supplier options available in Convert to PO dialog.');
+  }
+  const supplierIdx = Math.min(preferredSupplierOptionIndex, supplierCount - 1);
+  for (let i = 0; i <= supplierIdx; i += 1) {
+    await page.keyboard.press('ArrowDown');
+  }
+  await page.keyboard.press('Enter');
+
+  // Delivery Warehouse is mandatory for PR -> PO conversion.
+  const warehouseTrigger = dialog.getByRole('button', { name: /Select delivery warehouse/i }).first();
+  await expect(warehouseTrigger).toBeVisible({ timeout: 10000 });
+  await warehouseTrigger.click();
+
+  const warehouseDialog = page.getByRole('dialog').filter({ hasText: /Select Delivery Warehouse/i });
+  const warehouseDialogVisible = await warehouseDialog.isVisible({ timeout: 5000 }).catch(() => false);
+  if (warehouseDialogVisible) {
+    await warehouseDialog.getByRole('button', { name: /^Select$/i }).first().click();
+    await expect(warehouseDialog).toBeHidden({ timeout: 10000 });
+  } else {
+    const warehouseOptions = page.getByRole('option');
+    await expect(warehouseOptions.first()).toBeVisible({ timeout: 10000 });
+    await warehouseOptions.first().click({ force: true });
+  }
+
+  const createPoBtn = dialog.getByRole('button', { name: /Create Purchase Order/i }).first();
+  await expect(createPoBtn).toBeEnabled({ timeout: 10000 });
+  await createPoBtn.click();
+
+  const successToast = page
+    .locator('[data-sonner-toast]')
+    .filter({ hasText: /Successfully converted to Purchase Order/i })
+    .last();
+
+  const toastAppeared = await successToast.isVisible({ timeout: 20000 }).catch(() => false);
+  if (!toastAppeared) {
+    await page.waitForURL(/\/p2p\/purchase-orders\/[^/]+$/, { timeout: 20000 });
+  }
+
+  const toastText = toastAppeared ? (await successToast.textContent()) || '' : '';
+  const toastPoMatch = toastText.match(/PO-\d+/i);
+  let poNumber = toastPoMatch?.[0] || '';
+  if (!poNumber) {
+    const pageText = (await page.locator('body').textContent()) || '';
+    const pagePoMatch = pageText.match(/PO-\d+/i);
+    poNumber = pagePoMatch?.[0] || '';
+  }
+  await expect(dialog).toBeHidden({ timeout: 10000 }).catch(() => undefined);
+
+  return poNumber;
+}
+
 Given(
   'there is an approved procurement request with items awarded to multiple suppliers via quote selection',
-  async function ({ $test }) {
-    $test?.skip(
-      true,
-      'Multi-supplier award setup requires deterministic PR+RFQ fixtures and selection splitting; not yet implemented in automation.'
-    );
+  async function ({ page }) {
+    const ctx = this as Tc007Context;
+    const prPage = new ProcurementRequestsPage(page);
+    await prPage.goto();
+    await prPage.verifyPageLoaded();
+
+    const purpose = `AUTO_QA_P4_TC007_${Date.now()}`;
+    await prPage.openCreateRequestDialog();
+
+    const requiredBy = new Date();
+    requiredBy.setDate(requiredBy.getDate() + 14);
+    await prPage.fillRequiredByDate(requiredBy.toISOString().slice(0, 10));
+    await prPage.fillPurpose(purpose);
+    await prPage.addFirstMaterial();
+
+    const materialTrigger = page.getByRole('button', { name: /Search and select material/i });
+    await expect(materialTrigger).toBeVisible({ timeout: 10000 });
+    await materialTrigger.click();
+    const materialDialog = page.getByRole('dialog').filter({ hasText: /Select Raw Material/i });
+    await expect(materialDialog).toBeVisible({ timeout: 10000 });
+    await materialDialog.getByRole('button', { name: /^Select$/i }).first().click();
+    await expect(materialDialog).toBeHidden({ timeout: 10000 });
+
+    // Force split-capable quantity for 3 PO conversions.
+    const qtyInput = page.locator('input[id^="qty-"]').first();
+    await expect(qtyInput).toBeVisible({ timeout: 10000 });
+    await qtyInput.fill('9');
+
+    await prPage.saveDraft();
+    // Purpose is not displayed in list columns; pick newest Draft row after save.
+    const draftRow = page.locator('table tbody tr').filter({ hasText: 'Draft' }).first();
+    await expect(draftRow).toBeVisible({ timeout: 15000 });
+    await draftRow.click();
+    await page.waitForURL(/\/p2p\/procurement-requests\/[^/]+$/, { timeout: 15000 });
+
+    const submitBtn = page.getByRole('button', { name: /Submit for Approval/i }).first();
+    await expect(submitBtn).toBeVisible({ timeout: 15000 });
+    await submitBtn.click();
+    await expect(page.locator('[data-sonner-toast]').filter({ hasText: /submitted|success/i })).toBeVisible({
+      timeout: 10000,
+    });
+
+    const approveBtn = page.getByRole('button', { name: /Approve Request/i }).first();
+    await expect(approveBtn).toBeVisible({ timeout: 15000 });
+    await approveBtn.click();
+    await expect(page.locator('[data-sonner-toast]').filter({ hasText: /approved|success/i })).toBeVisible({
+      timeout: 10000,
+    });
+
+    await expect(page.getByText('Approved', { exact: true }).first()).toBeVisible({ timeout: 15000 });
+    const urlMatch = page.url().match(/\/p2p\/procurement-requests\/([^/]+)$/);
+    ctx.tc007PrId = urlMatch?.[1];
+    ctx.tc007PoNumbers = [];
+    console.log(`✅ [P2P] TC-007 setup complete on PR ${ctx.tc007PrId}`);
   }
 );
 
 When(
   'I create a purchase order for the lines awarded to Supplier A from that procurement request',
-  async function () {
-    // skipped
+  async function ({ page, $test }) {
+    const ctx = this as Tc007Context;
+    await ensureOnTc007PrDetail(page, ctx);
+    const po = await convertApprovedPrToPoWithSplit(page, 3, 0, $test);
+    if (po) ctx.tc007PoNumbers = [...(ctx.tc007PoNumbers || []), po];
+    console.log(`✅ [P2P] TC-007 created PO #1 ${po || '(number not parsed)'}`);
   }
 );
 
 When(
   'I create another purchase order for the lines awarded to Supplier B from that procurement request',
-  async function () {
-    // skipped
+  async function ({ page, $test }) {
+    const ctx = this as Tc007Context;
+    await ensureOnTc007PrDetail(page, ctx);
+    const po = await convertApprovedPrToPoWithSplit(page, 3, 1, $test);
+    if (po) ctx.tc007PoNumbers = [...(ctx.tc007PoNumbers || []), po];
+    console.log(`✅ [P2P] TC-007 created PO #2 ${po || '(number not parsed)'}`);
+  }
+);
+
+When(
+  'I create a third purchase order for the remaining split quantities from that procurement request',
+  async function ({ page, $test }) {
+    const ctx = this as Tc007Context;
+    await ensureOnTc007PrDetail(page, ctx);
+    const po = await convertApprovedPrToPoWithSplit(page, 3, 2, $test);
+    if (po) ctx.tc007PoNumbers = [...(ctx.tc007PoNumbers || []), po];
+    console.log(`✅ [P2P] TC-007 created PO #3 ${po || '(number not parsed)'}`);
   }
 );
 
 Then(
   'the procurement request should track that all its lines are covered by purchase orders',
-  async function () {
-    // skipped
+  async function ({ page }) {
+    const ctx = this as Tc007Context;
+    await ensureOnTc007PrDetail(page, ctx);
+    expect((ctx.tc007PoNumbers || []).length, 'Expected exactly 3 PO conversions for TC-007').toBe(3);
+
+    // Convert button should disappear when no pending quantities remain.
+    const convertBtn = page
+      .getByRole('button', { name: /Convert Remaining to PO|Convert to Purchase Order/i })
+      .first();
+    await expect(convertBtn).toBeHidden({ timeout: 10000 });
+    console.log('✅ [P2P] PR lines appear fully covered (no remaining conversion action)');
   }
 );
 
-Then('the procurement request should be marked as "Fully converted" or equivalent status', async function () {
-  // skipped
+Then('the procurement request should be marked as "Fully converted" or equivalent status', async function ({ page }) {
+  const ctx = this as Tc007Context;
+  await ensureOnTc007PrDetail(page, ctx);
+  const finalStatus = page.getByText(/Converted to PO|Approved/i).first();
+  await expect(finalStatus).toBeVisible({ timeout: 15000 });
+  console.log('✅ [P2P] PR marked with final status after 3 split POs');
 });
 

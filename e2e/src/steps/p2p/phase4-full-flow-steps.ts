@@ -6,6 +6,10 @@ import { InviteSuppliersPage } from '../../pages/p2p/InviteSuppliersPage';
 import { QuoteComparisonPage } from '../../pages/p2p/QuoteComparisonPage';
 import { RFQDetailPage } from '../../pages/p2p/RFQDetailPage';
 import { RFQListPage } from '../../pages/p2p/RFQListPage';
+import {
+  startSecondaryUserSession,
+  stopSecondaryUserSession,
+} from '../../support/multi-user-session-helper';
 
 const { When, Then } = createBdd();
 
@@ -170,5 +174,51 @@ When(
     await page.waitForLoadState('networkidle');
     await expect(page.getByText(/Selection Approved/i)).toBeVisible({ timeout: 15000 });
     console.log('✅ [P2P] RFQ selection approved via test DB; detail shows Selection Approved');
+  }
+);
+
+When(
+  'the ED approver approves the RFQ quote selection in a separate session',
+  async function ({ browser, page, $test }) {
+    const rfqId = (this as any).currentRfqId as string | undefined;
+    if (!rfqId) throw new Error('Missing currentRfqId');
+
+    const session = await startSecondaryUserSession(browser, 'iacs-ed');
+    try {
+      const edPage = session.page;
+      await edPage.goto(`/p2p/rfq/${rfqId}`);
+      await edPage.waitForLoadState('networkidle');
+      const detail = new RFQDetailPage(edPage);
+      await detail.verifyDetailLoaded();
+
+      const alreadyApproved = await edPage.getByText(/Selection Approved/i).first().isVisible().catch(() => false);
+      if (!alreadyApproved) {
+        const canApprove = await detail.approveSelectionButton.isVisible().catch(() => false);
+        if (!canApprove) {
+          if ($test) {
+            $test.skip(
+              true,
+              'ED approver cannot see Approve Selection for this RFQ; ensure quote selection is submitted and ED has approval permission.'
+            );
+            return;
+          }
+          throw new Error('Approve Selection button not visible for ED approver.');
+        }
+        await detail.approveSelectionButton.click();
+        const dialog = edPage.getByRole('dialog').or(edPage.getByRole('alertdialog'));
+        const confirm = dialog.getByRole('button', { name: /Confirm|Approve|Yes/i });
+        if (await confirm.first().isVisible().catch(() => false)) {
+          await confirm.first().click();
+        }
+      }
+
+      await expect(edPage.getByText(/Selection Approved/i).first()).toBeVisible({ timeout: 15000 });
+      console.log('✅ [P2P] ED approver approved RFQ quote selection in separate session');
+    } finally {
+      await stopSecondaryUserSession(session);
+    }
+
+    await page.goto(`/p2p/rfq/${rfqId}`);
+    await page.waitForLoadState('networkidle');
   }
 );

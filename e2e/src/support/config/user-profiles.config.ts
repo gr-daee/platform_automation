@@ -52,6 +52,20 @@ export const USER_PROFILES: Record<string, UserProfile> = {
     testDataScope: 'iacs',
     description: 'Managing Director with full O2C access, read-only Finance and Warehouse',
   },
+
+  'iacs-ed': {
+    id: 'iacs-ed',
+    email: process.env.IACS_ED_USER_EMAIL!,
+    password: process.env.IACS_ED_USER_PASSWORD!,
+    totpSecret: process.env.IACS_ED_USER_TOTP_SECRET!,
+    tenant: 'IACS',
+    role: 'Executive Director',
+    displayName: 'IACS ED User',
+    storageStatePath: 'e2e/.auth/iacs-ed.json',
+    permissions: ['p2p:approve', 'p2p:read'],
+    testDataScope: 'iacs',
+    description: 'Executive Director approver for P2P approval flows',
+  },
   
   // TODO: Re-enable after 4-5 weeks when we have more tests
   // 'iacs-finance-admin': {

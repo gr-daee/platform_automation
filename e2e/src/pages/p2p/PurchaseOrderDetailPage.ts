@@ -47,7 +47,16 @@ export class PurchaseOrderDetailPage extends BasePage {
     return match[1];
   }
 
+  private async waitForPageReady(): Promise<void> {
+    const loadingPermissions = this.page.getByText('Loading permissions...');
+    if (await loadingPermissions.first().isVisible().catch(() => false)) {
+      await expect(loadingPermissions.first()).toBeHidden({ timeout: 30000 });
+    }
+    await this.page.waitForLoadState('networkidle');
+  }
+
   async verifyStatus(expected: string): Promise<void> {
+    await this.waitForPageReady();
     // PO layout may not wrap content in <main>; status is shown on the header Badge.
     await expect(this.page.getByText(expected, { exact: true }).first()).toBeVisible({
       timeout: 15000,
@@ -69,11 +78,8 @@ export class PurchaseOrderDetailPage extends BasePage {
       await confirmBtn.first().click();
     }
 
-    // Success path calls toast then window.location.reload(); toast may vanish before we assert.
-    await expect(this.page.getByText('Submitted', { exact: true }).first()).toBeVisible({
-      timeout: 30000,
-    });
-    await this.page.waitForLoadState('networkidle');
+    // Submit triggers reload in UI; status is asserted in dedicated Then step.
+    await this.waitForPageReady();
   }
 
   async approve(): Promise<void> {
