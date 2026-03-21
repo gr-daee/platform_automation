@@ -94,6 +94,29 @@ async function getBalanceFromUI(page: any, invoiceNumber: string): Promise<numbe
   return parseFloat(balanceText?.replace(/[₹,\s]/g, '') || '0');
 }
 
+/**
+ * Creates a cash receipt for the test customer and stores receipt context.
+ */
+async function createCashReceiptForTesting(context: any, page: any, amount: number): Promise<void> {
+  const cashReceiptsPage = new CashReceiptsPage(page);
+  await cashReceiptsPage.goto();
+  await cashReceiptsPage.verifyPageLoaded();
+  await cashReceiptsPage.clickNewCashReceipt();
+
+  const newReceiptPage = new NewCashReceiptPage(page);
+  await newReceiptPage.verifyPageLoaded();
+  await newReceiptPage.fillMinimalForm(amount, 'Ramesh ningappa diggai');
+  await newReceiptPage.save();
+
+  await expect(page).toHaveURL(/\/finance\/cash-receipts\/[a-f0-9-]+/, { timeout: 15000 });
+  const receiptId = page.url().match(/\/cash-receipts\/([a-f0-9-]+)/)?.[1];
+  if (!receiptId) {
+    throw new Error('Failed to create cash receipt - receipt ID not found in URL');
+  }
+  context.currentCashReceiptId = receiptId;
+  context.currentCashReceiptAmount = amount;
+}
+
 Given('I am on the cash receipts page', async function ({ page }) {
   const cashReceiptsPage = new CashReceiptsPage(page);
   await cashReceiptsPage.goto();
@@ -223,6 +246,15 @@ Then(
       throw new Error('No current cash receipt ID available to verify outstanding balance.');
     }
 
+    // Prefer DB verification (stable and invoice-id scoped) to avoid UI row ambiguity.
+    const dbBalance = await getInvoiceOutstandingBalance(invoice.id);
+    if (dbBalance !== null && dbBalance !== undefined) {
+      const actual = Number(dbBalance.toFixed(2));
+      expect(actual).toBeCloseTo(expectedBalance, 2);
+      return;
+    }
+
+    // Fallback to UI only if DB balance could not be fetched.
     await applyPage.goto(receiptId);
     await applyPage.verifyPageLoaded();
 
@@ -562,26 +594,7 @@ Then(
 );
 
 Given('I have created a cash receipt with amount {string} for testing', async function ({ page }, amount: string) {
-  const cashReceiptsPage = new CashReceiptsPage(page);
-  await cashReceiptsPage.goto();
-  await cashReceiptsPage.verifyPageLoaded();
-  await cashReceiptsPage.clickNewCashReceipt();
-  
-  // Fill and submit new cash receipt form with same customer as O2C E2E (Ramesh ningappa diggai)
-  const newReceiptPage = new NewCashReceiptPage(page);
-  await newReceiptPage.verifyPageLoaded();
-  await newReceiptPage.fillMinimalForm(parseFloat(amount), 'Ramesh ningappa diggai');
-  await newReceiptPage.save();
-  
-  // Store receipt ID from URL after successful creation
-  await expect(page).toHaveURL(/\/finance\/cash-receipts\/[a-f0-9-]+/, { timeout: 15000 });
-  const receiptId = page.url().match(/\/cash-receipts\/([a-f0-9-]+)/)?.[1];
-  if (receiptId) {
-    (this as any).currentCashReceiptId = receiptId;
-    (this as any).currentCashReceiptAmount = parseFloat(amount);
-  } else {
-    throw new Error('Failed to create cash receipt - receipt ID not found in URL');
-  }
+  await createCashReceiptForTesting(this as any, page, parseFloat(amount));
 });
 
 Given('I am on the apply page for the current cash receipt', async function ({ page }) {
@@ -723,6 +736,134 @@ When('I apply partial amount {string} to invoice {string}', async function ({ pa
   (this as any)[`invoice_${invoiceNumber}_applied_amount`] = parseFloat(amount);
 });
 
+Given('I remember invoice {string} as the target invoice', async function ({}, invoiceSelector: string) {
+  const invoiceNumber = await resolveInvoiceNumber(invoiceSelector, this);
+  (this as any).targetInvoiceNumber = invoiceNumber;
+  const outstandingInvoices = (this as any).outstandingInvoices as OutstandingInvoiceRow[] | undefined;
+  const invoice = outstandingInvoices?.find(
+    (inv) => inv.invoice_number.toLowerCase() === invoiceNumber.toLowerCase()
+  );
+  if (invoice) (this as any).targetInvoiceId = invoice.id;
+});
+
+Given('I remember the oldest pending invoice as the target invoice', async function ({}) {
+  const outstandingInvoices = (this as any).outstandingInvoices as OutstandingInvoiceRow[] | undefined;
+  if (!outstandingInvoices || outstandingInvoices.length === 0) {
+    throw new Error('No outstanding invoices available to remember oldest pending invoice.');
+  }
+  // getOutstandingInvoicesForCustomer already returns FIFO (invoice_date ASC)
+  const oldest = outstandingInvoices[0];
+  (this as any).targetInvoiceNumber = oldest.invoice_number;
+  (this as any).targetInvoiceId = oldest.id;
+});
+
+Given('I create a cash receipt using ratio {string} of remembered invoice outstanding', async function ({ page }, ratioText: string) {
+  const targetInvoiceId = (this as any).targetInvoiceId as string | undefined;
+  if (!targetInvoiceId) {
+    throw new Error('No remembered target invoice found. Run target invoice selection step first.');
+  }
+  const ratio = Number(ratioText);
+  if (!Number.isFinite(ratio) || ratio <= 0) {
+    throw new Error(`Invalid ratio: "${ratioText}"`);
+  }
+
+  const outstanding = Number((await getInvoiceOutstandingBalance(targetInvoiceId)) || 0);
+  if (!(outstanding > 0)) {
+    throw new Error(`Remembered invoice has no positive outstanding amount. Current outstanding: ${outstanding}`);
+  }
+
+  // Keep amount practical and valid while remaining data-driven.
+  const amount = Number(Math.max(1, Math.round(outstanding * ratio * 100) / 100));
+  await createCashReceiptForTesting(this as any, page, amount);
+});
+
+Given('I remember an invoice fully payable by current cash receipt', async function ({}) {
+  const outstandingInvoices = (this as any).outstandingInvoices as OutstandingInvoiceRow[] | undefined;
+  const receiptAmount = Number((this as any).currentCashReceiptAmount || 0);
+  if (!outstandingInvoices || outstandingInvoices.length === 0) {
+    throw new Error('No outstanding invoices available to choose a payable target invoice.');
+  }
+  if (!(receiptAmount > 0)) {
+    throw new Error('Current cash receipt amount missing in context.');
+  }
+
+  const candidates = outstandingInvoices
+    .filter((inv) => Number(inv.balance_amount) > 0 && Number(inv.balance_amount) <= receiptAmount)
+    .sort((a, b) => Number(b.balance_amount) - Number(a.balance_amount));
+  if (candidates.length === 0) {
+    throw new Error(
+      `No outstanding invoice found with balance <= receipt amount (${receiptAmount}).`
+    );
+  }
+
+  const target = candidates[0];
+  (this as any).targetInvoiceNumber = target.invoice_number;
+  (this as any).targetInvoiceId = target.id;
+});
+
+Given(
+  'I remember an invoice with outstanding between {string} and {string} as the target invoice',
+  async function ({}, minBalance: string, maxBalance: string) {
+    const outstandingInvoices = (this as any).outstandingInvoices as OutstandingInvoiceRow[] | undefined;
+    if (!outstandingInvoices || outstandingInvoices.length === 0) {
+      throw new Error('No outstanding invoices available to choose a ranged target invoice.');
+    }
+    const min = Number(minBalance);
+    const max = Number(maxBalance);
+    if (Number.isNaN(min) || Number.isNaN(max)) {
+      throw new Error(`Invalid min/max balance range: "${minBalance}" to "${maxBalance}"`);
+    }
+
+    const candidates = outstandingInvoices
+      .filter((inv) => Number(inv.balance_amount) >= min && Number(inv.balance_amount) <= max)
+      .sort((a, b) => Number(b.balance_amount) - Number(a.balance_amount));
+    if (candidates.length === 0) {
+      throw new Error(
+        `No outstanding invoice found in range [${min}, ${max}] for current customer.`
+      );
+    }
+
+    const target = candidates[0];
+    (this as any).targetInvoiceNumber = target.invoice_number;
+    (this as any).targetInvoiceId = target.id;
+  }
+);
+
+When('I apply partial amount {string} to remembered invoice', async function ({ page }, amount: string) {
+  const targetInvoiceNumber = (this as any).targetInvoiceNumber as string | undefined;
+  if (!targetInvoiceNumber) {
+    throw new Error('No remembered target invoice found. Run "I remember invoice ..." first.');
+  }
+  const applyPage = (this as any).cashReceiptApplyPage || new CashReceiptApplyPage(page);
+  const receiptId = (this as any).currentCashReceiptId || page.url().match(/\/cash-receipts\/([a-f0-9-]+)/)?.[1];
+  if (!(this as any).cashReceiptApplyPage && receiptId) await applyPage.goto(receiptId);
+
+  await applyPage.selectInvoice(targetInvoiceNumber);
+  await applyPage.setAmountToApply(targetInvoiceNumber, parseFloat(amount));
+  await applyPage.saveApplication();
+
+  (this as any)[`invoice_${targetInvoiceNumber}_applied_amount`] = parseFloat(amount);
+});
+
+When('I apply full cash receipt amount to remembered invoice', async function ({ page }) {
+  const targetInvoiceNumber = (this as any).targetInvoiceNumber as string | undefined;
+  const receiptAmount = Number((this as any).currentCashReceiptAmount || 0);
+  if (!targetInvoiceNumber) {
+    throw new Error('No remembered target invoice found. Run target invoice selection step first.');
+  }
+  if (!(receiptAmount > 0)) {
+    throw new Error('Current cash receipt amount missing in context.');
+  }
+
+  const applyPage = (this as any).cashReceiptApplyPage || new CashReceiptApplyPage(page);
+  const receiptId = (this as any).currentCashReceiptId || page.url().match(/\/cash-receipts\/([a-f0-9-]+)/)?.[1];
+  if (!(this as any).cashReceiptApplyPage && receiptId) await applyPage.goto(receiptId);
+
+  await applyPage.selectInvoice(targetInvoiceNumber);
+  await applyPage.setAmountToApply(targetInvoiceNumber, receiptAmount);
+  await applyPage.saveApplication();
+});
+
 When('I apply remaining amount to invoice {string}', async function ({ page }, invoiceSelector: string) {
   const applyPage = (this as any).cashReceiptApplyPage || new CashReceiptApplyPage(page);
   const receiptId = (this as any).currentCashReceiptId || page.url().match(/\/cash-receipts\/([a-f0-9-]+)/)?.[1];
@@ -738,6 +879,59 @@ When('I apply remaining amount to invoice {string}', async function ({ page }, i
   
   await applyPage.selectInvoice(invoiceNumber);
   await applyPage.setAmountToApply(invoiceNumber, remainingBalance);
+  await applyPage.saveApplication();
+});
+
+When('I apply remaining amount to remembered invoice', async function ({ page }) {
+  const targetInvoiceNumber = (this as any).targetInvoiceNumber as string | undefined;
+  const targetInvoiceId = (this as any).targetInvoiceId as string | undefined;
+  if (!targetInvoiceNumber) {
+    throw new Error('No remembered target invoice found. Run "I remember invoice ..." first.');
+  }
+  const applyPage = (this as any).cashReceiptApplyPage || new CashReceiptApplyPage(page);
+  const receiptId = (this as any).currentCashReceiptId || page.url().match(/\/cash-receipts\/([a-f0-9-]+)/)?.[1];
+  if (!(this as any).cashReceiptApplyPage && receiptId) await applyPage.goto(receiptId);
+
+  // Read current remaining balance for the remembered invoice from DB (stable across UI order changes).
+  let remainingBalance = 0;
+  if (targetInvoiceId) {
+    remainingBalance = Number((await getInvoiceOutstandingBalance(targetInvoiceId)) || 0);
+  }
+  if (!(remainingBalance > 0)) {
+    remainingBalance = await getBalanceFromUI(page, targetInvoiceNumber);
+  }
+  expect(remainingBalance).toBeGreaterThan(0);
+  const currentReceiptAmount = Number((this as any).currentCashReceiptAmount || 0);
+  const amountToApply =
+    currentReceiptAmount > 0 ? Math.min(remainingBalance, currentReceiptAmount) : remainingBalance;
+
+  await applyPage.selectInvoice(targetInvoiceNumber);
+  await applyPage.setAmountToApply(targetInvoiceNumber, amountToApply);
+  await applyPage.saveApplication();
+});
+
+When('I apply full outstanding amount to remembered invoice', async function ({ page }) {
+  const targetInvoiceNumber = (this as any).targetInvoiceNumber as string | undefined;
+  const targetInvoiceId = (this as any).targetInvoiceId as string | undefined;
+  if (!targetInvoiceNumber) {
+    throw new Error('No remembered target invoice found. Run target invoice selection step first.');
+  }
+
+  const applyPage = (this as any).cashReceiptApplyPage || new CashReceiptApplyPage(page);
+  const receiptId = (this as any).currentCashReceiptId || page.url().match(/\/cash-receipts\/([a-f0-9-]+)/)?.[1];
+  if (!(this as any).cashReceiptApplyPage && receiptId) await applyPage.goto(receiptId);
+
+  let outstandingBalance = 0;
+  if (targetInvoiceId) {
+    outstandingBalance = Number((await getInvoiceOutstandingBalance(targetInvoiceId)) || 0);
+  }
+  if (!(outstandingBalance > 0)) {
+    outstandingBalance = await getBalanceFromUI(page, targetInvoiceNumber);
+  }
+  expect(outstandingBalance).toBeGreaterThan(0);
+
+  await applyPage.selectInvoice(targetInvoiceNumber);
+  await applyPage.setAmountToApply(targetInvoiceNumber, outstandingBalance);
   await applyPage.saveApplication();
 });
 
@@ -786,6 +980,69 @@ Then('invoice {string} should be fully paid', async function ({ page }, invoiceS
     await expect(rowContainingInvoice).toBeVisible({ timeout: 5000 });
     await expect(rowContainingInvoice.getByText(/0|Fully Paid|Paid|₹\s*0/i)).toBeVisible({ timeout: 5000 });
   }
+});
+
+Then('the remembered invoice should be fully paid', async function ({ page }) {
+  const targetInvoiceNumber = (this as any).targetInvoiceNumber as string | undefined;
+  if (!targetInvoiceNumber) {
+    throw new Error('No remembered target invoice found. Run "I remember invoice ..." first.');
+  }
+
+  const outstandingInvoices = (this as any).outstandingInvoices as OutstandingInvoiceRow[] | undefined;
+  const invoice = outstandingInvoices?.find(
+    (inv) => inv.invoice_number?.toLowerCase() === targetInvoiceNumber.toLowerCase()
+  );
+  const invoiceId = invoice?.id;
+
+  if (invoiceId) {
+    const balance = await getInvoiceOutstandingBalance(invoiceId);
+    expect(Number(balance)).toBe(0);
+    return;
+  }
+
+  const receiptId = (this as any).currentCashReceiptId || page.url().match(/\/cash-receipts\/([a-f0-9-]+)/)?.[1];
+  if (receiptId) {
+    const detailPage = (this as any).cashReceiptDetailPage || new CashReceiptDetailPage(page);
+    await detailPage.goto(receiptId);
+    await detailPage.verifyPageLoaded();
+    const applicationsTable = page.locator('table').filter({ has: page.locator('th').filter({ hasText: 'Invoice' }) }).first();
+    await expect(applicationsTable).toBeVisible({ timeout: 10000 });
+    const rowContainingInvoice = applicationsTable
+      .locator('tr')
+      .filter({ hasText: new RegExp(targetInvoiceNumber.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') });
+    await expect(rowContainingInvoice).toBeVisible({ timeout: 5000 });
+    await expect(rowContainingInvoice.getByText(/0|Fully Paid|Paid|₹\s*0/i)).toBeVisible({ timeout: 5000 });
+  }
+});
+
+Then('the payment should be allocated to remembered invoice', async function ({ page }) {
+  const targetInvoiceNumber = (this as any).targetInvoiceNumber as string | undefined;
+  if (!targetInvoiceNumber) {
+    throw new Error('No remembered target invoice found. Run target invoice selection step first.');
+  }
+
+  const detailPage = (this as any).cashReceiptDetailPage || new CashReceiptDetailPage(page);
+  const receiptId = (this as any).currentCashReceiptId || page.url().match(/\/cash-receipts\/([a-f0-9-]+)/)?.[1];
+
+  if (receiptId && page.url().includes('/apply')) {
+    await page.waitForURL((u) => !u.href.includes('/apply'), { timeout: 15000, waitUntil: 'domcontentloaded' });
+  }
+
+  if (receiptId) {
+    const applicationsWithNumbers = await getCashReceiptApplicationsWithInvoiceNumbers(receiptId);
+    const hasThisInvoice = applicationsWithNumbers.some(
+      (a) => !a.is_reversed && a.invoice_number?.toLowerCase() === targetInvoiceNumber.toLowerCase()
+    );
+    if (hasThisInvoice) return;
+
+    await detailPage.goto(receiptId);
+    await page.reload({ waitUntil: 'networkidle' });
+    await detailPage.verifyPageLoaded();
+    await detailPage.verifyApplicationCreated(targetInvoiceNumber, 20000);
+    return;
+  }
+
+  await detailPage.verifyApplicationCreated(targetInvoiceNumber, 15000);
 });
 
 Then('invoice {string} should have remaining balance {string}', async function ({ page }, invoiceSelector: string, expectedBalance: string) {

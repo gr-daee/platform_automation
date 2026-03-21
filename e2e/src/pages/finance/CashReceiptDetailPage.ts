@@ -36,7 +36,7 @@ export class CashReceiptDetailPage extends BasePage {
 
   constructor(page: Page) {
     super(page);
-    this.pageTitle = page.locator('h2').filter({ hasText: /CR-|receipt/i }).first();
+    this.pageTitle = page.locator('h1, h2').filter({ hasText: /CR-|cash receipt|receipt/i }).first();
     this.applyToInvoicesButton = page.getByRole('button', { name: /Apply to Invoices/i });
     this.backButton = page.getByRole('link', { name: /Back/i }).or(page.getByRole('button', { name: /Back/i }));
     // Table under "Applications to Invoices" card (Source: [id]/page.tsx - table with Invoice, Amount, CCN Amount columns)
@@ -78,8 +78,19 @@ export class CashReceiptDetailPage extends BasePage {
   async waitForDetailPageLoaded(): Promise<void> {
     const loadingText = this.page.getByText('Loading cash receipt...', { exact: false });
     await loadingText.waitFor({ state: 'hidden', timeout: 20000 }).catch(() => {});
-    await expect(this.pageTitle).toBeVisible({ timeout: 15000 });
-    await this.page.waitForTimeout(300);
+    // Page marker can vary; accept any stable receipt-detail marker.
+    const markerChecks = await Promise.all([
+      this.pageTitle.isVisible().catch(() => false),
+      this.applyToInvoicesButton.isVisible().catch(() => false),
+      this.applicationsTable.isVisible().catch(() => false),
+      this.page.getByText(/Total Receipt Amount|Balance \(Unapplied\)/i).first().isVisible().catch(() => false),
+    ]);
+    const hasAnyMarker = markerChecks.some(Boolean);
+    if (!hasAnyMarker) {
+      await expect(this.applyToInvoicesButton.or(this.applicationsTable).first()).toBeVisible({
+        timeout: 15000,
+      });
+    }
   }
 
   async verifyPageLoaded(receiptNumber?: string): Promise<void> {
@@ -273,16 +284,36 @@ export class CashReceiptDetailPage extends BasePage {
     const ccnNumber = (await ccnLink.textContent())?.trim();
     if (!ccnNumber) throw new Error('Unable to read CCN number from CCN hyperlink text.');
 
-    await Promise.all([
-      this.page.waitForURL(/\/finance\/credit-memos\/[a-f0-9-]+/i, { timeout: 10000 }),
-      ccnLink.click(),
-    ]);
+    // CCN link may open in same tab or a popup/new tab depending on frontend behavior.
+    const popupPromise = this.page.waitForEvent('popup', { timeout: 5000 }).catch(() => null);
+    const sameTabPromise = this.page
+      .waitForURL(/\/finance\/credit-memos\/[^/?#]+/i, {
+        timeout: 10000,
+        waitUntil: 'domcontentloaded',
+      })
+      .then(() => this.page)
+      .catch(() => null);
+
+    await ccnLink.click();
+
+    const popup = await popupPromise;
+    const ccnPage = popup ?? (await sameTabPromise);
+    if (!ccnPage) {
+      throw new Error('CCN link click did not navigate to credit memo page in same tab or popup.');
+    }
+    if (popup) {
+      await popup.waitForLoadState('domcontentloaded');
+      await popup.waitForURL(/\/finance\/credit-memos\/[^/?#]+/i, {
+        timeout: 15000,
+        waitUntil: 'domcontentloaded',
+      });
+    }
 
     // Credit memo detail page shows h1 = credit_memo_number and key cards/labels.
-    await expect(this.page.getByRole('heading', { name: ccnNumber })).toBeVisible({ timeout: 10000 });
-    await expect(this.page.getByText(/Credit Memo Information/i)).toBeVisible({ timeout: 10000 });
+    await expect(ccnPage.getByRole('heading', { name: ccnNumber })).toBeVisible({ timeout: 10000 });
+    await expect(ccnPage.getByText(/Credit Memo Information/i)).toBeVisible({ timeout: 10000 });
     // Scope CCN number check to the \"Credit Memo Number\" field container to avoid strict-mode conflicts
-    const creditMemoNumberContainer = this.page
+    const creditMemoNumberContainer = ccnPage
       .getByText(/Credit Memo Number/i)
       .locator('..')
       .locator('..');
@@ -290,7 +321,7 @@ export class CashReceiptDetailPage extends BasePage {
       timeout: 10000,
     });
     // Scope discount/credit amount to the Total Credit Amount card to avoid strict-mode violations
-    const totalCreditCard = this.page
+    const totalCreditCard = ccnPage
       .getByText(/Total Credit Amount/i)
       .locator('..')
       .locator('..');
@@ -299,8 +330,13 @@ export class CashReceiptDetailPage extends BasePage {
       timeout: 10000,
     });
 
-    await this.page.goBack();
-    await expect(this.page).toHaveURL(/\/finance\/cash-receipts\/[a-f0-9-]+/i, { timeout: 10000 });
+    if (popup) {
+      await popup.close();
+      await expect(this.page).toHaveURL(/\/finance\/cash-receipts\/[a-f0-9-]+/i, { timeout: 10000 });
+    } else {
+      await this.page.goBack();
+      await expect(this.page).toHaveURL(/\/finance\/cash-receipts\/[a-f0-9-]+/i, { timeout: 10000 });
+    }
   }
 
   /** Returns true if the receipt detail page shows at least one Journal Entry (link or table). */

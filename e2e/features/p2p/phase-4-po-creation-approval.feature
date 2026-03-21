@@ -48,7 +48,7 @@ Feature: Phase 4 - Purchase Order Creation and Approval
     And the PO status change from "Draft" to "Submitted" should be auditable
 
   # --- Approver approval and quote vs PO visibility with approval limits (AC4.3, AC4.4, AC4.5) ---
-  @P2P-P4-TC-003 @p1 @iacs-md
+  @P2P-P4-TC-003 @p1 @iacs-md @requires-iacs-ed
   Scenario: Approver sees quote vs PO and approves within approval limit
     Given I am on the "p2p/procurement-requests" page
     When I create a new procurement request in draft with unique purpose prefix "AUTO_QA_P4_TC003"

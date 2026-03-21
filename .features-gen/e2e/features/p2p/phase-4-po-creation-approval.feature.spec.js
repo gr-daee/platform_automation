@@ -41,7 +41,7 @@ test.describe("Phase 4 - Purchase Order Creation and Approval", () => {
     await And("the PO status change from \"Draft\" to \"Submitted\" should be auditable", null, { page });
   });
 
-  test("Approver sees quote vs PO and approves within approval limit", { tag: ["@P2P-P4-TC-003", "@p1", "@iacs-md"] }, async ({ Given, page, When, Then, And, browser }) => {
+  test("Approver sees quote vs PO and approves within approval limit", { tag: ["@P2P-P4-TC-003", "@p1", "@iacs-md", "@requires-iacs-ed"] }, async ({ Given, page, When, Then, And, browser }) => {
     await Given("I am on the \"p2p/procurement-requests\" page", null, { page });
     await When("I create a new procurement request in draft with unique purpose prefix \"AUTO_QA_P4_TC003\"", null, { page });
     await Then("I should see a success message for procurement request creation", null, { page });
@@ -145,7 +145,7 @@ test.use({
 const bddFileMeta = {
   "View Purchase Orders list page": {"pickleLocation":"14:3","tags":["@P2P-P4-TC-001","@p1","@smoke","@iacs-md"],"ownTags":["@iacs-md","@smoke","@p1","@P2P-P4-TC-001"]},
   "Create PO from approved quote selection and submit for approval": {"pickleLocation":"23:3","tags":["@P2P-P4-TC-002","@p1","@iacs-md","@e2e"],"ownTags":["@e2e","@iacs-md","@p1","@P2P-P4-TC-002"]},
-  "Approver sees quote vs PO and approves within approval limit": {"pickleLocation":"52:3","tags":["@P2P-P4-TC-003","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@P2P-P4-TC-003"]},
+  "Approver sees quote vs PO and approves within approval limit": {"pickleLocation":"52:3","tags":["@P2P-P4-TC-003","@p1","@iacs-md","@requires-iacs-ed"],"ownTags":["@requires-iacs-ed","@iacs-md","@p1","@P2P-P4-TC-003"]},
   "PO at approver limit is allowed but value above routes to higher approver": {"pickleLocation":"88:3","tags":["@P2P-P4-TC-004","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P4-TC-004"]},
   "Approve and send to supplier actions not allowed from Draft": {"pickleLocation":"100:3","tags":["@P2P-P4-TC-005","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P4-TC-005"]},
   "Approve only from Submitted and send to supplier only from Approved": {"pickleLocation":"106:3","tags":["@P2P-P4-TC-006","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P4-TC-006"]},

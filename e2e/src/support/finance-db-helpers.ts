@@ -150,7 +150,13 @@ export async function getInvoiceNumberById(invoiceId: string): Promise<string | 
  */
 export async function getVANPaymentByUTR(utr: string): Promise<VANPaymentCollectionRow | null> {
   const rows = await executeQuery<VANPaymentCollectionRow>(
-    `SELECT id, utr, tran_id, bene_acc_no, status, amount, dealer_id, cash_receipt_id, created_at
+    `SELECT id, utr, tran_id,
+            virtual_account_number as bene_acc_no,
+            posting_status as status,
+            txn_amount as amount,
+            dealer_id,
+            cash_receipt_header_id as cash_receipt_id,
+            created_at
      FROM van_payment_collections
      WHERE utr = $1
      ORDER BY created_at DESC
@@ -165,7 +171,13 @@ export async function getVANPaymentByUTR(utr: string): Promise<VANPaymentCollect
  */
 export async function getVANPaymentByTransactionId(tranId: string): Promise<VANPaymentCollectionRow | null> {
   const rows = await executeQuery<VANPaymentCollectionRow>(
-    `SELECT id, utr, tran_id, bene_acc_no, status, amount, dealer_id, cash_receipt_id, created_at
+    `SELECT id, utr, tran_id,
+            virtual_account_number as bene_acc_no,
+            posting_status as status,
+            txn_amount as amount,
+            dealer_id,
+            cash_receipt_header_id as cash_receipt_id,
+            created_at
      FROM van_payment_collections
      WHERE tran_id = $1
      ORDER BY created_at DESC
