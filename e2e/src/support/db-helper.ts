@@ -179,6 +179,33 @@ export async function executeUpdateEpdSlabDiscountForTestCleanup(
   return count;
 }
 
+/**
+ * E2E test only: approve RFQ quote selection in DB (bypasses UI SoD when selector === approver).
+ * Expects RFQ in `selection_pending` with winning_quote_id already set from UI.
+ */
+export async function approveRfqSelectionForE2ETest(
+  rfqId: string,
+  approverUserId: string
+): Promise<number> {
+  const dbPool = connectToDatabase();
+  const result = await dbPool.query(
+    `UPDATE rfq_headers
+     SET status = 'selection_approved',
+         selection_approved_by = $2::uuid,
+         selection_approved_at = NOW(),
+         updated_at = NOW()
+     WHERE id = $1::uuid
+       AND status = 'selection_pending'
+       AND is_active = true`,
+    [rfqId, approverUserId]
+  );
+  const count = result.rowCount ?? 0;
+  if (count > 0) {
+    console.log(`✅ E2E test: RFQ ${rfqId} set to selection_approved (DB)`);
+  }
+  return count;
+}
+
 // ==========================================
 // Helper Methods for Common Queries
 // ==========================================
@@ -194,14 +221,15 @@ export async function executeUpdateEpdSlabDiscountForTestCleanup(
  * console.log('User auth state before login:', userBefore);
  */
 export async function getUserByEmail(email: string): Promise<any | null> {
+  // Supabase auth.users uses raw_app_meta_data / raw_user_meta_data (not app_metadata).
   const query = `
     SELECT 
       id,
       email,
       created_at,
       last_sign_in_at,
-      app_metadata,
-      user_metadata
+      raw_app_meta_data,
+      raw_user_meta_data
     FROM auth.users
     WHERE email = $1
   `;

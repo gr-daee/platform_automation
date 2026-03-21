@@ -13,8 +13,26 @@ test.describe("Phase 4 - Purchase Order Creation and Approval", () => {
     await And("I should see the list or empty state", null, { page });
   });
 
-  test("Create PO from approved quote selection and submit for approval", { tag: ["@P2P-P4-TC-002", "@p1", "@iacs-md"] }, async ({ Given, page, When, Then, And }) => {
-    await Given("there is an RFQ with an approved quote selection ready for PO creation", null, { page });
+  test("Create PO from approved quote selection and submit for approval", { tag: ["@P2P-P4-TC-002", "@p1", "@iacs-md", "@e2e"] }, async ({ Given, page, When, Then, And }) => {
+    await Given("I am on the \"p2p/procurement-requests\" page", null, { page });
+    await When("I create a new procurement request in draft with unique purpose prefix \"AUTO_QA_P4_E2E\"", null, { page });
+    await Then("I should see a success message for procurement request creation", null, { page });
+    await And("the new procurement request should appear in the list with status \"Draft\"", null, { page });
+    await When("I submit the draft procurement request for approval", null, { page });
+    await Then("the procurement request status should be \"Submitted\"", null, { page });
+    await When("I approve the submitted procurement request", null, { page });
+    await Then("I should see a success message for approval", null, { page });
+    await And("the procurement request status should be \"Approved\"", null, { page });
+    await When("I create an RFQ from the current phase 4 E2E approved procurement request", null, { page });
+    await Then("I should be on the RFQ detail page", null, { page });
+    await When("I invite up to 3 suppliers and issue the RFQ for phase 4 E2E", null, { page });
+    await And("I enter quotes from each invited supplier with distinct unit prices for phase 4 E2E", null, { page });
+    await When("I navigate to Quote Comparison for that RFQ", null, { page });
+    await Then("I should see the comparison table with at least one quote row", null, { page });
+    await When("I select the first quote as winning and submit with reason \"AUTO_QA_ Best price and delivery for P4 E2E\"", null, { page });
+    await Then("I should see a success message for quote selection", null, { page });
+    await And("I capture the winning quote snapshot from Quote Comparison for the current RFQ", null, { page });
+    await When("I approve the RFQ quote selection via test database for the current RFQ", null, { page });
     await When("I create a purchase order from the approved quote selection", null, { page });
     await Then("the purchase order should be created in \"Draft\" status", null, { page });
     await And("the PO supplier, items, quantities, and rates should match the winning quote", null, { page });
@@ -84,11 +102,11 @@ test.use({
 
 const bddFileMeta = {
   "View Purchase Orders list page": {"pickleLocation":"14:3","tags":["@P2P-P4-TC-001","@p1","@smoke","@iacs-md"],"ownTags":["@iacs-md","@smoke","@p1","@P2P-P4-TC-001"]},
-  "Create PO from approved quote selection and submit for approval": {"pickleLocation":"21:3","tags":["@P2P-P4-TC-002","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@P2P-P4-TC-002"]},
-  "Approver sees quote vs PO and approves within approval limit": {"pickleLocation":"32:3","tags":["@P2P-P4-TC-003","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@P2P-P4-TC-003"]},
-  "PO at approver limit is allowed but value above routes to higher approver": {"pickleLocation":"42:3","tags":["@P2P-P4-TC-004","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P4-TC-004"]},
-  "Approve and send to supplier actions not allowed from Draft": {"pickleLocation":"54:3","tags":["@P2P-P4-TC-005","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P4-TC-005"]},
-  "Approve only from Submitted and send to supplier only from Approved": {"pickleLocation":"60:3","tags":["@P2P-P4-TC-006","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P4-TC-006"]},
-  "Delivery Warehouse selection shows available warehouses during PO creation": {"pickleLocation":"70:3","tags":["@P2P-P4-TC-008","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P4-TC-008"]},
-  "One procurement request generates multiple purchase orders and PR is fully converted": {"pickleLocation":"77:3","tags":["@P2P-P4-TC-007","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P4-TC-007"]},
+  "Create PO from approved quote selection and submit for approval": {"pickleLocation":"23:3","tags":["@P2P-P4-TC-002","@p1","@iacs-md","@e2e"],"ownTags":["@e2e","@iacs-md","@p1","@P2P-P4-TC-002"]},
+  "Approver sees quote vs PO and approves within approval limit": {"pickleLocation":"52:3","tags":["@P2P-P4-TC-003","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@P2P-P4-TC-003"]},
+  "PO at approver limit is allowed but value above routes to higher approver": {"pickleLocation":"62:3","tags":["@P2P-P4-TC-004","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P4-TC-004"]},
+  "Approve and send to supplier actions not allowed from Draft": {"pickleLocation":"74:3","tags":["@P2P-P4-TC-005","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P4-TC-005"]},
+  "Approve only from Submitted and send to supplier only from Approved": {"pickleLocation":"80:3","tags":["@P2P-P4-TC-006","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P4-TC-006"]},
+  "Delivery Warehouse selection shows available warehouses during PO creation": {"pickleLocation":"90:3","tags":["@P2P-P4-TC-008","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P4-TC-008"]},
+  "One procurement request generates multiple purchase orders and PR is fully converted": {"pickleLocation":"97:3","tags":["@P2P-P4-TC-007","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P4-TC-007"]},
 };

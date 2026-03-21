@@ -86,18 +86,26 @@ export class RFQDetailPage extends BasePage {
   }
 
   /** Open Enter Quote dialog and submit a quote: select first supplier, set valid until, ensure line unit price, Create Quote. */
-  async enterQuoteAndSubmit(validUntilDate: string): Promise<void> {
+  async enterQuoteAndSubmit(validUntilDate: string, unitPrice?: string): Promise<void> {
     await this.enterQuoteButton.click();
     const dialog = this.page.getByRole('dialog').filter({ hasText: /Enter Supplier Quote/i });
-    await expect(dialog).toBeVisible({ timeout: 5000 });
-    const supplierCombo = dialog.getByRole('combobox', { name: /Select invited supplier/i });
-    await supplierCombo.click();
-    await this.page.getByRole('option').first().click();
-    await dialog.getByLabel(/Valid Until/i).fill(validUntilDate);
+    await expect(dialog).toBeVisible({ timeout: 10000 });
+    // Radix Select: trigger has data-slot="select-trigger"; first in dialog is supplier (Label "Select Supplier *").
+    const supplierTrigger = dialog.locator('[data-slot="select-trigger"]').first();
+    await expect(supplierTrigger).toBeVisible({ timeout: 15000 });
+    await supplierTrigger.click();
+    await expect(this.page.getByRole('listbox')).toBeVisible({ timeout: 5000 });
+    const firstRealOption = this.page
+      .getByRole('option')
+      .filter({ hasNotText: /No eligible suppliers/i })
+      .first();
+    await expect(firstRealOption).toBeVisible({ timeout: 5000 });
+    await firstRealOption.click();
+    // Labels are not wired with htmlFor; two date inputs: Valid From, Valid Until.
+    await dialog.locator('input[type="date"]').nth(1).fill(validUntilDate);
     const firstUnitPrice = dialog.getByPlaceholder('0.00').first();
     if (await firstUnitPrice.isVisible().catch(() => false)) {
-      const val = await firstUnitPrice.inputValue();
-      if (!val || parseFloat(val) <= 0) await firstUnitPrice.fill('10');
+      await firstUnitPrice.fill(unitPrice ?? '10');
     }
     await dialog.getByRole('button', { name: /Create Quote/i }).click();
     await expect(this.page.locator('[data-sonner-toast]').filter({ hasText: /created|submitted|success/i })).toBeVisible({
@@ -105,6 +113,24 @@ export class RFQDetailPage extends BasePage {
     });
     await expect(dialog).toBeHidden({ timeout: 5000 });
     console.log('✅ [P2P] Quote entered and submitted');
+  }
+
+  /** Enter one quote per remaining invited supplier (first option each time after reload) until Enter Quote is gone or max iterations. */
+  async enterQuotesForAllInvitedSuppliers(validUntilDate: string): Promise<number> {
+    let n = 0;
+    const max = 12;
+    while (n < max) {
+      await this.verifyDetailLoaded();
+      const canEnter = await this.enterQuoteButton.isVisible().catch(() => false);
+      if (!canEnter) break;
+      const price = String(10 + n * 5);
+      await this.enterQuoteAndSubmit(validUntilDate, price);
+      await this.page.reload();
+      await this.page.waitForLoadState('networkidle');
+      n++;
+    }
+    console.log(`✅ [P2P] Entered ${n} supplier quote(s)`);
+    return n;
   }
 
   async goToInvite(): Promise<void> {

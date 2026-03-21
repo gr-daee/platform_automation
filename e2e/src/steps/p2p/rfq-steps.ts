@@ -42,8 +42,16 @@ When('I create an RFQ from an approved PR with response deadline in {int} days',
 });
 
 Then('I should be on the RFQ detail page', async function ({ page }) {
-  await page.waitForURL(/\/p2p\/rfq\/[^/]+$/);
-  await expect(page).toHaveURL(/\/p2p\/rfq\/[^/]+$/);
+  const isRfqDetail = (url: string) => {
+    try {
+      const path = new URL(url).pathname;
+      return /^\/p2p\/rfq\/[^/]+$/.test(path) && path !== '/p2p/rfq/create';
+    } catch {
+      return false;
+    }
+  };
+  await page.waitForURL(isRfqDetail);
+  await expect(page).toHaveURL(isRfqDetail);
   console.log('✅ [P2P] On RFQ detail page');
 });
 

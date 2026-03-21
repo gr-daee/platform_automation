@@ -17,9 +17,29 @@ Feature: Phase 4 - Purchase Order Creation and Approval
     And I should see the list or empty state
 
   # --- Create PO from approved selection (AC4.1, AC4.2, AC4.4, AC4.5) ---
-  @P2P-P4-TC-002 @p1 @iacs-md
+  # Full chain: PR → submit → approve → RFQ → invite 2–3 suppliers → issue → quotes → compare →
+  # select winner → submit for approval → approve selection via DB (bypasses SoD) → create PO → submit PO.
+  @P2P-P4-TC-002 @p1 @iacs-md @e2e
   Scenario: Create PO from approved quote selection and submit for approval
-    Given there is an RFQ with an approved quote selection ready for PO creation
+    Given I am on the "p2p/procurement-requests" page
+    When I create a new procurement request in draft with unique purpose prefix "AUTO_QA_P4_E2E"
+    Then I should see a success message for procurement request creation
+    And the new procurement request should appear in the list with status "Draft"
+    When I submit the draft procurement request for approval
+    Then the procurement request status should be "Submitted"
+    When I approve the submitted procurement request
+    Then I should see a success message for approval
+    And the procurement request status should be "Approved"
+    When I create an RFQ from the current phase 4 E2E approved procurement request
+    Then I should be on the RFQ detail page
+    When I invite up to 3 suppliers and issue the RFQ for phase 4 E2E
+    And I enter quotes from each invited supplier with distinct unit prices for phase 4 E2E
+    When I navigate to Quote Comparison for that RFQ
+    Then I should see the comparison table with at least one quote row
+    When I select the first quote as winning and submit with reason "AUTO_QA_ Best price and delivery for P4 E2E"
+    Then I should see a success message for quote selection
+    And I capture the winning quote snapshot from Quote Comparison for the current RFQ
+    When I approve the RFQ quote selection via test database for the current RFQ
     When I create a purchase order from the approved quote selection
     Then the purchase order should be created in "Draft" status
     And the PO supplier, items, quantities, and rates should match the winning quote

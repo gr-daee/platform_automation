@@ -66,6 +66,44 @@ When('I create a new procurement request in draft with purpose {string}', async 
   console.log(`✅ [P2P] Created PR in draft with purpose: ${purpose}`);
 });
 
+When('I create a new procurement request in draft with unique purpose prefix {string}', async function (
+  { page },
+  prefix: string
+) {
+  const purpose = `${prefix}_${Date.now()}`;
+  const prPage = (this as any).procurementRequestsPage ?? new ProcurementRequestsPage(page);
+  if (!(this as any).procurementRequestsPage) {
+    await prPage.goto();
+    await prPage.verifyPageLoaded();
+    (this as any).procurementRequestsPage = prPage;
+  }
+
+  await prPage.openCreateRequestDialog();
+
+  const today = new Date();
+  const requiredBy = new Date(today);
+  requiredBy.setDate(requiredBy.getDate() + 14);
+  const requiredByStr = requiredBy.toISOString().slice(0, 10);
+  await prPage.fillRequiredByDate(requiredByStr);
+  await prPage.fillPurpose(purpose);
+
+  await prPage.addFirstMaterial();
+  const materialTrigger = prPage.page.getByRole('button', { name: /Search and select material/i });
+  await expect(materialTrigger).toBeVisible({ timeout: 8000 });
+  await materialTrigger.click();
+  await expect(prPage.page.getByRole('dialog').filter({ hasText: 'Select Raw Material' })).toBeVisible({
+    timeout: 8000,
+  });
+  await prPage.page.getByRole('button', { name: 'Select' }).first().click({ timeout: 5000 });
+  await expect(prPage.page.getByRole('dialog').filter({ hasText: 'Select Raw Material' })).toBeHidden({
+    timeout: 3000,
+  });
+
+  await prPage.saveDraft();
+  (this as any).lastPrPurpose = purpose;
+  console.log(`✅ [P2P] Created PR in draft with unique purpose: ${purpose}`);
+});
+
 Then('I should see a success message for procurement request creation', async function ({ page }) {
   await expect(
     page.locator('[data-sonner-toast]').filter({ hasText: /saved as draft|draft saved|Procurement request saved/i })
@@ -149,15 +187,29 @@ Given('there is a submitted procurement request for testing', async function ({ 
 });
 
 When('I approve the submitted procurement request', async function ({ page }) {
+  // After "Submit for approval", the user often stays on PR detail (no table); detail uses "Approve Request".
+  const onPrDetailPage = /\/p2p\/procurement-requests\/[^/]+$/.test(page.url());
+
+  if (onPrDetailPage) {
+    const approveBtn = page.getByRole('button', { name: /Approve Request/i });
+    await expect(approveBtn).toBeVisible({ timeout: 15000 });
+    await approveBtn.click();
+    await expect(
+      page.locator('[data-sonner-toast]').filter({ hasText: /approved|success/i })
+    ).toBeVisible({ timeout: 8000 });
+    console.log('✅ [P2P] Approved submitted PR from detail page');
+    return;
+  }
+
   const submittedRow = page.locator('table tbody tr').filter({ hasText: 'Submitted' }).first();
-  await expect(submittedRow).toBeVisible({ timeout: 5000 });
+  await expect(submittedRow).toBeVisible({ timeout: 15000 });
   await submittedRow.getByRole('button').first().click();
   await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
   await page.getByRole('dialog').getByRole('button', { name: /Confirm|Approve/i }).click();
   await expect(
     page.locator('[data-sonner-toast]').filter({ hasText: /approved|success/i })
   ).toBeVisible({ timeout: 8000 });
-  console.log('✅ [P2P] Approved submitted PR');
+  console.log('✅ [P2P] Approved submitted PR from list');
 });
 
 Then('I should see a success message for approval', async function ({ page }) {

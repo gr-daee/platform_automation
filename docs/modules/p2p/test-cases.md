@@ -59,6 +59,10 @@ Test automation for P2P phases aligned to Linear user stories (DAEE-149, DAEE-15
 | Test ID | Scenario | Status |
 |---------|----------|--------|
 | P2P-P4-TC-001 | View Purchase Orders list page | ✅ Automated (smoke) |
+| P2P-P4-TC-002 | Create PO from approved quote selection and submit for approval | ✅ Automated (`@e2e`): full chain PR → approve → RFQ → invite up to 3 suppliers → issue → quotes → compare → select winner → **DB approval** (`approveRfqSelectionForE2ETest`) → create PO → submit PO. **Prerequisites:** ≥2 active suppliers, `SUPABASE_DB_*` in `.env.local` for DB approval step, `IACS_MD_USER_EMAIL` for approver id lookup. |
+
+**Step definitions:** `e2e/src/steps/p2p/purchase-order-steps.ts`, `e2e/src/steps/p2p/phase4-full-flow-steps.ts`, `e2e/src/steps/p2p/procurement-request-steps.ts`, `e2e/src/steps/p2p/quote-comparison-steps.ts`, `e2e/src/steps/p2p/rfq-steps.ts`  
+**DB (test only):** `approveRfqSelectionForE2ETest` in `e2e/src/support/db-helper.ts` — sets `rfq_headers.status` to `selection_approved` after UI places selection in `selection_pending` (bypasses SoD vs same user).
 
 ### Phase 5 – PO to Supplier (DAEE-153)
 | Test ID | Scenario | Status |

@@ -45,6 +45,18 @@ export class CreateRFQPage extends BasePage {
     console.log('✅ [P2P] Selected first approved PR');
   }
 
+  /** Select approved PR whose option label contains the given substring (purpose / request number). */
+  async selectApprovedPRByPurposeContains(fragment: string): Promise<void> {
+    await this.prSelectTrigger.click();
+    await expect(this.page.getByRole('listbox')).toBeVisible({ timeout: 8000 });
+    const escaped = fragment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const option = this.page.getByRole('option', { name: new RegExp(escaped, 'i') }).first();
+    await expect(option).toBeVisible({ timeout: 8000 });
+    await option.click();
+    await expect(this.page.getByText('Step 2: RFQ Details')).toBeVisible({ timeout: 8000 });
+    console.log(`✅ [P2P] Selected approved PR containing "${fragment}"`);
+  }
+
   async fillResponseDeadline(daysFromToday: number): Promise<void> {
     const d = new Date();
     d.setDate(d.getDate() + daysFromToday);
@@ -70,7 +82,18 @@ export class CreateRFQPage extends BasePage {
   async submitCreate(): Promise<void> {
     await expect(this.createRfqSubmitButton).toBeEnabled({ timeout: 5000 });
     await this.createRfqSubmitButton.click();
-    await this.page.waitForURL(/\/p2p\/rfq\/[^/]+$/, { timeout: 15000 });
+    // Do not use /p2p/rfq/[^/]+$/ alone — it matches /p2p/rfq/create.
+    await this.page.waitForURL(
+      (url) => {
+        try {
+          const path = new URL(url).pathname;
+          return /^\/p2p\/rfq\/[^/]+$/.test(path) && path !== '/p2p/rfq/create';
+        } catch {
+          return false;
+        }
+      },
+      { timeout: 30000 }
+    );
     console.log('✅ [P2P] Submitted Create RFQ');
   }
 
