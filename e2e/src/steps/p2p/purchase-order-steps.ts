@@ -359,7 +359,27 @@ When('I create a purchase order from the approved quote selection', async functi
   console.log(`✅ [P2P] Created PO. ID: ${(this as any).currentPoId}`);
 });
 
+async function waitForPoDraftPageStabilized(page: any): Promise<void> {
+  await page.waitForURL(/\/p2p\/purchase-orders\/[^/]+$/, { timeout: 30000 });
+  await expect
+    .poll(
+      async () => {
+        const loading = await page.getByText('Loading permissions...').first().isVisible().catch(() => false);
+        if (loading) return 'loading';
+
+        const statusVisible = await page.getByText('Draft', { exact: true }).first().isVisible().catch(() => false);
+        const rowCount = await page.locator('table tbody tr').count().catch(() => 0);
+        return statusVisible && rowCount > 0 ? 'ready' : 'warming';
+      },
+      { timeout: 30000 }
+    )
+    .toBe('ready');
+}
+
 Then('the purchase order should be created in {string} status', async function ({ page }, status: string) {
+  if (status.toLowerCase() === 'draft') {
+    await waitForPoDraftPageStabilized(page);
+  }
   const poPage = new PurchaseOrderDetailPage(page);
   await poPage.verifyStatus(status);
   (this as any).currentPoId = (this as any).currentPoId ?? poPage.getCurrentPoIdFromUrl();
@@ -370,19 +390,29 @@ Then('the PO supplier, items, quantities, and rates should match the winning quo
   page,
   $test,
 }) {
+  await waitForPoDraftPageStabilized(page);
   const snapshot = ((this as any).winningQuoteSnapshot ?? {}) as WinningQuoteSnapshot;
   const hasTable = (await page.locator('table').count()) > 0;
   if (!hasTable) throw new Error('PO detail does not show line items table; cannot verify PO lines.');
 
   if (!snapshot.supplierName) {
     // If we couldn't capture supplier name earlier, don't block the run; still validate at least line items exist.
-    const rowCount = await page.locator('table tbody tr').count();
-    expect(rowCount, 'Expected at least one PO line item').toBeGreaterThan(0);
+    await expect.poll(async () => page.locator('table tbody tr').count(), { timeout: 20000 }).toBeGreaterThan(0);
     console.log('⚠️ [P2P] Supplier snapshot missing; verified line items exist.');
     return;
   }
 
-  const supplierVisible = await page.getByText(snapshot.supplierName).first().isVisible().catch(() => false);
+  await expect
+    .poll(
+      async () => {
+        const supplier = await page.getByText(snapshot.supplierName).first().isVisible().catch(() => false);
+        const rows = await page.locator('table tbody tr').count().catch(() => 0);
+        return supplier && rows > 0;
+      },
+      { timeout: 25000 }
+    )
+    .toBe(true);
+  const supplierVisible = true;
   if (!supplierVisible && $test) {
     $test.fail(true, `Expected PO to show winning supplier "${snapshot.supplierName}" but it was not found.`);
   }
