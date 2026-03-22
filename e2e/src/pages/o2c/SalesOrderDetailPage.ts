@@ -18,8 +18,13 @@ export class SalesOrderDetailPage extends BasePage {
   readonly totalAmount: Locator;
   readonly warehouseAssigned: Locator;
   readonly sourceIndentLink: Locator;
+  readonly generatePicklistButton: Locator;
+  readonly viewPicklistButton: Locator;
   readonly generateEInvoiceButton: Locator;
   readonly viewEInvoiceButton: Locator;
+  readonly markAsPackedButton: Locator;
+  readonly readyToShipButton: Locator;
+  readonly dispatchOrderButton: Locator;
   readonly salesOrderInformationCard: Locator;
 
   constructor(page: Page) {
@@ -37,8 +42,13 @@ export class SalesOrderDetailPage extends BasePage {
     this.totalAmount = this.salesOrderInformationCard.getByText(/total amount/i).locator('..').getByRole('paragraph').first();
     this.warehouseAssigned = this.salesOrderInformationCard.getByText(/warehouse assigned/i).locator('..').getByRole('paragraph').first();
     this.sourceIndentLink = page.getByRole('link', { name: /view source indent|indent_number/i });
+    this.generatePicklistButton = page.getByRole('button', { name: /generate picklist/i });
+    this.viewPicklistButton = page.getByRole('button', { name: /view picklist/i });
     this.generateEInvoiceButton = page.getByRole('button', { name: /generate e-invoice/i });
     this.viewEInvoiceButton = page.getByRole('button', { name: /view e-invoice/i });
+    this.markAsPackedButton = page.getByRole('button', { name: /mark as packed/i });
+    this.readyToShipButton = page.getByRole('button', { name: /^ready to ship$/i });
+    this.dispatchOrderButton = page.getByRole('button', { name: /dispatch order/i });
   }
 
   async goto(salesOrderId: string): Promise<void> {
@@ -67,13 +77,17 @@ export class SalesOrderDetailPage extends BasePage {
     await this.page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
     await this.page.waitForTimeout(1000);
     
-    // Now verify page elements are visible
-    await expect(this.pageHeading).toBeVisible({ timeout: 15000 });
-    
-    // Verify Sales Order Information card title is visible (confirms page loaded)
-    // CardTitle renders as <div> with data-slot='card-title', not a heading element
-    const infoCardTitle = this.page.getByText(/sales order information/i);
-    await expect(infoCardTitle).toBeVisible({ timeout: 15000 });
+    // Fail fast if the app rendered the SO error state (API / data failure)
+    const fatalError = this.page.getByText(/An unexpected error occurred|Sales order not found/i);
+    if (await fatalError.isVisible().catch(() => false)) {
+      throw new Error(
+        'Sales Order detail page is in error state (API or data). Fix backend/data before picklist/eInvoice steps.'
+      );
+    }
+
+    // Main title is an <h1> "{Dealer} - Sales Order"; card title is plain text
+    await expect(this.page.getByText(/sales order information/i)).toBeVisible({ timeout: 20000 });
+    await expect(this.page.getByRole('heading', { name: /sales order/i })).toBeVisible({ timeout: 15000 });
     
     // Verify card container is visible (with increased timeout after loading waits)
     await expect(this.salesOrderInformationCard).toBeVisible({ timeout: 10000 });
@@ -99,8 +113,44 @@ export class SalesOrderDetailPage extends BasePage {
     return (await this.statusBadge.textContent()) || '';
   }
 
+  /** Dialog may open immediately on success (see web_app sales-orders page handleGeneratePicklist). */
+  picklistDialog(): Locator {
+    return this.page.getByRole('dialog').filter({ hasText: /Warehouse Picklist/i });
+  }
+
+  async clickGeneratePicklist(): Promise<void> {
+    await expect(this.generatePicklistButton).toBeVisible({ timeout: 30000 });
+    await this.generatePicklistButton.click();
+    // Success path: either modal auto-opens OR toolbar shows View Picklist + Download PDF
+    await expect(this.picklistDialog().or(this.viewPicklistButton)).toBeVisible({ timeout: 120000 });
+  }
+
+  async clickViewPicklist(): Promise<void> {
+    if (await this.picklistDialog().isVisible().catch(() => false)) {
+      return;
+    }
+    await expect(this.viewPicklistButton).toBeVisible({ timeout: 15000 });
+    await this.viewPicklistButton.click();
+  }
+
   async clickGenerateEInvoice(): Promise<void> {
+    await expect(this.generateEInvoiceButton).toBeVisible({ timeout: 60000 });
     await this.generateEInvoiceButton.click();
+  }
+
+  async clickMarkAsPacked(): Promise<void> {
+    await expect(this.markAsPackedButton).toBeVisible({ timeout: 30000 });
+    await this.markAsPackedButton.click();
+  }
+
+  async clickReadyToShip(): Promise<void> {
+    await expect(this.readyToShipButton).toBeVisible({ timeout: 30000 });
+    await this.readyToShipButton.click();
+  }
+
+  async clickDispatchOrder(): Promise<void> {
+    await expect(this.dispatchOrderButton).toBeVisible({ timeout: 30000 });
+    await this.dispatchOrderButton.click();
   }
 
   async isGenerateEInvoiceVisible(): Promise<boolean> {
@@ -109,6 +159,18 @@ export class SalesOrderDetailPage extends BasePage {
 
   async isViewEInvoiceVisible(): Promise<boolean> {
     return this.viewEInvoiceButton.isVisible().catch(() => false);
+  }
+
+  async isMarkAsPackedVisible(): Promise<boolean> {
+    return this.markAsPackedButton.isVisible().catch(() => false);
+  }
+
+  async isReadyToShipVisible(): Promise<boolean> {
+    return this.readyToShipButton.isVisible().catch(() => false);
+  }
+
+  async isDispatchOrderVisible(): Promise<boolean> {
+    return this.dispatchOrderButton.isVisible().catch(() => false);
   }
 
   /**

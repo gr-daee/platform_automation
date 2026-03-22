@@ -129,7 +129,7 @@ function getCliArgValues(flagName: string): string[] {
 
 function detectEdRequirementFromSelection(): boolean {
   const grepTokens = [...getCliArgValues('--grep'), ...getCliArgValues('-g')].join(' ');
-  if (/P2P-P4-TC-003|requires-iacs-ed|@iacs-ed/i.test(grepTokens)) return true;
+  if (/P2P-P4-TC-003|requires-iacs-ed|@iacs-ed|FIN-AR-TC-009|FIN-DL-TC-008|FIN-CM-TC-022/i.test(grepTokens)) return true;
 
   const featurePaths = process.argv.filter(arg => arg.endsWith('.feature'));
   for (const featurePath of featurePaths) {
@@ -156,6 +156,9 @@ function getProfilesToAuthenticateForCurrentRun(): string[] {
   // Map selected projects to their primary auth profiles.
   if (selectedProjects.length === 0 || selectedProjects.includes('iacs-md')) {
     if (hasProfile('iacs-md')) profiles.add('iacs-md');
+  }
+  if (selectedProjects.length === 0 || selectedProjects.includes('iacs-ed')) {
+    if (hasProfile('iacs-ed')) profiles.add('iacs-ed');
   }
   if (selectedProjects.includes('iacs-finance') || selectedProjects.includes('multi-user-iacs-finance')) {
     if (hasProfile('iacs-finance-admin')) profiles.add('iacs-finance-admin');

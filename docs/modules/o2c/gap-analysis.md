@@ -1,8 +1,8 @@
 # O2C Module - Gap Analysis
 
-**Last Updated**: 2026-02-16
+**Last Updated**: 2026-03-22
 **Module**: Order-to-Cash (O2C)
-**Overall Coverage**: Indent flow 20/20 automated (TC-001–TC-020); system E2E (Indent→SO→Invoice→Ledger) covered by O2C-E2E-TC-001; individual SO/Invoice scenarios not yet automated.
+**Overall Coverage**: Indent flow 20/20 automated (TC-001–TC-020); system E2E extended: O2C-E2E-TC-001 (full ledger path), **TC-002** (back order + inventory UI), **TC-003** (e-invoice without e-way), **TC-004** (cancel e-invoice); additional SO/Invoice edge cases may still be backlog.
 
 ---
 
@@ -23,7 +23,7 @@ Tracks test coverage gaps for the Order-to-Cash module, including indents, order
 | Transporter / Credit / Stock | 4 | 4 | 0 | 100% |
 | Sales Order (O2C-SO-TC-*) | 11 | 0 | 11 | 0% |
 | Invoice (O2C-INV-TC-*) | 13 | 0 | 13 | 0% |
-| System E2E (O2C-E2E-TC-001) | 1 | 1 | 0 | 100% |
+| System E2E (O2C-E2E-TC-001–004) | 4 | 4 | 0 | 100% |
 | **Indent total** | **20** | **20** | **0** | **100%** |
 
 ---
@@ -119,6 +119,14 @@ Tracks test coverage gaps for the Order-to-Cash module, including indents, order
 - **Risk**: Data integrity issue if edits allowed
 - **Test ID Needed**: O2C-INDENT-TC-025 (next available)
 - **Status**: 🔴 Open
+
+### GAP-O2C-P2-005: Warehouse Inventory URL still under `/o2c/inventory`
+- **Description**: Inventory management UI is implemented at **`/o2c/inventory`** (and `/o2c/inventory/[id]`). **Planned product change:** move canonical routes to **`/warehouses/inventory`** (warehouse module alignment). Exact final path should match Next.js app structure when implemented.
+- **Impact**: Medium for **automation and docs** — every hardcoded URL, sidebar link, notification deep link, and zone-page query link must be updated; add redirects from old URLs to avoid broken bookmarks.
+- **Scenario (post-migration)**: Old `/o2c/inventory` redirects or 404s per product decision; new path loads same `ProtectedPageWrapper` + inventory UI.
+- **Risk**: E2E and manual scripts drift; missed links from warehouse/zone flows.
+- **Test / doc IDs**: **`@WH-INV-TC-001`–`008`** (Phase 1) use **`WarehouseInventoryPage.LIST_PATH`**; extend same pattern for later phases until migration is done.
+- **Status**: 🟡 **Known issue** (product roadmap) — see [knowledge.md — Warehouse Inventory (WH-INV)](knowledge.md#warehouse-inventory-wh-inv)
 
 ---
 

@@ -97,6 +97,11 @@ export class CashReceiptApplyPage extends BasePage {
     await expect(button).toBeEnabled({ timeout: 15000 });
   }
 
+  async expectApplyButtonDisabled(): Promise<void> {
+    const button = this.page.getByRole('button', { name: /Apply Payments\s*(\(\s*\d+\s*\))?/i }).first();
+    await expect(button).toBeDisabled({ timeout: 8000 });
+  }
+
   /**
    * Locate the single invoice row (card) for the given invoice number.
    * Must scope to the row card (relative border-2 rounded-lg) so we don't match a parent

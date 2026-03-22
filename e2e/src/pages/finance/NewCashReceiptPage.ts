@@ -277,6 +277,10 @@ export class NewCashReceiptPage extends BasePage {
     await expect(this.page).toHaveURL(/\/finance\/cash-receipts\/[a-f0-9-]+/, { timeout: 15000 });
   }
 
+  async clickSave(): Promise<void> {
+    await this.saveButton.click();
+  }
+
   async fillMinimalForm(amount: number, customerName?: string): Promise<void> {
     // Fill minimal required fields
     const today = new Date().toISOString().split('T')[0];

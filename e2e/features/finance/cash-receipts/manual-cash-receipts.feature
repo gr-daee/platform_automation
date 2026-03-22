@@ -103,6 +103,36 @@ Feature: Manual Cash Receipts
     When I apply remaining amount to remembered invoice
     Then the remembered invoice should be fully paid
 
+  @FIN-CR-TC-009 @negative @p1 @iacs-md
+  Scenario: Apply page validation - Apply Payments stays disabled when no invoice is selected
+    Given I have created a cash receipt with amount "1000" for testing
+    And I am on the apply page for the current cash receipt
+    Then the Apply Payments button should be disabled on apply page
+
+  @FIN-CR-TC-010 @critical @p1 @iacs-md
+  Scenario: Data integrity - manual apply should keep cash receipt header and applications in sync
+    Given I have created a cash receipt with amount "1200" for testing
+    And I am on the apply page for the current cash receipt
+    When I apply partial amount "300" to invoice "first"
+    Then the payment should be allocated to invoice "first"
+    And the cash receipt financial totals should reconcile in database
+
+  @FIN-CR-TC-011 @negative @p1 @iacs-md
+  Scenario: New cash receipt validation - amount must be greater than zero
+    Given I am on the cash receipts page
+    When I click New Cash Receipt
+    And I fill cash receipt form with customer "Ramesh ningappa diggai" and amount "0"
+    And I attempt to save the cash receipt
+    Then I should see cash receipt form error containing "greater than zero"
+
+  @FIN-CR-TC-012 @negative @p1 @iacs-md
+  Scenario: New cash receipt validation - bank account required for NEFT
+    Given I am on the cash receipts page
+    When I click New Cash Receipt
+    And I fill cash receipt required fields with customer "Ramesh ningappa diggai", payment method "neft" and amount "100" without bank account
+    And I attempt to save the cash receipt
+    Then I should see cash receipt form error containing "bank account"
+
   # --- EPD Configuration (consolidated into manual cash receipts module file) ---
   @FIN-EPD-TC-001 @p1 @iacs-md
   Scenario: View EPD configuration page
@@ -147,6 +177,18 @@ Feature: Manual Cash Receipts
   Scenario: Update slab for oldest allocatable invoice to temporary % and verify EPD reflects then restore
     # Smart: find oldest pending invoice, determine its EPD slab by days-from-invoice, set slab to 2-decimal % (e.g. 7.25), run checks, restore in DB
     Given the EPD slab for the oldest allocatable invoice is set to a temporary test percentage
+    When I have created a cash receipt with amount "500" for testing
+    And I am on the apply page for the current cash receipt
+    And I select the invoice that shows the temporary EPD percentage
+    Then the EPD shown for that invoice should match the temporary percentage
+    Then the EPD slab is restored to its original percentage in the database
+
+  @FIN-EPD-TC-008 @critical @p1 @iacs-md
+  Scenario: Manual receipt flow reflects non-default temporary slab percentage on apply page
+    # Gap covered: manual apply-page EPD should react to slab override in the same run (config -> receipt apply linkage)
+    Given the EPD slab for the oldest allocatable invoice is set to a temporary test percentage
+    And I am on the EPD configuration page
+    Then I should see the EPD Slabs tab and heading
     When I have created a cash receipt with amount "500" for testing
     And I am on the apply page for the current cash receipt
     And I select the invoice that shows the temporary EPD percentage

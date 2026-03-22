@@ -90,6 +90,36 @@ test.describe("Manual Cash Receipts", () => {
     await Then("the remembered invoice should be fully paid", null, { page });
   });
 
+  test("Apply page validation - Apply Payments stays disabled when no invoice is selected", { tag: ["@FIN-CR-TC-009", "@negative", "@p1", "@iacs-md"] }, async ({ Given, page, And, Then }) => {
+    await Given("I have created a cash receipt with amount \"1000\" for testing", null, { page });
+    await And("I am on the apply page for the current cash receipt", null, { page });
+    await Then("the Apply Payments button should be disabled on apply page", null, { page });
+  });
+
+  test("Data integrity - manual apply should keep cash receipt header and applications in sync", { tag: ["@FIN-CR-TC-010", "@critical", "@p1", "@iacs-md"] }, async ({ Given, page, And, When, Then }) => {
+    await Given("I have created a cash receipt with amount \"1200\" for testing", null, { page });
+    await And("I am on the apply page for the current cash receipt", null, { page });
+    await When("I apply partial amount \"300\" to invoice \"first\"", null, { page });
+    await Then("the payment should be allocated to invoice \"first\"", null, { page });
+    await And("the cash receipt financial totals should reconcile in database", null, { page });
+  });
+
+  test("New cash receipt validation - amount must be greater than zero", { tag: ["@FIN-CR-TC-011", "@negative", "@p1", "@iacs-md"] }, async ({ Given, page, When, And, Then }) => {
+    await Given("I am on the cash receipts page", null, { page });
+    await When("I click New Cash Receipt", null, { page });
+    await And("I fill cash receipt form with customer \"Ramesh ningappa diggai\" and amount \"0\"", null, { page });
+    await And("I attempt to save the cash receipt", null, { page });
+    await Then("I should see cash receipt form error containing \"greater than zero\"", null, { page });
+  });
+
+  test("New cash receipt validation - bank account required for NEFT", { tag: ["@FIN-CR-TC-012", "@negative", "@p1", "@iacs-md"] }, async ({ Given, page, When, And, Then }) => {
+    await Given("I am on the cash receipts page", null, { page });
+    await When("I click New Cash Receipt", null, { page });
+    await And("I fill cash receipt required fields with customer \"Ramesh ningappa diggai\", payment method \"neft\" and amount \"100\" without bank account", null, { page });
+    await And("I attempt to save the cash receipt", null, { page });
+    await Then("I should see cash receipt form error containing \"bank account\"", null, { page });
+  });
+
   test("View EPD configuration page", { tag: ["@FIN-EPD-TC-001", "@p1", "@iacs-md"] }, async ({ Given, page, Then }) => {
     await Given("I am on the EPD configuration page", null, { page });
     await Then("I should see the EPD Slabs tab and heading", null, { page });
@@ -137,6 +167,17 @@ test.describe("Manual Cash Receipts", () => {
     await Then("the EPD slab is restored to its original percentage in the database", null, { page });
   });
 
+  test("Manual receipt flow reflects non-default temporary slab percentage on apply page", { tag: ["@FIN-EPD-TC-008", "@critical", "@p1", "@iacs-md"] }, async ({ Given, page, And, Then, When }) => {
+    await Given("the EPD slab for the oldest allocatable invoice is set to a temporary test percentage", null, { page });
+    await And("I am on the EPD configuration page", null, { page });
+    await Then("I should see the EPD Slabs tab and heading", null, { page });
+    await When("I have created a cash receipt with amount \"500\" for testing", null, { page });
+    await And("I am on the apply page for the current cash receipt", null, { page });
+    await And("I select the invoice that shows the temporary EPD percentage", null, { page });
+    await Then("the EPD shown for that invoice should match the temporary percentage", null, { page });
+    await Then("the EPD slab is restored to its original percentage in the database", null, { page });
+  });
+
 });
 
 // == technical section ==
@@ -154,11 +195,16 @@ const bddFileMeta = {
   "Full application of cash receipt to invoice": {"pickleLocation":"72:3","tags":["@FIN-CR-TC-004","@critical","@p0","@iacs-md"],"ownTags":["@iacs-md","@p0","@critical","@FIN-CR-TC-004"]},
   "Partial application of cash receipt to invoice": {"pickleLocation":"83:3","tags":["@FIN-CR-TC-005","@critical","@p0","@iacs-md"],"ownTags":["@iacs-md","@p0","@critical","@FIN-CR-TC-005"]},
   "Dynamic split settlement on same oldest pending invoice across CR-01 and CR-02": {"pickleLocation":"92:3","tags":["@FIN-CR-TC-006","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@FIN-CR-TC-006"]},
-  "View EPD configuration page": {"pickleLocation":"108:3","tags":["@FIN-EPD-TC-001","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@FIN-EPD-TC-001"]},
-  "Add EPD slab on configuration page (91-99 days, 2%)": {"pickleLocation":"113:3","tags":["@FIN-EPD-TC-002","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@FIN-EPD-TC-002"]},
-  "Validation - days to must be greater than days from": {"pickleLocation":"123:3","tags":["@FIN-EPD-TC-003","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@FIN-EPD-TC-003"]},
-  "Validation - discount must be between 0 and 100": {"pickleLocation":"129:3","tags":["@FIN-EPD-TC-004","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@FIN-EPD-TC-004"]},
-  "Preview Calculator shows result for due date and payment date": {"pickleLocation":"135:3","tags":["@FIN-EPD-TC-005","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@FIN-EPD-TC-005"]},
-  "Toggle Show Inactive slabs": {"pickleLocation":"141:3","tags":["@FIN-EPD-TC-006","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@FIN-EPD-TC-006"]},
-  "Update slab for oldest allocatable invoice to temporary % and verify EPD reflects then restore": {"pickleLocation":"147:3","tags":["@FIN-EPD-TC-007","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@FIN-EPD-TC-007"]},
+  "Apply page validation - Apply Payments stays disabled when no invoice is selected": {"pickleLocation":"107:3","tags":["@FIN-CR-TC-009","@negative","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@negative","@FIN-CR-TC-009"]},
+  "Data integrity - manual apply should keep cash receipt header and applications in sync": {"pickleLocation":"113:3","tags":["@FIN-CR-TC-010","@critical","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@critical","@FIN-CR-TC-010"]},
+  "New cash receipt validation - amount must be greater than zero": {"pickleLocation":"121:3","tags":["@FIN-CR-TC-011","@negative","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@negative","@FIN-CR-TC-011"]},
+  "New cash receipt validation - bank account required for NEFT": {"pickleLocation":"129:3","tags":["@FIN-CR-TC-012","@negative","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@negative","@FIN-CR-TC-012"]},
+  "View EPD configuration page": {"pickleLocation":"138:3","tags":["@FIN-EPD-TC-001","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@FIN-EPD-TC-001"]},
+  "Add EPD slab on configuration page (91-99 days, 2%)": {"pickleLocation":"143:3","tags":["@FIN-EPD-TC-002","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@FIN-EPD-TC-002"]},
+  "Validation - days to must be greater than days from": {"pickleLocation":"153:3","tags":["@FIN-EPD-TC-003","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@FIN-EPD-TC-003"]},
+  "Validation - discount must be between 0 and 100": {"pickleLocation":"159:3","tags":["@FIN-EPD-TC-004","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@FIN-EPD-TC-004"]},
+  "Preview Calculator shows result for due date and payment date": {"pickleLocation":"165:3","tags":["@FIN-EPD-TC-005","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@FIN-EPD-TC-005"]},
+  "Toggle Show Inactive slabs": {"pickleLocation":"171:3","tags":["@FIN-EPD-TC-006","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@FIN-EPD-TC-006"]},
+  "Update slab for oldest allocatable invoice to temporary % and verify EPD reflects then restore": {"pickleLocation":"177:3","tags":["@FIN-EPD-TC-007","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@FIN-EPD-TC-007"]},
+  "Manual receipt flow reflects non-default temporary slab percentage on apply page": {"pickleLocation":"187:3","tags":["@FIN-EPD-TC-008","@critical","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@critical","@FIN-EPD-TC-008"]},
 };

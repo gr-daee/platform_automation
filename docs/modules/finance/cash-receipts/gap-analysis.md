@@ -9,6 +9,11 @@
 | GAP-FIN-CR-P0-003 | Cash receipt application flow not tested | P0 | ✅ IMPL-028 (Apply page, EPD steps) |
 | GAP-FIN-CR-P1-001 | EPD configuration UI not tested | P1 | ✅ IMPL-028 (PaymentTermsPage, epd-configuration.feature) |
 | GAP-FIN-CR-P1-002 | EPD calculation edge cases not covered | P1 | ✅ IMPL-028 (van-epd-discount, EPD formula tests) |
+| GAP-FIN-CR-P1-003 | Slab configuration changes not validated against manual and VAN receipt flows | P1 | ✅ Covered by FIN-EPD-TC-008 and FIN-VAN-TC-010 |
+| GAP-FIN-CR-P1-004 | Data integrity reconciliation (header/application/VAN amounts) under-asserted | P1 | ✅ Covered by FIN-CR-TC-010 and FIN-VAN-TC-011 |
+| GAP-FIN-CR-P2-001 | Apply-page field validation for no-selection state not explicit | P2 | ✅ Covered by FIN-CR-TC-009 |
+| GAP-FIN-CR-P2-002 | New receipt form lacks explicit negative validation coverage for amount and bank-required paths | P2 | ✅ Covered by FIN-CR-TC-011 and FIN-CR-TC-012 |
+| GAP-FIN-CR-P1-005 | VAN lifecycle integrity (un-apply/re-apply) not reconciled at header/application level | P1 | ✅ Covered by FIN-VAN-TC-012 |
 
 ## Resolved Gaps
 | Gap ID | Resolved In | Date |

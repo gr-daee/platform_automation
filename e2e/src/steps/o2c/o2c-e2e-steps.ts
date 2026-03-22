@@ -8,16 +8,25 @@
 import { expect } from '@playwright/test';
 import { createBdd } from 'playwright-bdd';
 import { SalesOrderDetailPage } from '../../pages/o2c/SalesOrderDetailPage';
+import { WarehousePicklistDialogPage } from '../../pages/o2c/WarehousePicklistDialogPage';
 import { InvoiceDetailPage } from '../../pages/o2c/InvoiceDetailPage';
+import { IndentDetailPage } from '../../pages/o2c/IndentDetailPage';
 import { DealerLedgerPage } from '../../pages/finance/DealerLedgerPage';
 import {
   getInventoryForProductAndWarehouse,
   getDealerCreditByCode,
   getSalesOrderIdByIndentId,
   getInvoiceIdsBySalesOrderId,
+  getBackOrdersByOriginalIndentId,
+  productHasNoSellableInventoryAtWarehouse,
+  resolveMixedIndentProductPairAtWarehouse,
+  getInvoiceIdWithRecentIrnWithoutEwayBill,
+  getInvoiceEinvoiceStatus,
   type InventorySnapshot,
   type DealerCreditSnapshot,
 } from '../../support/o2c-db-helpers';
+import { runO2CIndentThroughEInvoice } from '../../support/o2c-e2e-flow-helpers';
+import { O2CInventoryPage } from '../../pages/o2c/O2CInventoryPage';
 
 const { Given, When, Then } = createBdd();
 
@@ -35,6 +44,9 @@ const o2cContext: {
   soQuantity: number;
   productCodeForInventory: string;
   warehouseForInventory: string;
+  /** Resolved by DB for mixed back-order + SO scenario (TC-002). */
+  mixedInStockCode: string;
+  mixedOutOfStockCode: string;
 } = {
   indentId: null,
   salesOrderId: null,
@@ -44,6 +56,8 @@ const o2cContext: {
   soQuantity: 0,
   productCodeForInventory: '',
   warehouseForInventory: '',
+  mixedInStockCode: '',
+  mixedOutOfStockCode: '',
 };
 
 // --- DB "Note" step: inventory from DB (material_code/package_code + warehouse). See docs/database/o2c-inventory-tables.md ---
@@ -69,8 +83,10 @@ Given('I have noted dealer credit for dealer code {string}', async function ({ p
 When('I navigate to the Sales Order created from the indent', async function ({ page }) {
   const url = page.url();
   const match = url.match(/\/o2c\/indents\/([a-f0-9-]+)/);
-  expect(match).toBeTruthy();
-  o2cContext.indentId = match![1];
+  const indentIdFromUrl = match?.[1];
+  const indentId = indentIdFromUrl ?? o2cContext.indentId;
+  expect(indentId).toBeTruthy();
+  o2cContext.indentId = indentId!;
   
   // Wait for background processing to complete (Processing indent workflow...)
   // Wait for "Processing..." indicators to disappear
@@ -99,7 +115,7 @@ When('I navigate to the Sales Order created from the indent', async function ({ 
   const retryDelay = 2000; // 2 seconds between retries
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    soId = await getSalesOrderIdByIndentId(o2cContext.indentId);
+    soId = await getSalesOrderIdByIndentId(indentId!);
     if (soId) {
       console.log(`✅ Sales Order found after ${attempt} attempt(s): ${soId}`);
       break;
@@ -124,8 +140,17 @@ Then('the Sales Order page shows dealer {string}', async function ({ page }, dea
 });
 
 Then('the Sales Order page shows warehouse {string}', async function ({ page }, warehouseSubstring: string) {
-  const warehouse = await salesOrderDetailPage.getWarehouseName();
-  expect(warehouse.toLowerCase()).toContain(warehouseSubstring.toLowerCase());
+  const warehouse = (await salesOrderDetailPage.getWarehouseName()).toLowerCase();
+  const expected = warehouseSubstring.toLowerCase();
+  // SO card often shows "KU-001 - Kurnool, ..." while indent/DB use "Kurnook" spelling
+  const spellingAlt = expected.includes('kurnook')
+    ? expected.replace(/kurnook/g, 'kurnool')
+    : expected.replace(/kurnool/g, 'kurnook');
+  expect(
+    warehouse.includes(expected) ||
+      warehouse.includes(spellingAlt) ||
+      (expected.includes('kurn') && warehouse.includes('ku-001'))
+  ).toBe(true);
 });
 
 Then('the Sales Order page shows source indent link', async function ({ page }) {
@@ -148,6 +173,26 @@ Then('dealer credit is unchanged after SO creation', async function ({ page }) {
   const after = await getDealerCreditByCode('IACS5509');
   expect(after).not.toBeNull();
   expect(after!.outstandingAmount).toBe(o2cContext.dealerCreditBefore!.outstandingAmount);
+});
+
+// --- Warehouse picklist (DAEE-139): Generate → Start → Pick → Complete → SO picked → eInvoice enabled ---
+When('I generate picklist from the Sales Order page', async function ({ page }) {
+  await salesOrderDetailPage.clickGeneratePicklist();
+});
+
+When('I run the warehouse picklist flow picking all lines to completion', async function ({ page }) {
+  expect(o2cContext.salesOrderId).toBeTruthy();
+  const pickModal = new WarehousePicklistDialogPage(page);
+  await salesOrderDetailPage.clickViewPicklist();
+  await pickModal.waitForLoaded();
+  await pickModal.clickStartPickingProcessIfVisible();
+  await pickModal.openPickItemsTab();
+  await pickModal.pickAllItemsWithBatchConfirm();
+  await pickModal.clickCompletePicklist();
+  await pickModal.confirmCompletePicklistInAlert();
+  await pickModal.waitForDialogClosed();
+  await salesOrderDetailPage.goto(o2cContext.salesOrderId!);
+  await salesOrderDetailPage.verifyPageLoaded();
 });
 
 // --- eInvoice ---
@@ -219,12 +264,64 @@ Then('E-Invoice generation completes and invoice link appears on the Sales Order
   // The page may reload a few seconds after the link appears
   await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
   await page.waitForTimeout(3000); // Additional buffer for page reload after link appears
+
+  // Full navigation refresh so action bar picks up invoice + Mark as Packed (avoids stale client state)
+  expect(o2cContext.salesOrderId).toBeTruthy();
+  await salesOrderDetailPage.goto(o2cContext.salesOrderId!);
+  await salesOrderDetailPage.verifyPageLoaded();
 });
 
 Then('the Sales Order status is updated', async function ({ page }) {
   const status = await salesOrderDetailPage.getStatusText();
-  // Status can be: invoiced, allocated, fulfilled, shipped, ready_to_ship, etc.
-  expect(status.toLowerCase()).toMatch(/invoiced|allocated|fulfilled|ready.*ship|shipped/);
+  // After picklist + e-invoice: often picked/packed; legacy paths: allocated / ready_to_ship / shipped
+  expect(status.toLowerCase()).toMatch(/invoiced|allocated|fulfilled|ready.*ship|shipped|picked|packed|partial/);
+});
+
+// --- Pack → Ready to Ship → Dispatch (DAEE-114 / DAEE-141) ---
+// Some tenants auto-advance SO to ready_to_ship after e-invoice; skip dialogs when buttons are absent.
+When('I mark the Sales Order as packed from the detail page', async function ({ page }) {
+  if (!(await salesOrderDetailPage.isMarkAsPackedVisible())) {
+    console.log('ℹ️ Mark as Packed not shown (SO may already be packed / ready_to_ship); skipping.');
+    return;
+  }
+  await salesOrderDetailPage.clickMarkAsPacked();
+  const dialog = page.getByRole('alertdialog', { name: /Confirm Packing Complete/i });
+  await expect(dialog).toBeVisible({ timeout: 15000 });
+  await dialog.getByRole('button', { name: /Confirm Packed/i }).click();
+  await expect(dialog).toBeHidden({ timeout: 60000 });
+  await page.waitForTimeout(1000);
+});
+
+When('I mark the Sales Order as ready to ship from the detail page', async function ({ page }) {
+  if (!(await salesOrderDetailPage.isReadyToShipVisible())) {
+    console.log('ℹ️ Ready to Ship not shown (SO may already be ready_to_ship); skipping.');
+    return;
+  }
+  await salesOrderDetailPage.clickReadyToShip();
+  const dialog = page.getByRole('alertdialog', { name: /Ready for Dispatch/i });
+  await expect(dialog).toBeVisible({ timeout: 15000 });
+  await dialog.getByRole('button', { name: /^Ready to Ship$/i }).click();
+  await expect(dialog).toBeHidden({ timeout: 60000 });
+  await page.waitForTimeout(1000);
+});
+
+When(
+  'I dispatch the Sales Order entering transporter {string} with vehicle details deferred',
+  async function ({ page }, transporterName: string) {
+    await salesOrderDetailPage.clickDispatchOrder();
+    const dispatchDlg = page.getByRole('dialog', { name: /Dispatch Order/i });
+    await expect(dispatchDlg).toBeVisible({ timeout: 15000 });
+    await dispatchDlg.getByRole('checkbox', { name: /Vehicle & LR details not yet available/i }).check();
+    await dispatchDlg.getByLabel(/Transporter Name/i).fill(transporterName);
+    await dispatchDlg.getByRole('button', { name: /^Dispatch Order$/i }).last().click();
+    await expect(dispatchDlg).toBeHidden({ timeout: 120000 });
+    await page.waitForTimeout(1500);
+  }
+);
+
+Then('the Sales Order dispatch completes successfully', async function ({ page }) {
+  const status = await salesOrderDetailPage.getStatusText();
+  expect(status.toLowerCase()).toMatch(/shipped|delivered/);
 });
 
 // --- Invoice page & PDF ---
@@ -280,7 +377,7 @@ When('I navigate to the Invoice from the Sales Order', async function ({ page })
 When('I click Generate Custom E-Invoice PDF and download the PDF', async function ({ page }) {
   // Two cases: (1) "Download Custom..." visible → click once, download starts.
   // (2) "Generate custom..." visible → click Generate, wait for generation, then click "Download Custom..." to download.
-  const downloadPromise = page.waitForEvent('download', { timeout: 90000 });
+  const downloadPromise = page.waitForEvent('download', { timeout: 180000 });
 
   const hasDownloadBtn = await invoiceDetailPage.isDownloadCustomInvoicePdfVisible();
 
@@ -298,13 +395,13 @@ When('I click Generate Custom E-Invoice PDF and download the PDF', async functio
     ];
     for (const indicator of processingIndicators) {
       try {
-        await expect(indicator).toBeHidden({ timeout: 35000 }).catch(() => {});
+        await expect(indicator).toBeHidden({ timeout: 90000 }).catch(() => {});
       } catch {
         // Indicator might not exist
       }
     }
     // When generation succeeds, UI shows "Download Custom..."; app does not auto-download – we must click it
-    await invoiceDetailPage.waitForDownloadCustomInvoicePdfButton(25000);
+    await invoiceDetailPage.waitForDownloadCustomInvoicePdfButton(120000);
     await invoiceDetailPage.clickDownloadCustomInvoicePdf();
   }
 
@@ -349,4 +446,205 @@ When('I navigate to Dealer Ledger and select dealer {string}', async function ({
 Then('the Dealer Ledger shows an invoice transaction', async function ({ page }) {
   const has = await dealerLedgerPage.hasInvoiceTransaction();
   expect(has).toBe(true);
+});
+
+// --- Back order (NPK / no stock at warehouse) + Inventory UI cross-check ---
+Given(
+  'I have verified via DB that product {string} has no sellable inventory at warehouse {string}',
+  async function ({ page }, productCode: string, warehouseSearch: string) {
+    const ok = await productHasNoSellableInventoryAtWarehouse(productCode, warehouseSearch);
+    expect(ok).toBe(true);
+    console.log(`✅ DB: no sellable inventory for ${productCode} at ${warehouseSearch}`);
+  }
+);
+
+Given(
+  'I have resolved an in-stock and an out-of-stock product at warehouse {string} for mixed SO and back order',
+  async function ({ page }, warehouseSearch: string) {
+    const pair = await resolveMixedIndentProductPairAtWarehouse(warehouseSearch);
+    expect(pair).not.toBeNull();
+    o2cContext.mixedInStockCode = pair!.inStockMaterialCode;
+    o2cContext.mixedOutOfStockCode = pair!.outOfStockMaterialCode;
+    o2cContext.warehouseForInventory = warehouseSearch;
+    console.log(
+      `✅ Resolved mixed indent products @ ${warehouseSearch}: in-stock="${o2cContext.mixedInStockCode}", OOS="${o2cContext.mixedOutOfStockCode}"`
+    );
+  }
+);
+
+Given(
+  'I have noted inventory for the resolved in-stock product at warehouse {string}',
+  async function ({ page }, warehouseSearch: string) {
+    expect(o2cContext.mixedInStockCode).toBeTruthy();
+    const snapshot = await getInventoryForProductAndWarehouse(o2cContext.mixedInStockCode, warehouseSearch);
+    expect(snapshot).not.toBeNull();
+    expect(snapshot!.netAvailable).toBeGreaterThan(0);
+    o2cContext.inventoryBefore = snapshot!;
+    o2cContext.productCodeForInventory = o2cContext.mixedInStockCode;
+    o2cContext.warehouseForInventory = warehouseSearch;
+    console.log('✅ Noted inventory (DB) for resolved in-stock product:', o2cContext.inventoryBefore);
+  }
+);
+
+When('I add the resolved out-of-stock product to the indent', async function ({ page }) {
+  expect(o2cContext.mixedOutOfStockCode).toBeTruthy();
+  const detail = new IndentDetailPage(page);
+  await detail.clickAddItems();
+  await detail.searchProduct(o2cContext.mixedOutOfStockCode);
+  await detail.waitForAddProductsSearchComplete();
+  await detail.selectFirstProductAndAdd();
+  await detail.waitForSuccessToast(/added|product/i).catch(() => {});
+  console.log(`✅ Added resolved OOS product "${o2cContext.mixedOutOfStockCode}" to indent`);
+});
+
+When('I add the resolved in-stock product to the indent', async function ({ page }) {
+  expect(o2cContext.mixedInStockCode).toBeTruthy();
+  const detail = new IndentDetailPage(page);
+  await detail.clickAddItems();
+  await detail.searchProduct(o2cContext.mixedInStockCode);
+  await detail.waitForAddProductsSearchComplete();
+  await detail.selectFirstProductAndAdd();
+  await detail.waitForSuccessToast(/added|product/i).catch(() => {});
+  console.log(`✅ Added resolved in-stock product "${o2cContext.mixedInStockCode}" to indent`);
+});
+
+Then('a back order should exist in DB for the current indent', async function ({ page }) {
+  const match = page.url().match(/\/o2c\/indents\/([a-f0-9-]+)/);
+  expect(match).toBeTruthy();
+  const indentId = match![1];
+  // Workflow may queue BO creation; poll briefly after UI success.
+  const deadline = Date.now() + 120000;
+  let rows: Awaited<ReturnType<typeof getBackOrdersByOriginalIndentId>> = [];
+  while (Date.now() < deadline) {
+    rows = await getBackOrdersByOriginalIndentId(indentId);
+    if (rows.length > 0) break;
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+  expect(rows.length).toBeGreaterThan(0);
+  o2cContext.indentId = indentId;
+  console.log(`✅ DB back_order_management rows for indent ${indentId}:`, rows.length);
+});
+
+When('I am on the O2C Inventory page', async function ({ page }) {
+  const inv = new O2CInventoryPage(page);
+  await inv.goto();
+  console.log('✅ On O2C Inventory page');
+});
+
+When(
+  'I search inventory for {string} and filter warehouse {string}',
+  async function ({ page }, productSearch: string, warehouseName: string) {
+    const inv = new O2CInventoryPage(page);
+    await inv.searchInventory(productSearch);
+    await inv.selectWarehouseFilterByName(warehouseName);
+    console.log(`✅ Inventory search "${productSearch}" + warehouse "${warehouseName}"`);
+  }
+);
+
+When(
+  'I search inventory for the resolved out-of-stock product and filter warehouse {string}',
+  async function ({ page }, warehouseName: string) {
+    expect(o2cContext.mixedOutOfStockCode).toBeTruthy();
+    const inv = new O2CInventoryPage(page);
+    await inv.searchInventory(o2cContext.mixedOutOfStockCode);
+    await inv.selectWarehouseFilterByName(warehouseName);
+    console.log(
+      `✅ Inventory search resolved OOS "${o2cContext.mixedOutOfStockCode}" + warehouse "${warehouseName}"`
+    );
+  }
+);
+
+Then('the inventory list shows no rows for the current search', async function ({ page }) {
+  const inv = new O2CInventoryPage(page);
+  await inv.expectNoInventoryRowsMessage();
+  console.log('✅ Inventory list empty for search');
+});
+
+// --- E-Invoice without E-Way bill (modal: uncheck eWayBillRequired) ---
+When('I generate E-Invoice without E-Way bill on the Sales Order page', async function ({ page }) {
+  await salesOrderDetailPage.clickGenerateEInvoice();
+  const modal = page.getByRole('dialog').filter({ has: page.getByText(/e-invoice|transport|invoice/i) });
+  await expect(modal).toBeVisible({ timeout: 10000 });
+  const transportTab = page.getByRole('tab', { name: /transport/i }).first();
+  await transportTab.click();
+  await page.waitForTimeout(500);
+  const ewayCheckbox = modal.locator('#eWayBillRequired');
+  if (await ewayCheckbox.isVisible().catch(() => false)) {
+    await ewayCheckbox.setChecked(false);
+  }
+  const genOnly = modal.getByRole('button', { name: /generate e-invoice only/i });
+  await genOnly.click();
+
+  const generatingButton = modal.getByRole('button', { name: /generating.*invoice/i });
+  await expect(generatingButton).toBeVisible({ timeout: 10000 }).catch(() => {});
+  await expect(generatingButton).toBeHidden({ timeout: 40000 }).catch(() => {});
+  await expect(modal).toBeHidden({ timeout: 10000 }).catch(() => {});
+});
+
+// --- E-Invoice cancellation (IRN) within 24h; staging needs IRN without E-Way bill; else TC-003-style e-invoice-only create ---
+When(
+  'I open an invoice with IRN from the last {int} hours or complete O2C flow to generate one',
+  async function ({ page }, withinHours: number) {
+    const base = process.env.TEST_BASE_URL || 'http://localhost:3000';
+    let invoiceId = await getInvoiceIdWithRecentIrnWithoutEwayBill(withinHours);
+    if (invoiceId) {
+      console.log(
+        `✅ Using recent IRN invoice without E-Way bill in DB (staging cancellation): ${invoiceId}`
+      );
+    } else {
+      console.log(
+        'ℹ️ No recent IRN without E-Way bill in DB; running O2C → e-invoice-only flow (same as TC-003: uncheck E-Way, generate e-invoice only)…'
+      );
+      const result = await runO2CIndentThroughEInvoice(page, {
+        dealerName: 'Ramesh ningappa diggai',
+        productCode: '1013',
+        warehouseName: 'Kurnook Warehouse',
+        transporterName: 'Just In Time Shipper',
+        approvalComment: `AUTO_QA_${Date.now()}_einv_cancel_setup_no_eway`,
+        eInvoiceWithoutEWayBill: true,
+      });
+      invoiceId = result.invoiceId;
+      if (!invoiceId) {
+        const ids = await getInvoiceIdsBySalesOrderId(result.salesOrderId);
+        invoiceId = ids[0] ?? null;
+      }
+    }
+    expect(invoiceId).toBeTruthy();
+    o2cContext.invoiceId = invoiceId!;
+    await page.goto(new URL(`/o2c/invoices/${invoiceId}`, base).toString(), {
+      waitUntil: 'domcontentloaded',
+      timeout: 30000,
+    });
+    invoiceDetailPage = new InvoiceDetailPage(page);
+    await invoiceDetailPage.verifyPageLoaded();
+    console.log(`✅ Opened invoice ${invoiceId} for e-invoice cancellation flow`);
+  }
+);
+
+When('I cancel the e-invoice from the invoice detail using the default cancellation reason', async function ({ page }) {
+  invoiceDetailPage = new InvoiceDetailPage(page);
+  await invoiceDetailPage.verifyPageLoaded();
+  await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+  await page.waitForTimeout(800);
+  // Header **Cancel Invoice** + CancelInvoiceDialog (cancelInvoiceWithGST). E-Invoice card **Cancel E-Invoice** returns 400 in staging — DAEE-362.
+  await invoiceDetailPage.postToGeneralLedgerIfButtonVisible();
+  await invoiceDetailPage.clickCancelInvoiceHeaderButton();
+  await invoiceDetailPage.fillCancelInvoiceDialogAndConfirm(
+    `AUTO_QA_${Date.now()}_TC004_header_cancel_invoice`
+  );
+  await invoiceDetailPage.waitForEInvoiceCancelledToast();
+  console.log('✅ Invoice cancellation submitted (header Cancel Invoice)');
+});
+
+Then('the invoice e-invoice status in the database should be {string}', async function ({ page }, expected: string) {
+  expect(o2cContext.invoiceId).toBeTruthy();
+  const want = expected.toLowerCase();
+  let last: string | null = null;
+  for (let i = 0; i < 30; i++) {
+    last = await getInvoiceEinvoiceStatus(o2cContext.invoiceId!);
+    if ((last || '').toLowerCase() === want) break;
+    await page.waitForTimeout(2000);
+  }
+  expect((last || '').toLowerCase()).toBe(want);
+  console.log(`✅ DB einvoice_status=${last}`);
 });

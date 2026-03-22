@@ -10,8 +10,10 @@ import {
 import {
   getVANPaymentByUTR,
   getVANPaymentByTransactionId,
+  getLatestPostedVANPayment,
   getCashReceiptById,
   getCashReceiptApplications,
+  getCashReceiptApplicationTotals,
   getCashReceiptApplicationsWithInvoiceDates,
   getInvoiceNumberById,
   getInvoiceOutstandingBalance,
@@ -35,6 +37,20 @@ function parseResponseSuccess(data: VANApiResponse): boolean {
 function getResponseMessage(data: VANApiResponse): string {
   return (data.message as string) || (data.error_code as string) || '';
 }
+
+Given('I load the latest posted VAN payment with linked cash receipt', async function () {
+  const latest = await getLatestPostedVANPayment();
+  expect(latest).not.toBeNull();
+  expect(latest!.cash_receipt_id).toBeTruthy();
+
+  const key = latest!.utr || latest!.tran_id;
+  if (!key) {
+    throw new Error('Latest posted VAN payment has neither UTR nor Tran ID.');
+  }
+
+  (this as any).vanLastUtr = key;
+  (this as any).vanLastCashReceiptId = latest!.cash_receipt_id;
+});
 
 When('I send VAN validation request with VAN {string} and amount {string}', async function (
   {},
@@ -276,6 +292,49 @@ Then('VAN posting should fail with message containing {string}', async function 
   expect(result).toBeDefined();
   const msg = getResponseMessage(result.data);
   expect(msg.toLowerCase()).toContain(messagePart.toLowerCase());
+});
+
+Then('VAN payment and cash receipt totals should reconcile', async function () {
+  const utr = (this as any).vanLastUtr as string | undefined;
+  expect(utr).toBeTruthy();
+
+  const vanPayment = await getVANPaymentByUTR(utr!);
+  expect(vanPayment).not.toBeNull();
+  expect(vanPayment!.cash_receipt_id).toBeTruthy();
+
+  const receipt = await getCashReceiptById(vanPayment!.cash_receipt_id!);
+  expect(receipt).not.toBeNull();
+
+  const vanAmount = Number(vanPayment!.amount || 0);
+  const receiptTotal = Number(receipt!.total_receipt_amount || 0);
+  const amountAppliedHeader = Number(receipt!.amount_applied || 0);
+  const amountUnappliedHeader = Number(receipt!.amount_unapplied || 0);
+  const totals = await getCashReceiptApplicationTotals(vanPayment!.cash_receipt_id!);
+
+  // Integrity 1: VAN payload amount vs cash receipt total
+  expect(receiptTotal).toBeCloseTo(vanAmount, 2);
+
+  // Integrity 2: Header split should remain balanced
+  expect(amountAppliedHeader + amountUnappliedHeader).toBeCloseTo(receiptTotal, 2);
+
+  // Integrity 3: Header applied amount should match application rows sum(amount_applied)
+  expect(amountAppliedHeader).toBeCloseTo(Number(totals.total_amount_applied || 0), 2);
+});
+
+Then('the last VAN cash receipt totals should reconcile in database', async function () {
+  const receiptId = (this as any).vanLastCashReceiptId as string | undefined;
+  expect(receiptId).toBeTruthy();
+
+  const receipt = await getCashReceiptById(receiptId!);
+  expect(receipt).not.toBeNull();
+
+  const amountAppliedHeader = Number(receipt!.amount_applied || 0);
+  const amountUnappliedHeader = Number(receipt!.amount_unapplied || 0);
+  const totalReceiptAmount = Number(receipt!.total_receipt_amount || 0);
+  const totals = await getCashReceiptApplicationTotals(receiptId!);
+
+  expect(amountAppliedHeader).toBeCloseTo(Number(totals.total_amount_applied || 0), 2);
+  expect(amountAppliedHeader + amountUnappliedHeader).toBeCloseTo(totalReceiptAmount, 2);
 });
 
 // --- E2E steps (API + UI) for van-auto-payment-e2e.feature ---

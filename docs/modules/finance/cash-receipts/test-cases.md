@@ -16,6 +16,10 @@ Test inventory for Manual Cash Receipts, VAN API (validation/posting), Cash Rece
 | FIN-CR-TC-006 | Full application of cash receipt to invoice | manual-cash-receipts.feature | ✅ Automated |
 | FIN-CR-TC-007 | Partial application of cash receipt to invoice | manual-cash-receipts.feature | ✅ Automated |
 | FIN-CR-TC-008 | Partial then full application (multi-step) | manual-cash-receipts.feature | ✅ Automated |
+| FIN-CR-TC-009 | Apply button disabled when no invoice is selected | manual-cash-receipts.feature | ✅ Automated |
+| FIN-CR-TC-010 | Manual apply data integrity (header totals vs application rows) | manual-cash-receipts.feature | ✅ Automated |
+| FIN-CR-TC-011 | New cash receipt validation: amount must be greater than zero | manual-cash-receipts.feature | ✅ Automated |
+| FIN-CR-TC-012 | New cash receipt validation: bank account mandatory for NEFT | manual-cash-receipts.feature | ✅ Automated |
 
 ### VAN API - Validation
 | Test ID | CSV ID | Scenario | Feature File | Status |
@@ -47,6 +51,8 @@ Test inventory for Manual Cash Receipts, VAN API (validation/posting), Cash Rece
 | FIN-VAN-TC-015 | TC_ABP_16 | VAN payment allocated FIFO when no EPD | van-epd-discount.feature | ✅ Automated |
 | FIN-VAN-TC-023 | TC_ABP_24 | Overpayment creates advance | van-fifo-allocation.feature | ✅ Automated |
 | FIN-VAN-TC-024 | TC_ABP_25 | No invoices creates full advance | van-fifo-allocation.feature | ✅ Automated |
+| FIN-VAN-TC-011 | - | VAN posting data integrity (VAN amount vs receipt totals) | van-cash-receipts.feature | ✅ Automated |
+| FIN-VAN-TC-012 | - | VAN un-apply/re-apply lifecycle keeps receipt totals reconciled | van-cash-receipts.feature | ✅ Automated |
 
 *Note: FIFO allocation order (TC_ABP_23) covered by van-api-posting FIN-VAN-TC-005. Redundant TC-023 removed; van-epd-discount consolidated from 4 to 2 scenarios (IMPL-030 cleanup).*
 
@@ -57,6 +63,12 @@ Test inventory for Manual Cash Receipts, VAN API (validation/posting), Cash Rece
 | FIN-EPD-TC-002 | Configure EPD formula | epd-configuration.feature | ✅ Automated |
 | FIN-EPD-TC-003 | Add EPD slab | epd-configuration.feature | ✅ Automated |
 | FIN-EPD-TC-004 | Verify EPD calculation | epd-configuration.feature | ✅ Automated |
+
+### EPD Slab Configuration Integration (Manual + VAN)
+| Test ID | Scenario | Feature File | Status |
+|---------|----------|---------------|--------|
+| FIN-EPD-TC-008 | Override oldest allocatable invoice slab to temporary % and verify manual apply-page reflects it | manual-cash-receipts.feature | ✅ Automated |
+| FIN-VAN-TC-010 | Override oldest allocatable invoice slab to temporary % and verify VAN receipt flow reflects configuration | van-cash-receipts.feature | ✅ Automated |
 
 ## CSV Test ID Mapping (All 40)
 - TC_ABP_01–04: Validation (see above).
@@ -78,7 +90,7 @@ Test inventory for Manual Cash Receipts, VAN API (validation/posting), Cash Rece
 | VAN FIFO/Advance | 2 | 2 | 0 |
 | VAN Auto Payment E2E | 3 | 3 | 0 |
 | EPD Configuration | 4 | 4 | 0 |
-| **Total (priority)** | **23** | **23** | **0** |
+| **Total (priority)** | **31** | **31** | **0** |
 
 *Implementation: IMPL-028 (Cash Receipts and VAN Payment Tests), IMPL-029 (VAN E2E Auto Payment), IMPL-030 (Redundant test cleanup).*
 

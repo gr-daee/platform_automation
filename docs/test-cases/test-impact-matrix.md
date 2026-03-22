@@ -2,7 +2,7 @@
 
 **Purpose**: Maps automated tests to source code files for change impact analysis
 
-**Last Updated**: YYYY-MM-DD
+**Last Updated**: 2026-03-22 (WH-INV Phase 2)
 
 ---
 
@@ -154,6 +154,31 @@ Each entry maps:
 
 ---
 
+### `../web_app/src/app/o2c/inventory/page.tsx`
+### `../web_app/src/app/o2c/components/O2CInventoryManagerPage.tsx`
+### `../web_app/src/app/o2c/components/InventoryTable.tsx`
+### `../web_app/src/app/o2c/components/InventoryPagination.tsx`
+### `../web_app/src/app/o2c/components/InventoryAllocationTable.tsx`
+### `../web_app/src/app/o2c/components/InventoryDashboard.tsx`
+
+**Affected Tests**:
+- `WH-INV-TC-001`–`WH-INV-TC-015`: Warehouse inventory Phases 1–2 (shell, tabs, filters, search, pagination, page size, combined filters)
+  - **Interaction**: POM (`e2e/src/pages/o2c/WarehouseInventoryPage.ts`), steps (`e2e/src/steps/o2c/warehouse-inventory-steps.ts`)
+  - **Last Verified**: 2026-03-22
+
+**Change Risk**: 🟡 Medium — 15 tests; Phase 3+ targets Add Inventory / row actions / detail route (export/import E2E deferred).
+
+### `../web_app/src/app/o2c/actions/inventoryOperations.ts`
+
+**Affected Tests**:
+- `WH-INV-TC-009`–`015` (search/filter/pagination behavior driven by server queries)
+  - **Interaction**: Indirect via UI (`InventoryTable` / `useO2CInventory`)
+  - **Last Verified**: 2026-03-22
+
+**Change Risk**: 🟡 Medium
+
+---
+
 ## O2C Reports - Hierarchical Sales
 
 ### `../web_app/src/app/o2c/reports/hierarchical-sales/page.tsx`
@@ -264,6 +289,180 @@ Each entry maps:
   - **Last Verified**: 2026-02-04
 
 **Change Risk**: 🔴 Critical - Affects ALL tests using toast verification
+
+---
+
+## Finance Module
+
+### `../web_app/src/app/finance/cash-receipts/new/page.tsx`
+**Affected Tests**:
+- `FIN-CR-TC-011`: New cash receipt validation (amount > 0)
+  - **Interaction**: POM (`e2e/src/pages/finance/NewCashReceiptPage.ts`)
+  - **Locators Used**: `getByRole('button', { name: /Save Cash Receipt/i })`, error alert text
+  - **Last Verified**: 2026-03-21
+- `FIN-CR-TC-012`: New cash receipt validation (bank required for NEFT)
+  - **Interaction**: POM (`e2e/src/pages/finance/NewCashReceiptPage.ts`)
+  - **Locators Used**: payment method select, save button, error alert text
+  - **Last Verified**: 2026-03-21
+
+**Change Risk**: 🔴 High - 2 tests affected
+
+---
+
+### `../web_app/src/app/finance/cash-receipts/[id]/page.tsx`
+**Affected Tests**:
+- `FIN-VAN-TC-012`: VAN lifecycle integrity (un-apply and re-apply)
+  - **Interaction**: POM (`e2e/src/pages/finance/CashReceiptDetailPage.ts`)
+  - **Locators Used**: Un-apply button/dialog, receipt summary values
+  - **Last Verified**: 2026-03-21
+
+**Change Risk**: 🟡 Medium - 1 test affected
+
+---
+
+### `../web_app/src/app/finance/cash-receipts/[id]/apply/page.tsx`
+**Affected Tests**:
+- `FIN-VAN-TC-012`: VAN lifecycle integrity (re-apply and reconcile)
+  - **Interaction**: POM (`e2e/src/pages/finance/CashReceiptApplyPage.ts`)
+  - **Locators Used**: invoice selection checkbox, Apply Payments button
+  - **Last Verified**: 2026-03-21
+
+**Change Risk**: 🟡 Medium - 1 test affected
+
+---
+
+### `../web_app/src/app/finance/credit-memos/page.tsx`
+**Affected Tests**:
+- `FIN-CM-TC-001`–`FIN-CM-TC-008`, `FIN-CM-TC-011`–`FIN-CM-TC-022`: Create credit memo flow entry; **TC-022** RBAC deny (`/restrictedUser`) via `credit-memo-steps.ts`
+  - **Interaction**: POM (`e2e/src/pages/finance/CreditMemosPage.ts`), steps (`e2e/src/steps/finance/credit-memo-steps.ts`)
+  - **Locators Used**: `getByRole('button', { name: /New Credit Memo/i })`, route `/finance/credit-memos`, `ProtectedPageWrapper` `finance_credit_memos`
+  - **Last Verified**: 2026-03-22
+
+**Change Risk**: 🔴 High - 20 tests affected
+
+---
+
+### `../web_app/src/app/finance/credit-memos/new/page.tsx`
+**Affected Tests**:
+- `FIN-CM-TC-001`: Create credit memo with valid inputs
+- `FIN-CM-TC-002`: Partial apply prerequisite creation
+- `FIN-CM-TC-003`, `FIN-CM-TC-004`, `FIN-CM-TC-008`: Full settlement prerequisite creation
+- `FIN-CM-TC-005`: Cross-invoice prerequisite creation (original invoice link)
+- `FIN-CM-TC-006`: Integrity scenario prerequisite creation
+- `FIN-CM-TC-007`: Outstanding reduction scenario prerequisite creation
+- `FIN-CM-TC-011`, `FIN-CM-TC-012`: Transport allowance over-balance prerequisite creation
+- `FIN-CM-TC-013`–`FIN-CM-TC-016`: Negative apply prerequisites (transport_allowance CM creation)
+- `FIN-CM-TC-017`: Non-transport (`pricing_error`) CM creation
+- `FIN-CM-TC-018`–`FIN-CM-TC-021`: GL post + reversal + reverse-dialog / post-reversal UI prerequisites (transport_allowance CM creation)
+  - **Interaction**: POM (`e2e/src/pages/finance/NewCreditMemoPage.ts`)
+  - **Locators Used**: customer dialog select, **Credit Reason** combobox (`selectCreditReason`), original invoice combobox (`#original_invoice_id` + **anchored** option match), reason description, line item inputs, create button + navigation wait to detail URL
+  - **Last Verified**: 2026-03-22
+
+**Change Risk**: 🔴 High - 19 tests affected
+
+---
+
+### `../web_app/src/app/finance/credit-memos/[id]/page.tsx`
+**Affected Tests**:
+- `FIN-CM-TC-002`–`FIN-CM-TC-008`, `FIN-CM-TC-011`–`FIN-CM-TC-021`: Apply to invoice, post-apply validations, apply-dialog negative paths, **Post to GL**, **Reverse** application (AlertDialog + `#reverse-reason`), reverse-dialog enable/disable + cancel, post-reversal row (**Reversed** badge, no **Reverse**)
+  - **Interaction**: POM (`e2e/src/pages/finance/CreditMemoDetailPage.ts`)
+  - **Locators Used**: Apply to Invoice, invoice select (`#invoice` + **anchored** option name via `finance-select-helpers`), amount input (`#amount`), Apply Credit; Post to GL; Application History **Reverse** / **Confirm Reversal** / **Cancel**; `getByRole('alertdialog')` scoped to reverse title; Sonner toasts
+  - **Last Verified**: 2026-03-22
+
+**Change Risk**: 🔴 High - 18 tests affected
+
+---
+
+### `../web_app/src/app/finance/dealer-ledger/page.tsx`
+**Affected Tests**:
+- `FIN-DL-TC-001`–`FIN-DL-TC-016`: Dealer Ledger entry, RBAC wrapper (`dealer_ledger` read); **TC-008** deny path (`/restrictedUser`)
+  - **Interaction**: POM (`e2e/src/pages/finance/DealerLedgerPage.ts`)
+  - **Locators Used**: route `/finance/dealer-ledger`, breadcrumbs via app shell
+  - **Last Verified**: 2026-03-22
+
+**Change Risk**: 🟡 Medium - 16 tests affected
+
+---
+
+### `../web_app/src/app/finance/dealer-ledger/components/DealerLedgerContent.tsx`
+**Affected Tests**:
+- `FIN-DL-TC-001`–`FIN-DL-TC-016`: Dealer combobox (first card), date inputs, **Load Ledger**, exports (CSV + **Dealer Ledger** / **Invoice Ledger** PDF), summary cards, type **Select**, search, date sort header, **Transaction History** table + invoice/payment/credit links, AR/VAN cards (optional), Sonner toasts; O2C E2E tail uses same POM
+  - **Interaction**: POM (`e2e/src/pages/finance/DealerLedgerPage.ts`), steps (`e2e/src/steps/finance/dealer-ledger-steps.ts`, `e2e/src/steps/o2c/o2c-e2e-steps.ts`)
+  - **Locators Used**: first card `combobox`, `#from-date` / `#to-date`, **Export CSV**, PDF buttons by name, Transaction History card `combobox` + `option`, search placeholder, `th` **Date**, table `tbody tr` / `cell` index 1 (type) / 2 (doc), `link` → `/o2c/invoices/`, `/o2c/payments/`, `/finance/credit-memos/`
+  - **Last Verified**: 2026-03-22
+
+**Change Risk**: 🟡 Medium - 16 tests + O2C E2E dealer ledger phase
+
+---
+
+### `../web_app/src/app/o2c/invoices/[id]/components/InvoiceDetailsContent.tsx`
+**Affected Tests**:
+- `O2C-E2E-TC-001` (Custom E-Invoice PDF / invoice detail load); `O2C-E2E-TC-004` (**Cancel E-Invoice** trigger + `EInvoiceCancellation` AlertDialog, Sonner success toast)
+  - **Interaction**: POM `e2e/src/pages/o2c/InvoiceDetailPage.ts`, steps `e2e/src/steps/o2c/o2c-e2e-steps.ts`
+  - **Locators Used**: **E-Invoice Information** card; `getByRole('button', { name: /^cancel e-invoice$/i })`; `role="alertdialog"` scoped to **Cancel E-Invoice**; confirm action button; `[data-sonner-toast]`; read-only DB `invoices.einvoice_status` via `o2c-db-helpers`
+  - **Last Verified**: 2026-03-21
+
+**Change Risk**: 🟡 Medium - O2C E2E invoice tail + cancellation
+
+---
+
+### `../web_app/src/app/finance/dealer-ledger/actions/dealerLedgerActions.ts`
+**Affected Tests**:
+- `FIN-DL-TC-001`–`FIN-DL-TC-016`: `getDealersForLedger`, `getDealerLedger`, `exportDealerLedgerCSV`, PDF download actions, VAN/AR parallel fetch (UI outcomes)
+  - **Interaction**: Indirect (server actions); DB sandwich optional for future tests
+  - **Last Verified**: 2026-03-22
+
+**Change Risk**: 🟡 Medium - 16 tests (data-dependent)
+
+---
+
+### `../web_app/src/app/finance/ar-aging/page.tsx`
+**Affected Tests**:
+- `FIN-AR-TC-001`–`FIN-AR-TC-012`: AR Aging UI (filters, tabs, search, exports, snapshots dialog), RBAC `finance_aging_reports` read; **TC-009** → `/restrictedUser`
+  - **Interaction**: POM (`e2e/src/pages/finance/ARAgingPage.ts`), steps (`e2e/src/steps/finance/ar-aging-steps.ts`)
+  - **Locators Used**: heading **AR Aging Report**, toolbar **Filters** / **Export PDF** / **Export Excel**, `#aging_basis` Select, **Apply Filters**, tabs **Dealer Summary** / **Invoice Detail** / **Snapshots**, search placeholder, `role="dialog"` Generate Snapshot, Sonner toasts
+  - **Last Verified**: 2026-03-22
+
+**Change Risk**: 🟡 Medium - 12 tests
+
+---
+
+### `../web_app/src/app/finance/reports/ar-aging/page.tsx`
+**Affected Tests**:
+- `FIN-AR-TC-010`: redirect to `/finance/ar-aging`
+  - **Last Verified**: 2026-03-22
+
+**Change Risk**: 🟢 Low - 1 test
+
+---
+
+### `../web_app/src/app/finance/reports/dealer-outstanding/page.tsx`
+**Affected Tests**:
+- `FIN-DO-TC-001`–`FIN-DO-TC-031`: filters, Load Report, summary cards, dealer grid, drill-down dialog, CSV/PDF
+- `FIN-DO-TC-040`: RBAC via **invoices** read (`@iacs-ed` → `/restrictedUser` when denied)
+  - **Interaction**: POM (`e2e/src/pages/finance/DealerOutstandingReportPage.ts`), steps (`e2e/src/steps/finance/dealer-outstanding-steps.ts`)
+  - **Locators Used**: heading **Dealer Outstanding Report**, **Report Filters**, **Load Report**, **CSV** / **PDF**, `input[type="date"]`, `input[type="number"]`, Radix **combobox** (Region), table **Gross Outstanding** / **Unapplied Credits**, `role="dialog"` **Invoice Details**, Sonner toasts
+  - **Last Verified**: 2026-03-22
+
+**Change Risk**: 🟡 Medium - 15 tests (data-dependent)
+
+---
+
+### `../web_app/src/app/finance/reports/dealer-outstanding/actions/dealerOutstandingActions.ts`
+**Affected Tests**:
+- `FIN-DO-TC-003`–`008`, `010`–`011`, `020`–`021`, `030` (indirect via totals, drill-down, DB alignment)
+  - **Last Verified**: 2026-03-22
+
+**Change Risk**: 🟡 Medium - calculation / query changes affect reconciliation scenarios
+
+---
+
+### `../web_app/src/app/finance/actions/getARAgingReport.ts` / `downloadARAgingPdf.ts` / snapshot actions
+**Affected Tests**:
+- `FIN-AR-TC-001`–`008`, `011`–`012` (indirect via load/export/snapshots)
+  - **Last Verified**: 2026-03-22
+
+**Change Risk**: 🟡 Medium - data/API dependent
 
 ---
 

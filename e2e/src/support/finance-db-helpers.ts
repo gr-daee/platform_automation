@@ -33,6 +33,12 @@ export interface CashReceiptApplicationRow {
   was_within_epd_period: boolean | null;
 }
 
+export interface CashReceiptApplicationTotals {
+  active_applications_count: number;
+  total_amount_applied: number;
+  total_discount_taken: number;
+}
+
 export interface VANPaymentCollectionRow {
   id: string;
   utr: string;
@@ -75,6 +81,39 @@ export interface OutstandingInvoiceRow {
   early_payment_due_date: string | null;
 }
 
+export interface CreditMemoRow {
+  id: string;
+  credit_memo_number: string;
+  customer_id: string;
+  total_credit_amount: number;
+  credit_applied: number;
+  credit_available: number;
+  status: string;
+  gl_posted: boolean;
+  gl_journal_id: string | null;
+  created_at: string;
+}
+
+export interface CreditMemoApplicationRow {
+  id: string;
+  credit_memo_id: string;
+  invoice_id: string;
+  amount_applied: number;
+  is_reversed: boolean;
+  application_date: string;
+}
+
+export interface DealerAdvanceRow {
+  id: string;
+  dealer_id: string;
+  advance_number: string;
+  amount: number;
+  available_balance: number;
+  source_type: string;
+  source_reference: string | null;
+  created_at: string;
+}
+
 /**
  * Get cash receipt by ID.
  */
@@ -102,6 +141,39 @@ export async function getCashReceiptApplications(cashReceiptId: string): Promise
      ORDER BY is_reversed ASC, application_date DESC`,
     [cashReceiptId]
   );
+}
+
+/**
+ * Get aggregate totals of active (non-reversed) cash receipt applications.
+ */
+export async function getCashReceiptApplicationTotals(
+  cashReceiptId: string
+): Promise<CashReceiptApplicationTotals> {
+  const rows = await executeQuery<{
+    active_applications_count: string | number | null;
+    total_amount_applied: string | number | null;
+    total_discount_taken: string | number | null;
+  }>(
+    `SELECT
+       COUNT(*) FILTER (WHERE is_reversed = false) AS active_applications_count,
+       COALESCE(SUM(amount_applied) FILTER (WHERE is_reversed = false), 0) AS total_amount_applied,
+       COALESCE(SUM(discount_taken) FILTER (WHERE is_reversed = false), 0) AS total_discount_taken
+     FROM cash_receipt_applications
+     WHERE cash_receipt_header_id = $1`,
+    [cashReceiptId]
+  );
+
+  const row = rows[0] || {
+    active_applications_count: 0,
+    total_amount_applied: 0,
+    total_discount_taken: 0,
+  };
+
+  return {
+    active_applications_count: Number(row.active_applications_count || 0),
+    total_amount_applied: Number(row.total_amount_applied || 0),
+    total_discount_taken: Number(row.total_discount_taken || 0),
+  };
 }
 
 /** Application row with invoice_number from join (for matching by number when invoice_id alignment is unclear). */
@@ -137,6 +209,53 @@ export async function getInvoiceOutstandingBalance(invoiceId: string): Promise<n
   );
   if (rows.length === 0) return null;
   return Number(rows[0].balance_amount);
+}
+
+/**
+ * Get credit memo by ID.
+ */
+export async function getCreditMemoById(id: string): Promise<CreditMemoRow | null> {
+  const rows = await executeQuery<CreditMemoRow>(
+    `SELECT id, credit_memo_number, customer_id, total_credit_amount, credit_applied, credit_available, status,
+            COALESCE(gl_posted, false) AS gl_posted, gl_journal_id, created_at
+     FROM credit_memos
+     WHERE id = $1`,
+    [id]
+  );
+  return rows.length > 0 ? rows[0] : null;
+}
+
+/**
+ * Get credit memo applications (active first).
+ */
+export async function getCreditMemoApplications(creditMemoId: string): Promise<CreditMemoApplicationRow[]> {
+  return executeQuery<CreditMemoApplicationRow>(
+    `SELECT id, credit_memo_id, invoice_id, amount_applied, is_reversed, application_date
+     FROM credit_memo_applications
+     WHERE credit_memo_id = $1
+     ORDER BY is_reversed ASC, application_date DESC`,
+    [creditMemoId]
+  );
+}
+
+/**
+ * Get latest dealer advance for a specific credit memo number (source_reference).
+ */
+export async function getLatestDealerAdvanceForCreditMemo(
+  dealerId: string,
+  creditMemoNumber: string
+): Promise<DealerAdvanceRow | null> {
+  const rows = await executeQuery<DealerAdvanceRow>(
+    `SELECT id, dealer_id, advance_number, amount, available_balance, source_type, source_reference, created_at
+     FROM dealer_advances
+     WHERE dealer_id = $1
+       AND source_type = 'credit_memo'
+       AND source_reference = $2
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [dealerId, creditMemoNumber]
+  );
+  return rows.length > 0 ? rows[0] : null;
 }
 
 /**
@@ -195,6 +314,27 @@ export async function getVANPaymentByTransactionId(tranId: string): Promise<VANP
      ORDER BY created_at DESC
      LIMIT 1`,
     [tranId]
+  );
+  return rows.length > 0 ? rows[0] : null;
+}
+
+/**
+ * Get the latest posted/success VAN payment that has a linked cash receipt.
+ */
+export async function getLatestPostedVANPayment(): Promise<VANPaymentCollectionRow | null> {
+  const rows = await executeQuery<VANPaymentCollectionRow>(
+    `SELECT id, utr, tran_id,
+            virtual_account_number as bene_acc_no,
+            posting_status as status,
+            txn_amount as amount,
+            dealer_id,
+            cash_receipt_header_id as cash_receipt_id,
+            created_at
+     FROM van_payment_collections
+     WHERE lower(coalesce(posting_status, '')) IN ('posted', 'success')
+       AND cash_receipt_header_id IS NOT NULL
+     ORDER BY created_at DESC
+     LIMIT 1`
   );
   return rows.length > 0 ? rows[0] : null;
 }
@@ -317,6 +457,65 @@ export async function getDealerIdByBusinessName(
     [tenantId, businessName]
   );
   return rows.length > 0 ? rows[0].id : null;
+}
+
+/**
+ * Resolve dealer UUID by dealer_code (Dealer Outstanding report row key).
+ */
+export async function getDealerIdByDealerCode(
+  tenantId: string,
+  dealerCode: string
+): Promise<string | null> {
+  const code = dealerCode.trim();
+  if (!code) return null;
+  const rows = await executeQuery<{ id: string }>(
+    `SELECT id FROM master_dealers WHERE tenant_id = $1 AND dealer_code = $2 LIMIT 1`,
+    [tenantId, code]
+  );
+  return rows.length > 0 ? rows[0].id : null;
+}
+
+/**
+ * Sum invoice balance_amount for Dealer Outstanding report (matches getDealerOutstandingReport invoice query).
+ */
+export async function sumDealerOutstandingGrossFromInvoices(
+  tenantId: string,
+  dealerId: string,
+  asOfDateStr: string
+): Promise<number> {
+  const rows = await executeQuery<{ s: string }>(
+    `SELECT COALESCE(SUM(balance_amount), 0)::text AS s
+     FROM invoices
+     WHERE tenant_id = $1
+       AND dealer_id = $2
+       AND balance_amount > 0
+       AND deleted_at IS NULL
+       AND status NOT IN ('draft', 'cancelled')
+       AND invoice_date <= $3::date`,
+    [tenantId, dealerId, asOfDateStr]
+  );
+  return Number(rows[0]?.s || 0);
+}
+
+/**
+ * Invoice balance for reconciliation (drill-down row vs DB).
+ */
+export async function getInvoiceBalanceByInvoiceNumber(
+  tenantId: string,
+  invoiceNumber: string
+): Promise<{ id: string; balance_amount: number } | null> {
+  const num = invoiceNumber.trim();
+  if (!num) return null;
+  const rows = await executeQuery<{ id: string; balance_amount: string }>(
+    `SELECT id, balance_amount::text
+     FROM invoices
+     WHERE tenant_id = $1 AND invoice_number = $2
+       AND deleted_at IS NULL
+     LIMIT 1`,
+    [tenantId, num]
+  );
+  if (rows.length === 0) return null;
+  return { id: rows[0].id, balance_amount: Number(rows[0].balance_amount || 0) };
 }
 
 /**
@@ -452,7 +651,7 @@ export async function getOutstandingInvoicesForCustomer(
       AND i.status NOT IN ('cancelled', 'draft')
       AND (i.collection_status IS NULL OR i.collection_status NOT IN ('collected', 'paid'))
       AND i.balance_amount > 0
-    ORDER BY i.invoice_date ASC`,
+    ORDER BY i.invoice_date ASC, i.invoice_number ASC`,
     [effectiveTenantId, dealerId]
   );
   
@@ -471,4 +670,25 @@ export async function getOutstandingInvoicesForCustomer(
     early_payment_discount_percentage: row.early_payment_discount_percentage,
     early_payment_due_date: row.early_payment_due_date,
   }));
+}
+
+/**
+ * Any invoice number for a different dealer (same tenant) — used to assert cross-customer isolation in CM apply UI.
+ */
+export async function getInvoiceNumberForDifferentDealer(
+  tenantId: string,
+  excludeDealerId: string
+): Promise<string | null> {
+  const rows = await executeQuery<{ invoice_number: string }>(
+    `SELECT i.invoice_number
+     FROM invoices i
+     WHERE i.tenant_id = $1
+       AND i.dealer_id IS NOT NULL
+       AND i.dealer_id <> $2
+       AND i.status NOT IN ('cancelled', 'draft')
+     ORDER BY i.invoice_date DESC
+     LIMIT 1`,
+    [tenantId, excludeDealerId]
+  );
+  return rows.length > 0 ? rows[0].invoice_number : null;
 }

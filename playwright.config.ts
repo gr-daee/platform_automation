@@ -61,7 +61,8 @@ console.log(`👷 Workers: ${workers === undefined ? 'auto (50% of cores)' : wor
  * - Development: 90s test, 45s action (balance between speed and debugging)
  */
 const timeouts = {
-  test: isDebugMode ? 180000 : isDevelopmentMode ? 150000 : 60000, // Increased: debug=180s, dev=150s
+  // Dev: 240s — full O2C E2E (indent → picklist → e-invoice → dispatch → PDF → ledger) exceeds 150s when PDF is background-generated
+  test: isDebugMode ? 180000 : isDevelopmentMode ? 240000 : 60000,
   action: isDebugMode ? 60000 : isDevelopmentMode ? 60000 : 30000, // Increased: debug/dev=60s
   navigation: isDebugMode ? 60000 : isDevelopmentMode ? 60000 : 30000, // Increased: debug/dev=60s
 };
@@ -259,6 +260,20 @@ export default defineConfig({
       testMatch: /(o2c|finance|p2p)[/\\].*\.spec\.js$/,  // File path routing: O2C + Finance + P2P (matches generated .spec.js files)
       grep: /@iacs-md/,                          // Tag filtering
       grepInvert: /@skip-iacs-md/,               // Skip exclusions
+      dependencies: ['setup'],
+      testIgnore: /login\.spec\.js/,
+    },
+
+    // IACS ED User — P2P approver; used for Dealer Ledger RBAC (no dealer_ledger.read)
+    {
+      name: 'iacs-ed',
+      use: {
+        ...chromeConfig,
+        storageState: 'e2e/.auth/iacs-ed.json',
+      },
+      testMatch: /finance[/\\](dealer-ledger|ar-aging|credit-memos|dealer-outstanding)[/\\].*\.spec\.js$/,
+      grep: /@iacs-ed/,
+      grepInvert: /@skip-iacs-ed/,
       dependencies: ['setup'],
       testIgnore: /login\.spec\.js/,
     },

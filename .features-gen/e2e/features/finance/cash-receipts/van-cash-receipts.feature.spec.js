@@ -69,6 +69,31 @@ test.describe("VAN Cash Receipts", () => {
     await Then("the receipt detail shows amount applied and status", null, { page });
   });
 
+  test("VAN posting reflects temporary slab override from payment terms configuration", { tag: ["@FIN-VAN-TC-010", "@critical", "@p1", "@iacs-md"] }, async ({ Given, page, When, Then, And }) => {
+    await Given("the EPD slab for the oldest allocatable invoice is set to a temporary test percentage", null, { page });
+    await When("I send VAN validation then posting with unique UTR");
+    await Then("VAN payment should be posted successfully");
+    await And("cash receipt should be created for VAN payment \"<utr>\"");
+    await And("I open the cash receipt for the last VAN payment", null, { page });
+    await Then("the receipt detail shows EPD discount displayed", null, { page });
+    await Then("the EPD slab is restored to its original percentage in the database", null, { page });
+  });
+
+  test("Data integrity - VAN posting should reconcile VAN collection and cash receipt amounts", { tag: ["@FIN-VAN-TC-011", "@critical", "@p1", "@iacs-md"] }, async ({ Given, Then }) => {
+    await Given("I load the latest posted VAN payment with linked cash receipt");
+    await Then("VAN payment and cash receipt totals should reconcile");
+  });
+
+  test("VAN lifecycle integrity - un-apply then re-apply keeps receipt totals consistent", { tag: ["@FIN-VAN-TC-012", "@critical", "@p1", "@iacs-md"] }, async ({ Given, And, page, Then, When }) => {
+    await Given("I load the latest posted VAN payment with linked cash receipt");
+    await And("I open the cash receipt for the last VAN payment", null, { page });
+    await And("I un-apply the receipt", null, { page });
+    await Then("the last VAN cash receipt totals should reconcile in database");
+    await When("I re-apply the receipt to invoices", null, { page });
+    await And("I open the cash receipt for the last VAN payment", null, { page });
+    await Then("the last VAN cash receipt totals should reconcile in database");
+  });
+
 });
 
 // == technical section ==
@@ -88,4 +113,7 @@ const bddFileMeta = {
   "Duplicate UTR is rejected": {"pickleLocation":"51:3","tags":["@FIN-VAN-TC-006","@edge","@iacs-md"],"ownTags":["@iacs-md","@edge","@FIN-VAN-TC-006"]},
   "Posted VAN payment shows EPD discount in receipt details": {"pickleLocation":"58:3","tags":["@FIN-VAN-TC-007","@critical","@p0","@iacs-md"],"ownTags":["@iacs-md","@p0","@critical","@FIN-VAN-TC-007"]},
   "Un-apply then re-apply receipt": {"pickleLocation":"66:3","tags":["@FIN-VAN-TC-009","@regression","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@regression","@FIN-VAN-TC-009"]},
+  "VAN posting reflects temporary slab override from payment terms configuration": {"pickleLocation":"77:3","tags":["@FIN-VAN-TC-010","@critical","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@critical","@FIN-VAN-TC-010"]},
+  "Data integrity - VAN posting should reconcile VAN collection and cash receipt amounts": {"pickleLocation":"88:3","tags":["@FIN-VAN-TC-011","@critical","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@critical","@FIN-VAN-TC-011"]},
+  "VAN lifecycle integrity - un-apply then re-apply keeps receipt totals consistent": {"pickleLocation":"93:3","tags":["@FIN-VAN-TC-012","@critical","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@critical","@FIN-VAN-TC-012"]},
 };

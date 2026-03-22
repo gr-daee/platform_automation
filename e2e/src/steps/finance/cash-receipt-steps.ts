@@ -7,6 +7,7 @@ import { NewCashReceiptPage } from '../../pages/finance/NewCashReceiptPage';
 import {
   getCashReceiptById,
   getCashReceiptApplications,
+  getCashReceiptApplicationTotals,
   getCashReceiptApplicationsWithInvoiceNumbers,
   getInvoiceOutstandingBalance,
   getOutstandingInvoicesForCustomer,
@@ -481,6 +482,12 @@ When('I wait for the Apply Payments button to be enabled', async function ({ pag
   await applyPage.waitForApplyButtonEnabled();
 });
 
+Then('the Apply Payments button should be disabled on apply page', async function ({ page }) {
+  const applyPage = (this as any).cashReceiptApplyPage || new CashReceiptApplyPage(page);
+  await applyPage.verifyPageLoaded();
+  await applyPage.expectApplyButtonDisabled();
+});
+
 When('I toggle EPD off for invoice {string}', async function ({ page }, invoiceSelector: string) {
   const applyPage = (this as any).cashReceiptApplyPage || new CashReceiptApplyPage(page);
   const invoiceNumber = await resolveInvoiceNumber(invoiceSelector, this);
@@ -529,6 +536,28 @@ Then('no CCN should be created for the current receipt', async function () {
     .filter((a) => !a.is_reversed)
     .reduce((sum, a) => sum + Number(a.discount_taken || 0), 0);
   expect(totalDiscount).toBe(0);
+});
+
+Then('the cash receipt financial totals should reconcile in database', async function ({ page }) {
+  const receiptId =
+    (this as any).currentCashReceiptId || page.url().match(/\/cash-receipts\/([a-f0-9-]+)/)?.[1];
+  if (!receiptId) {
+    throw new Error('No current cash receipt ID available.');
+  }
+
+  const receipt = await getCashReceiptById(receiptId);
+  expect(receipt).not.toBeNull();
+
+  const totals = await getCashReceiptApplicationTotals(receiptId);
+  const amountAppliedHeader = Number(receipt!.amount_applied || 0);
+  const amountUnappliedHeader = Number(receipt!.amount_unapplied || 0);
+  const totalReceiptAmount = Number(receipt!.total_receipt_amount || 0);
+
+  // Integrity 1: Header applied amount must match application rows sum(amount_applied)
+  expect(amountAppliedHeader).toBeCloseTo(Number(totals.total_amount_applied || 0), 2);
+
+  // Integrity 2: Header split should stay balanced
+  expect(amountAppliedHeader + amountUnappliedHeader).toBeCloseTo(totalReceiptAmount, 2);
 });
 
 Then('I should see cash receipt {string} in the list', async function ({ page }, receiptNumber: string) {
@@ -1132,4 +1161,40 @@ When('I save the cash receipt', async function ({ page }) {
   if (receiptId) {
     (this as any).currentCashReceiptId = receiptId;
   }
+});
+
+When('I attempt to save the cash receipt', async function ({ page }) {
+  const newReceiptPage = (this as any).newCashReceiptPage || new NewCashReceiptPage(page);
+  if (!(this as any).newCashReceiptPage) await newReceiptPage.verifyPageLoaded();
+  await newReceiptPage.clickSave();
+});
+
+When(
+  'I fill cash receipt required fields with customer {string}, payment method {string} and amount {string} without bank account',
+  async function ({ page }, customerName: string, paymentMethod: string, amount: string) {
+    const newReceiptPage = (this as any).newCashReceiptPage || new NewCashReceiptPage(page);
+    if (!(this as any).newCashReceiptPage) await newReceiptPage.verifyPageLoaded();
+
+    const today = new Date().toISOString().split('T')[0];
+    await newReceiptPage.selectCustomer(customerName);
+    await newReceiptPage.setReceiptDate(today);
+    await newReceiptPage.selectPaymentMethod(paymentMethod);
+    await newReceiptPage.setTotalAmount(parseFloat(amount));
+    await newReceiptPage.setDepositDate(today);
+    await newReceiptPage.setPaymentReference(`AUTO_QA_${Date.now()}`);
+
+    // Intentionally skip bank account selection for validation scenario.
+    (this as any).newCashReceiptPage = newReceiptPage;
+  }
+);
+
+Then('I should see cash receipt form error containing {string}', async function ({ page }, messagePart: string) {
+  const matcher = new RegExp(messagePart, 'i');
+  const alertError = page.getByRole('alert').filter({ hasText: matcher }).first();
+  const toastError = page.locator('[data-sonner-toast]').filter({ hasText: matcher }).first();
+  const inlineError = page.getByText(matcher).first();
+
+  if (await alertError.isVisible()) return;
+  if (await toastError.isVisible()) return;
+  await expect(inlineError).toBeVisible({ timeout: 8000 });
 });

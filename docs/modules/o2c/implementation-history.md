@@ -1,16 +1,28 @@
 # O2C Module - Implementation History
 
-**Last Updated**: 2026-02-16
+**Last Updated**: 2026-03-21
 
 ---
 
 ## Overview
 
-This document tracks all test automation implementations for the Order-to-Cash (O2C) module. **Indent flow** is fully automated (TC-001–TC-020). SO and Invoice E2E are planned per [O2C-Indent-SO-Invoice-Test-Scenarios-For-Review.md](O2C-Indent-SO-Invoice-Test-Scenarios-For-Review.md).
+This document tracks all test automation implementations for the Order-to-Cash (O2C) module. **Indent flow** is fully automated (TC-001–TC-020). **System E2E** scenarios **O2C-E2E-TC-001–TC-004** live in `o2c-e2e-indent-so-invoice.feature` (see [IMPL-045](../../implementations/2026-03/IMPL-045_o2c-e2e-backorder-eway-cancel.md)).
 
 ---
 
 ## Implementations
+
+### [IMPL-045 - O2C E2E back order, e-invoice without e-way, cancel e-invoice](../../implementations/2026-03/IMPL-045_o2c-e2e-backorder-eway-cancel.md) ✅
+
+- **O2C-E2E-TC-002**–**TC-004**: **TC-002** dynamic mixed indent (DB-resolved OOS + in-stock) → back order + full invoice path; **Generate E-Invoice Only**; IRN cancellation + invoice page `EInvoiceCancellation`.
+
+### [IMPL-044 - Warehouse Inventory WH-INV Phase 2 E2E](../../implementations/2026-03/IMPL-044_warehouse-inventory-wh-inv-phase-2.md) ✅
+
+- **WH-INV-TC-009**–**015**: filters, search summary, pagination, page size, combined filters (`@iacs-md`).
+
+### [IMPL-043 - Warehouse Inventory WH-INV Phase 1 E2E](../../implementations/2026-03/IMPL-043_warehouse-inventory-wh-inv-phase-1.md) ✅
+
+- **WH-INV-TC-001**–**008**: inventory list shell, tabs, search helper, refresh (`@iacs-md`).
 
 ### TC renumbering and consolidation (2026-02-16) ✅
 - **Date**: 2026-02-16

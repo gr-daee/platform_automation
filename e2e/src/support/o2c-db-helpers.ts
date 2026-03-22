@@ -42,7 +42,8 @@ export interface InventorySnapshot {
  * 3. E2E_TENANT_ID (default/fallback)
  * 4. Query by name 'IACS' (final fallback)
  */
-async function getTenantIdForE2E(): Promise<string | null> {
+/** Exported for scenarios that need tenant-scoped raw SQL (e.g. invoices, back orders). */
+export async function getE2ETenantId(): Promise<string | null> {
   // Check tenant-specific env vars (IACS_TENANT_ID, ADMIN_TENANT_ID, etc.)
   const tenantSpecificVars = ['IACS_TENANT_ID', 'ADMIN_TENANT_ID', 'DEMO_TENANT_ID'];
   for (const varName of tenantSpecificVars) {
@@ -328,7 +329,7 @@ export async function getInventoryForProductAndWarehouse(
   productCode: string,
   warehouseSearch: string
 ): Promise<InventorySnapshot | null> {
-  const tenantId = await getTenantIdForE2E();
+  const tenantId = await getE2ETenantId();
   const warehouseId = await getWarehouseIdBySearch(warehouseSearch, tenantId);
   if (!warehouseId) return null;
 
@@ -374,7 +375,7 @@ export interface DealerCreditSnapshot {
  * Tenant-scoped when tenant_id available (E2E runs as IACS).
  */
 export async function getDealerCreditByCode(dealerCode: string): Promise<DealerCreditSnapshot | null> {
-  const tenantId = await getTenantIdForE2E();
+  const tenantId = await getE2ETenantId();
   const params: (string | boolean)[] = [dealerCode];
   const tenantFilter = tenantId ? ' AND tenant_id = $2' : '';
   if (tenantId) params.push(tenantId);
@@ -428,4 +429,237 @@ export async function getInvoiceIdsBySalesOrderId(salesOrderId: string): Promise
     [salesOrderId]
   );
   return rows.map((r) => r.id);
+}
+
+export interface BackOrderManagementRow {
+  id: string;
+  back_order_number: string;
+  original_indent_id: string | null;
+  sales_order_id: string | null;
+  status: string | null;
+  ordered_quantity: number | string | null;
+  pending_quantity: number | string | null;
+}
+
+/**
+ * Read-only: back orders linked to an indent.
+ *
+ * Matches either:
+ * - `back_order_management.original_indent_id` (direct link), or
+ * - rows created from the SO workflow with only `sales_order_id` set (`sales_orders.indent_id`).
+ */
+export async function getBackOrdersByOriginalIndentId(indentId: string): Promise<BackOrderManagementRow[]> {
+  const tenantId = await getE2ETenantId();
+  const params: string[] = [indentId];
+  let sql = `SELECT bom.id, bom.back_order_number, bom.original_indent_id, bom.sales_order_id, bom.status,
+                    COALESCE(bom.ordered_quantity, 0)::numeric AS ordered_quantity,
+                    COALESCE(bom.pending_quantity, 0)::numeric AS pending_quantity
+             FROM back_order_management bom
+             LEFT JOIN sales_orders so ON so.id = bom.sales_order_id
+             WHERE (bom.is_deleted IS NOT TRUE)
+               AND (bom.original_indent_id = $1 OR so.indent_id = $1)`;
+  if (tenantId) {
+    sql += ' AND bom.tenant_id = $2';
+    params.push(tenantId);
+  }
+  sql += ' ORDER BY bom.created_at DESC NULLS LAST';
+  try {
+    const rows = await executeQuery<BackOrderManagementRow>(sql, params);
+    return rows.map((r) => ({
+      ...r,
+      ordered_quantity: r.ordered_quantity != null ? Number(r.ordered_quantity) : null,
+      pending_quantity: r.pending_quantity != null ? Number(r.pending_quantity) : null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Invoice with IRN generated within the last `withinHours` hours (for e-invoice cancellation window tests).
+ * May include invoices that have an E-Way bill; prefer {@link getInvoiceIdWithRecentIrnWithoutEwayBill} for IRN-only cancel flows (staging).
+ */
+export async function getInvoiceIdWithRecentIrn(withinHours: number): Promise<string | null> {
+  const tenantId = await getE2ETenantId();
+  const params: (string | number)[] = [withinHours];
+  let sql = `SELECT id FROM invoices
+             WHERE irn_number IS NOT NULL AND TRIM(irn_number) <> ''
+               AND irn_generation_date IS NOT NULL
+               AND irn_generation_date >= NOW() - ($1::int * INTERVAL '1 hour')
+               AND (einvoice_status IS NULL OR LOWER(einvoice_status::text) <> 'cancelled')
+               AND (irn_status IS NULL OR irn_status <> 'CANCELLED')`;
+  if (tenantId) {
+    sql += ' AND tenant_id = $2';
+    params.push(tenantId);
+  }
+  sql += ' ORDER BY irn_generation_date DESC NULLS LAST LIMIT 1';
+  try {
+    const rows = await executeQuery<{ id: string }>(sql, params);
+    return rows.length > 0 ? rows[0].id : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Same as {@link getInvoiceIdWithRecentIrn}, but excludes invoices that have an E-Way bill on the row.
+ * Also requires **posted to GL** (`journal_entry_id`) and **unpaid full balance** so header **Cancel Invoice**
+ * is visible (see `InvoiceDetailsContent`); TC-004 uses this for candidate selection.
+ */
+export async function getInvoiceIdWithRecentIrnWithoutEwayBill(withinHours: number): Promise<string | null> {
+  const tenantId = await getE2ETenantId();
+  const params: (string | number)[] = [withinHours];
+  let sql = `SELECT id FROM invoices
+             WHERE irn_number IS NOT NULL AND TRIM(irn_number) <> ''
+               AND irn_generation_date IS NOT NULL
+               AND irn_generation_date >= NOW() - ($1::int * INTERVAL '1 hour')
+               AND (einvoice_status IS NULL OR LOWER(einvoice_status::text) <> 'cancelled')
+               AND (irn_status IS NULL OR irn_status <> 'CANCELLED')
+               AND (eway_bill_number IS NULL OR TRIM(eway_bill_number::text) = '')
+               AND journal_entry_id IS NOT NULL
+               AND total_amount IS NOT NULL
+               AND balance_amount IS NOT NULL
+               AND balance_amount = total_amount`;
+  if (tenantId) {
+    sql += ' AND tenant_id = $2';
+    params.push(tenantId);
+  }
+  sql += ' ORDER BY irn_generation_date DESC NULLS LAST LIMIT 1';
+  try {
+    const rows = await executeQuery<{ id: string }>(sql, params);
+    return rows.length > 0 ? rows[0].id : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getInvoiceEinvoiceStatus(invoiceId: string): Promise<string | null> {
+  const rows = await executeQuery<{ einvoice_status: string | null }>(
+    'SELECT einvoice_status FROM invoices WHERE id = $1 LIMIT 1',
+    [invoiceId]
+  );
+  return rows.length > 0 ? rows[0].einvoice_status ?? null : null;
+}
+
+/**
+ * True when DB shows no inventory rows (or net sellable is zero) for product+warehouse — e.g. NPK at Kurnook.
+ */
+export async function productHasNoSellableInventoryAtWarehouse(
+  productCode: string,
+  warehouseSearch: string
+): Promise<boolean> {
+  const snap = await getInventoryForProductAndWarehouse(productCode, warehouseSearch);
+  if (!snap) return true;
+  return snap.netAvailable <= 0 && snap.available <= 0;
+}
+
+export interface MixedIndentProductPair {
+  /** Search term for Add Products modal (typically `product_variant_packages.material_code`). */
+  inStockMaterialCode: string;
+  outOfStockMaterialCode: string;
+}
+
+async function tryFallbackMixedProductPairs(warehouseSearch: string): Promise<MixedIndentProductPair | null> {
+  const pairs: MixedIndentProductPair[] = [
+    { inStockMaterialCode: '1013', outOfStockMaterialCode: 'NPK' },
+    { inStockMaterialCode: '1041', outOfStockMaterialCode: 'NPK' },
+    { inStockMaterialCode: '1013', outOfStockMaterialCode: '1041' },
+  ];
+  for (const p of pairs) {
+    if (p.inStockMaterialCode === p.outOfStockMaterialCode) continue;
+    const snap = await getInventoryForProductAndWarehouse(p.inStockMaterialCode, warehouseSearch);
+    const oos = await productHasNoSellableInventoryAtWarehouse(p.outOfStockMaterialCode, warehouseSearch);
+    if (snap && snap.netAvailable > 0 && oos) return p;
+  }
+  return null;
+}
+
+/**
+ * Discover one material code with positive net available at the warehouse and one with none (for mixed indent → SO + back order).
+ *
+ * Priority: **E2E_O2C_MIXED_IN_STOCK_CODE** + **E2E_O2C_MIXED_OUT_OF_STOCK_CODE** (if both valid) → SQL discovery → static fallbacks (1013/NPK, etc.).
+ */
+export async function resolveMixedIndentProductPairAtWarehouse(
+  warehouseSearch: string
+): Promise<MixedIndentProductPair | null> {
+  const envIn = process.env.E2E_O2C_MIXED_IN_STOCK_CODE?.trim();
+  const envOut = process.env.E2E_O2C_MIXED_OUT_OF_STOCK_CODE?.trim();
+  if (envIn && envOut && envIn !== envOut) {
+    const snap = await getInventoryForProductAndWarehouse(envIn, warehouseSearch);
+    const oos = await productHasNoSellableInventoryAtWarehouse(envOut, warehouseSearch);
+    if (snap && snap.netAvailable > 0 && oos) {
+      return { inStockMaterialCode: envIn, outOfStockMaterialCode: envOut };
+    }
+    console.warn(
+      '⚠️ E2E_O2C_MIXED_* env codes invalid for warehouse; falling through to SQL/fallback:',
+      { envIn, envOut, warehouseSearch }
+    );
+  }
+
+  const tenantId = await getE2ETenantId();
+  const warehouseId = await getWarehouseIdBySearch(warehouseSearch, tenantId);
+  if (!tenantId || !warehouseId) {
+    return tryFallbackMixedProductPairs(warehouseSearch);
+  }
+
+  try {
+    const inStockRows = await executeQuery<{ code: string }>(
+      `SELECT pvp.material_code AS code
+       FROM inventory i
+       INNER JOIN product_variant_packages pvp ON pvp.id = i.product_variant_package_id
+       WHERE i.warehouse_id = $1 AND i.tenant_id = $2
+         AND (i.status = 'available' OR i.status IS NULL)
+         AND NULLIF(TRIM(pvp.material_code), '') IS NOT NULL
+       GROUP BY pvp.material_code
+       HAVING SUM(COALESCE(i.available_units, 0)::numeric - COALESCE(i.allocated_units, 0)::numeric) > 0
+       ORDER BY SUM(COALESCE(i.available_units, 0)::numeric - COALESCE(i.allocated_units, 0)::numeric) DESC
+       LIMIT 25`,
+      [warehouseId, tenantId]
+    );
+
+    const outStockRows = await executeQuery<{ code: string }>(
+      `SELECT TRIM(pvp.material_code) AS code
+       FROM product_variant_packages pvp
+       INNER JOIN product_variants pv ON pv.id = pvp.product_variant_id
+       INNER JOIN products p ON p.id = pv.product_id
+       WHERE p.tenant_id = $1
+         AND (pvp.is_active IS NULL OR pvp.is_active = true)
+         AND NULLIF(TRIM(pvp.material_code), '') IS NOT NULL
+         AND COALESCE(
+           (
+             SELECT SUM(COALESCE(i.available_units, 0)::numeric - COALESCE(i.allocated_units, 0)::numeric)
+             FROM inventory i
+             WHERE i.product_variant_package_id = pvp.id
+               AND i.warehouse_id = $2
+               AND i.tenant_id = $1
+               AND (i.status = 'available' OR i.status IS NULL)
+           ),
+           0
+         ) <= 0
+       ORDER BY pvp.material_code
+       LIMIT 80`,
+      [tenantId, warehouseId]
+    );
+
+    const outCandidates = [...new Set(outStockRows.map((r) => r.code.trim()).filter(Boolean))];
+    const inLimited = inStockRows.slice(0, 10);
+    const outLimited = outCandidates.slice(0, 25);
+
+    for (const inRow of inLimited) {
+      const inCode = inRow.code.trim();
+      if (!inCode) continue;
+      for (const outCode of outLimited) {
+        if (inCode === outCode) continue;
+        const verifyIn = await getInventoryForProductAndWarehouse(inCode, warehouseSearch);
+        const verifyOut = await productHasNoSellableInventoryAtWarehouse(outCode, warehouseSearch);
+        if (verifyIn && verifyIn.netAvailable > 0 && verifyOut) {
+          return { inStockMaterialCode: inCode, outOfStockMaterialCode: outCode };
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ resolveMixedIndentProductPairAtWarehouse SQL failed:', err);
+  }
+
+  return tryFallbackMixedProductPairs(warehouseSearch);
 }

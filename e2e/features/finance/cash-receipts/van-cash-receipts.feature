@@ -72,3 +72,29 @@ Feature: VAN Cash Receipts
     When I re-apply the receipt to invoices
     And I open the cash receipt for the last VAN payment
     Then the receipt detail shows amount applied and status
+
+  @FIN-VAN-TC-010 @critical @p1 @iacs-md
+  Scenario: VAN posting reflects temporary slab override from payment terms configuration
+    # Gap covered: VAN flow should react to payment-terms slab changes, not static EPD defaults
+    Given the EPD slab for the oldest allocatable invoice is set to a temporary test percentage
+    When I send VAN validation then posting with unique UTR
+    Then VAN payment should be posted successfully
+    And cash receipt should be created for VAN payment "<utr>"
+    And I open the cash receipt for the last VAN payment
+    Then the receipt detail shows EPD discount displayed
+    Then the EPD slab is restored to its original percentage in the database
+
+  @FIN-VAN-TC-011 @critical @p1 @iacs-md
+  Scenario: Data integrity - VAN posting should reconcile VAN collection and cash receipt amounts
+    Given I load the latest posted VAN payment with linked cash receipt
+    Then VAN payment and cash receipt totals should reconcile
+
+  @FIN-VAN-TC-012 @critical @p1 @iacs-md
+  Scenario: VAN lifecycle integrity - un-apply then re-apply keeps receipt totals consistent
+    Given I load the latest posted VAN payment with linked cash receipt
+    And I open the cash receipt for the last VAN payment
+    And I un-apply the receipt
+    Then the last VAN cash receipt totals should reconcile in database
+    When I re-apply the receipt to invoices
+    And I open the cash receipt for the last VAN payment
+    Then the last VAN cash receipt totals should reconcile in database
