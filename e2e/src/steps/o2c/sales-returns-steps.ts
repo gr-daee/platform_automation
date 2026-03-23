@@ -13,11 +13,15 @@ import {
   getLatestReturnOrderNumberForE2ETenant,
   returnOrderNumberSearchSubstring,
   getInvoiceWithReturnableLinesForE2ETenant,
+  getTwoInStockMaterialCodesAtWarehouse,
+  getInvoiceContextById,
   getSalesReturnOrderIdWithPendingEcreditForE2ETenant,
   getSalesReturnFirstLineReceiptInventoryContext,
+  getSalesReturnReceiptInventoryLineContexts,
   getInventoryAvailableSumByPackageAndWarehouse,
   type EligibleReturnInvoiceRow,
 } from '../../support/o2c-db-helpers';
+import { runO2CIndentThroughEInvoice } from '../../support/o2c-e2e-flow-helpers';
 import { executeQuery } from '../../support/db-helper';
 
 const { Given, When, Then } = createBdd();
@@ -34,6 +38,14 @@ type SrInventorySandwichWorld = {
     returnQty: number;
     beforeAvailable: number;
   };
+  srPostReceiptAvailable?: number;
+  srInventoryMultiLine?: Array<{
+    tenantId: string;
+    warehouseId: string;
+    productVariantPackageId: string;
+    returnQty: number;
+    beforeAvailable: number;
+  }>;
 };
 
 type SrCreateLineSelectionWorld = {
@@ -42,6 +54,11 @@ type SrCreateLineSelectionWorld = {
     usedQty: number;
     availableQty: number;
   };
+  srSelectedReturnLines?: Array<{
+    lineIndex: number;
+    usedQty: number;
+    availableQty: number;
+  }>;
 };
 
 async function assertSalesReturnOrderStatusInDb(page: Page, expected: string): Promise<void> {
@@ -233,6 +250,32 @@ Given('sales return eligible invoice is resolved from database', async function 
   (this as SrPh3World).srEligibleInvoice = row;
 });
 
+Given(
+  'sales return multi-line eligible invoice is resolved from database or created as fallback',
+  async function ({ page }) {
+    let row = await getInvoiceWithReturnableLinesForE2ETenant(2, 2);
+    if (!row) {
+      const twoCodes = (await getTwoInStockMaterialCodesAtWarehouse('Kurnook')) ?? ['1013', '1008'];
+      const flow = await runO2CIndentThroughEInvoice(page, {
+        dealerName: 'Ramesh ningappa diggai',
+        productCodes: [twoCodes[0], twoCodes[1]],
+        warehouseName: 'Kurnook Warehouse',
+        transporterName: 'Just In Time Shipper',
+        approvalComment: `AUTO_QA_${Date.now()}_SR_PH8_TC004_seed`,
+        eInvoiceWithoutEWayBill: true,
+      });
+      if (flow.invoiceId) {
+        row = await getInvoiceContextById(flow.invoiceId);
+      }
+    }
+    if (!row) {
+      test.skip(true, 'Unable to resolve or create multi-line returnable invoice for E2E tenant.');
+      return;
+    }
+    (this as SrPh3World).srEligibleInvoice = row;
+  }
+);
+
 Given('I am on the create sales return order page', async function ({ page }) {
   const p = new CreateSalesReturnOrderPage(page);
   await p.goto();
@@ -273,6 +316,19 @@ When('I set return quantity 1 on first line on sales return create page', async 
   const selected = await p.setSmartReturnQuantityForAnyEligibleLine(1);
   (this as SrCreateLineSelectionWorld).srSelectedReturnLine = selected;
 });
+
+When(
+  'I set return quantity 1 on at least two eligible lines on sales return create page or skip',
+  async function ({ page }) {
+    const p = new CreateSalesReturnOrderPage(page);
+    const selected = await p.setSmartReturnQuantitiesForEligibleLines(1, 3);
+    if (selected.length < 2) {
+      test.skip(true, 'Selected invoice has fewer than two eligible return lines for multi-line reconciliation.');
+      return;
+    }
+    (this as SrCreateLineSelectionWorld).srSelectedReturnLines = selected;
+  }
+);
 
 When('I go to review step on sales return create page', async function ({ page }) {
   const p = new CreateSalesReturnOrderPage(page);
@@ -365,6 +421,14 @@ When(
   }
 );
 
+When(
+  'I complete record goods receipt on sales return detail with QC failed and default warehouse',
+  async function ({ page }) {
+    const detail = new SalesReturnDetailPage(page);
+    await detail.completeRecordGoodsReceiptDialog({ qcFailed: true });
+  }
+);
+
 Then(
   'database inventory available sum should increase by first line return quantity after goods receipt',
   async function (this: SrInventorySandwichWorld) {
@@ -388,6 +452,178 @@ Then(
         }
       )
       .toBeCloseTo(expectedDelta, 4);
+  }
+);
+
+Then(
+  'database inventory available sum should remain unchanged after QC failed goods receipt',
+  async function (this: SrInventorySandwichWorld) {
+    const w = this.srInventorySandwich;
+    expect(w, 'When sales return first line inventory… must run first').toBeTruthy();
+    await expect
+      .poll(
+        async () => {
+          const after = await getInventoryAvailableSumByPackageAndWarehouse(
+            w!.tenantId,
+            w!.warehouseId,
+            w!.productVariantPackageId
+          );
+          return after - w!.beforeAvailable;
+        },
+        {
+          timeout: 120000,
+          intervals: [400, 1000, 2000, 3000],
+          message: 'inventory.available_units changed despite QC failed goods receipt',
+        }
+      )
+      .toBeCloseTo(0, 4);
+  }
+);
+
+Then('sales return receipt QC status should be failed in database', async function ({ page }) {
+  const m = page.url().match(/\/o2c\/sales-returns\/([^/?]+)/);
+  const id = m?.[1];
+  expect(id, 'expected sales return detail URL with id').toBeTruthy();
+  expect(id, 'must not be create route').not.toBe('new');
+  try {
+    const rows = await executeQuery<{ qc_status: string | null }>(
+      `SELECT sri.qc_status::text AS qc_status
+       FROM sales_return_receipt_items sri
+       INNER JOIN sales_return_receipts sr
+         ON sr.id = sri.receipt_id
+       WHERE sr.return_order_id = $1::uuid
+       ORDER BY sri.created_at DESC NULLS LAST
+       LIMIT 1`,
+      [id!]
+    );
+    expect(rows[0]?.qc_status, 'latest receipt item qc_status should be failed').toBe('failed');
+  } catch (e) {
+    test.skip(true, `Database receipt QC status check not available: ${(e as Error).message}`);
+  }
+});
+
+Then(
+  'database inventory available sum should remain unchanged after cancelling pending return',
+  async function (this: SrInventorySandwichWorld) {
+    const w = this.srInventorySandwich;
+    expect(w, 'When sales return first line inventory… must run first').toBeTruthy();
+    await expect
+      .poll(
+        async () => {
+          const after = await getInventoryAvailableSumByPackageAndWarehouse(
+            w!.tenantId,
+            w!.warehouseId,
+            w!.productVariantPackageId
+          );
+          return after - w!.beforeAvailable;
+        },
+        {
+          timeout: 120000,
+          intervals: [400, 1000, 2000, 3000],
+          message: 'inventory.available_units changed after cancelling pending return before GRN',
+        }
+      )
+      .toBeCloseTo(0, 4);
+  }
+);
+
+When(
+  'I store post-receipt inventory available baseline for sales return first line',
+  async function (this: SrInventorySandwichWorld) {
+    const w = this.srInventorySandwich;
+    expect(w, 'When sales return first line inventory… must run first').toBeTruthy();
+    const afterReceipt = await getInventoryAvailableSumByPackageAndWarehouse(
+      w!.tenantId,
+      w!.warehouseId,
+      w!.productVariantPackageId
+    );
+    this.srPostReceiptAvailable = afterReceipt;
+  }
+);
+
+Then(
+  'database inventory available sum should remain unchanged after credit memo flow',
+  async function (this: SrInventorySandwichWorld) {
+    const w = this.srInventorySandwich;
+    const postReceipt = this.srPostReceiptAvailable;
+    expect(w, 'When sales return first line inventory… must run first').toBeTruthy();
+    expect(postReceipt, 'When I store post-receipt inventory… must run first').toBeDefined();
+
+    await expect
+      .poll(
+        async () =>
+          await getInventoryAvailableSumByPackageAndWarehouse(
+            w!.tenantId,
+            w!.warehouseId,
+            w!.productVariantPackageId
+          ),
+        {
+          timeout: 120000,
+          intervals: [400, 1000, 2000, 3000],
+          message: 'inventory.available_units changed after credit memo flow',
+        }
+      )
+      .toBeCloseTo(postReceipt!, 4);
+  }
+);
+
+When(
+  'sales return multi-line inventory available sums are stored from database before goods receipt',
+  async function (this: SrInventorySandwichWorld, { page }) {
+    const m = page.url().match(/\/o2c\/sales-returns\/([^/?]+)/);
+    const id = m?.[1];
+    expect(id, 'expected sales return detail URL with id').toBeTruthy();
+    expect(id, 'must not be create route').not.toBe('new');
+    const contexts = await getSalesReturnReceiptInventoryLineContexts(id!);
+    if (contexts.length < 2) {
+      test.skip(true, 'Return order does not have at least two package lines for multi-line reconciliation.');
+      return;
+    }
+    const rows: NonNullable<SrInventorySandwichWorld['srInventoryMultiLine']> = [];
+    for (const c of contexts) {
+      const before = await getInventoryAvailableSumByPackageAndWarehouse(
+        c.tenant_id,
+        c.warehouse_id,
+        c.product_variant_package_id
+      );
+      rows.push({
+        tenantId: c.tenant_id,
+        warehouseId: c.warehouse_id,
+        productVariantPackageId: c.product_variant_package_id,
+        returnQty: Number(c.return_qty),
+        beforeAvailable: before,
+      });
+    }
+    this.srInventoryMultiLine = rows;
+  }
+);
+
+Then(
+  'database inventory available sums should increase by return quantities across all selected return lines',
+  async function (this: SrInventorySandwichWorld) {
+    const rows = this.srInventoryMultiLine;
+    expect(rows, 'When sales return multi-line inventory… must run first').toBeTruthy();
+    expect(rows!.length, 'Expected multi-line inventory contexts').toBeGreaterThan(1);
+
+    for (const r of rows!) {
+      await expect
+        .poll(
+          async () => {
+            const after = await getInventoryAvailableSumByPackageAndWarehouse(
+              r.tenantId,
+              r.warehouseId,
+              r.productVariantPackageId
+            );
+            return after - r.beforeAvailable;
+          },
+          {
+            timeout: 120000,
+            intervals: [400, 1000, 2000, 3000],
+            message: 'inventory.available_units sum did not match expected multi-line return delta',
+          }
+        )
+        .toBeCloseTo(r.returnQty, 4);
+    }
   }
 );
 

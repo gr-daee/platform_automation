@@ -311,7 +311,7 @@ Scenario: User searches and selects dealer from Create Indent modal
 
 ---
 
-## System E2E Tests (O2C-E2E-TC-001 – TC-006)
+## System E2E Tests (O2C-E2E-TC-001 – TC-008)
 
 ### @O2C-E2E-TC-001 - Full E2E flow with Dealer IACS5509, Product 1013, Warehouse Kurnook, Transporter Just In Time Shipper
 - **Feature File**: `e2e/features/o2c/o2c-e2e-indent-so-invoice.feature`
@@ -385,6 +385,40 @@ Scenario: User searches and selects dealer from Create Indent modal
 - **Last Updated**: 2026-03-21
 
 **Notes**: Aligns with **`web_app`** `processApproval.ts` (90-day unpaid block on **approve**). **`processIndentWorkflow`** does not re-check; blocking happens before SO.
+
+---
+
+### @O2C-E2E-TC-007 - Cancel e-invoice restores inventory across all invoice lines (full-line DB reconciliation)
+- **Feature File**: `e2e/features/o2c/o2c-e2e-indent-so-invoice.feature`
+- **Scenario**: Resolve cancellable invoice (or build via e-invoice-only O2C flow) → note inventory baseline for **all** invoice item package buckets (`getInvoiceCancelInventoryLineContexts`) at SO assigned warehouse → cancel via header **Cancel Invoice** → DB `einvoice_status=cancelled` → assert per-bucket delta and total delta exactly match cancelled quantities.
+- **Status**: ✅ Automated (conditional: same integration constraints as TC-004)
+- **Tags**: @o2c-flow @regression @p1 @iacs-tenant @iacs-md
+- **Last Updated**: 2026-03-23
+
+**Notes**: Extends TC-004 depth from single-line bucket to full-line reconciliation across invoice items; catches partial restoration defects.
+
+---
+
+
+### @O2C-E2E-TC-008 - SO creation reconciles package-level allocated deltas exactly
+- **Feature File**: `e2e/features/o2c/o2c-e2e-indent-so-invoice.feature`
+- **Scenario**: Standard indent → approve → Process Workflow → navigate SO → read `sales_order_items` grouped by package and assert each package `allocated_quantity` equals DB `inventory.allocated_units` delta from pre-workflow baseline for selected warehouse/product snapshot.
+- **Status**: ✅ Automated
+- **Tags**: @o2c-flow @regression @p1 @iacs-tenant @iacs-md
+- **Last Updated**: 2026-03-23
+
+**Notes**: Hardens SO creation validation from coarse trend checks to exact package-level reconciliation.
+
+---
+
+### @O2C-E2E-TC-009 - Invoice cancellation is idempotent (no double inventory increment)
+- **Feature File**: `e2e/features/o2c/o2c-e2e-indent-so-invoice.feature`
+- **Scenario**: Resolve cancellable invoice (or build via e-invoice-only O2C flow) → note all-line inventory baselines → cancel once and assert exact full-line restoration → snapshot post-cancel inventory → attempt second cancel if action is visible → assert no package-level inventory delta after second attempt.
+- **Status**: ✅ Automated (conditional: same integration constraints as TC-004/TC-007)
+- **Tags**: @o2c-flow @regression @p1 @iacs-tenant @iacs-md
+- **Last Updated**: 2026-03-23
+
+**Notes**: Guards against duplicate-cancel side effects and stale-action retries by enforcing DB idempotency invariants as source of truth.
 
 ---
 
@@ -472,7 +506,7 @@ Scenario: User searches and selects dealer from Create Indent modal
 
 ---
 
-## Sales Returns (SR-PH4–PH7) — Detail, credit memo, validation, report
+## Sales Returns (SR-PH4–PH8) — Detail, credit memo, validation, report, inventory invariants
 
 **Phased plan / detail:** [sales-returns/FEATURE-SR-phased-plan.md](sales-returns/FEATURE-SR-phased-plan.md), [sales-returns/test-cases.md](sales-returns/test-cases.md)  
 **Implementation:** [IMPL-050](../../implementations/2026-03/IMPL-053_sales-returns-consolidated.md)
@@ -483,8 +517,9 @@ Scenario: User searches and selects dealer from Create Indent modal
 | SR-PH5 | `sales-returns.feature` | Credit memo create or already-linked CM |
 | SR-PH6 | `sales-returns.feature` | Cancel guardrails + `alert()` validation on wizard |
 | SR-PH7 | `sales-returns.feature` | Report page **Load Report** + **Filters** |
+| SR-PH8 | `sales-returns.feature` | QC Failed GRN inventory invariant (delta must remain zero) |
 
-**Full Sales Returns pack:** `npm run test:dev -- --project=iacs-md --grep "@sales-returns"` — **17** scenarios (2026-03-23).
+**Full Sales Returns pack:** `npm run test:dev -- --project=iacs-md --grep "@sales-returns"` — **20** scenarios (2026-03-23).
 
 ---
 

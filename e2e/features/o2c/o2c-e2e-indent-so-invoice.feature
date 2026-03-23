@@ -194,6 +194,44 @@ Feature: O2C End-to-End Flow (Indent → Sales Order → Picklist → eInvoice �
     When I navigate to the Invoice from the Sales Order
     Then the invoice should have IGST and no CGST SGST in database
 
+  @O2C-E2E-TC-007 @o2c-flow @regression @p1 @iacs-tenant @iacs-md
+  Scenario: Cancel e-invoice restores inventory across all invoice lines (full-line DB reconciliation)
+    When I open an invoice with IRN from the last 24 hours or complete O2C flow to generate one
+    When I have noted invoice cancellation inventory baselines for all invoice lines from database
+    # Uses header **Cancel Invoice** (not E-Invoice card — DAEE-362); Post to GL first if required.
+    When I cancel the e-invoice from the invoice detail using the default cancellation reason
+    Then the invoice e-invoice status in the database should be "cancelled"
+    And inventory available should increase by cancelled quantity across all invoice lines in database
+
+  @O2C-E2E-TC-008 @o2c-flow @regression @p1 @iacs-tenant @iacs-md
+  Scenario: SO creation reconciles package-level allocated deltas exactly
+    Given I have noted inventory for product "1013" at warehouse "Kurnook"
+    And I have noted dealer credit for dealer code "IACS5509"
+    Given I am on the O2C Indents page
+    When I create an indent for dealer "Ramesh ningappa diggai"
+    Then I should be on the indent detail page
+    When I click Edit on the indent detail page
+    And I add a product by searching for "1013"
+    And I save the indent
+    Then the indent should be saved successfully
+    When I submit the indent
+    Then the indent should be submitted successfully
+    Then the Warehouse Selection card should be visible
+    Then the Approve button should be disabled
+    When I select warehouse "Kurnook Warehouse" for the indent
+    Then the Approve button should be enabled
+    When I select transporter "Just In Time Shipper" for the indent
+    When I click Approve on the indent detail page
+    And I fill approval comments "AUTO_QA SO allocation reconciliation" and submit the approval dialog
+    When I confirm the stock availability warning with Approve Anyway if it appears
+    Then the indent should be approved successfully
+    When I click Process Workflow
+    Then the Process Workflow dialog should show SO and Back Order preview
+    When I confirm and process the workflow
+    Then the workflow should complete successfully
+    When I navigate to the Sales Order created from the indent
+    Then the Sales Order line allocations should exactly match inventory allocated deltas by package
+
   @O2C-E2E-TC-006 @o2c-flow @regression @p1 @iacs-tenant @iacs-md
   # Block is enforced at indent approval (processApproval.ts); user cannot reach Process Workflow / SO until resolved.
   # DB: findFirstDealerWithUnpaidInvoicesOlderThan90Days (single query); skips if no tenant dealer qualifies.
@@ -215,3 +253,16 @@ Feature: O2C End-to-End Flow (Indent → Sales Order → Picklist → eInvoice �
     When I click Approve on the indent detail page
     And I fill approval comments "AUTO_QA 90-day unpaid block" and submit the approval dialog
     Then I should see a toast blocking indent approval for 90-day unpaid invoices with invoice and amount details
+
+  @O2C-E2E-TC-009 @o2c-flow @regression @p1 @iacs-tenant @iacs-md
+  Scenario: Invoice cancellation is idempotent and does not double-increment inventory
+    When I open an invoice with IRN from the last 24 hours or complete O2C flow to generate one
+    When I have noted invoice cancellation inventory baselines for all invoice lines from database
+    # First cancel should restore stock exactly once.
+    When I cancel the e-invoice from the invoice detail using the default cancellation reason
+    Then the invoice e-invoice status in the database should be "cancelled"
+    And inventory available should increase by cancelled quantity across all invoice lines in database
+    # Second cancel attempt must not mutate inventory even if action appears due to stale UI/state sync.
+    When I note post-cancellation inventory baselines for idempotency verification
+    And I attempt to cancel the same invoice again if action is available
+    Then second cancel attempt should not change inventory for the cancelled invoice lines

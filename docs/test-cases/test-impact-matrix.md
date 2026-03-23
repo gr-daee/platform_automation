@@ -200,6 +200,7 @@ Each entry maps:
 - `SR-PH5-TC-001`–`SR-PH5-TC-003`: Phase 5 credit memo branching + Retry E-Credit shell
 - `SR-PH6-TC-001`–`SR-PH6-TC-004`: Phase 6 cancel + wizard `alert()` validation
 - `SR-PH7-TC-001`–`SR-PH7-TC-002`: Phase 7 report shell + ED access denied (or tenant-aware skip)
+- `SR-PH8-TC-001`–`SR-PH8-TC-004`: Phase 8 inventory invariants (QC Failed GRN, pre-GRN cancel, post-credit-memo no-extra-delta, multi-line GRN reconciliation)
   - **Interaction**: POMs (`SalesReturnsListPage.ts`, `CreateSalesReturnOrderPage.ts`, `SalesReturnDetailPage.ts`, `SalesReturnReportPage.ts`), steps (`sales-returns-steps.ts`), DB helpers (`o2c-db-helpers.ts`); `playwright.config.ts` (`iacs-ed` `testMatch` includes `sales-returns.feature.spec.js`)
   - **Last Verified**: 2026-03-23
 
@@ -426,9 +427,10 @@ Each entry maps:
 ### `../web_app/src/app/o2c/invoices/[id]/components/InvoiceDetailsContent.tsx`
 **Affected Tests**:
 - `O2C-E2E-TC-001` (Custom E-Invoice PDF / invoice detail load); `O2C-E2E-TC-004` (**Cancel E-Invoice** trigger + `EInvoiceCancellation` AlertDialog, Sonner success toast)
+ - `O2C-E2E-TC-007` (full-line inventory restoration validation after header cancel), `O2C-E2E-TC-009` (second cancel idempotency attempt must not mutate inventory)
   - **Interaction**: POM `e2e/src/pages/o2c/InvoiceDetailPage.ts`, steps `e2e/src/steps/o2c/o2c-e2e-steps.ts`
-  - **Locators Used**: **E-Invoice Information** card; `getByRole('button', { name: /^cancel e-invoice$/i })`; `role="alertdialog"` scoped to **Cancel E-Invoice**; confirm action button; `[data-sonner-toast]`; read-only DB `invoices.einvoice_status` via `o2c-db-helpers`
-  - **Last Verified**: 2026-03-21
+  - **Locators Used**: **E-Invoice Information** card; header `getByRole('button', { name: /^cancel invoice$/i })`; `role="dialog"` scoped to **Cancel Invoice**; confirm action button; `[data-sonner-toast]`; read-only DB `invoices.einvoice_status` + package-level inventory baselines via `o2c-db-helpers`
+  - **Last Verified**: 2026-03-23
 
 **Change Risk**: 🟡 Medium - O2C E2E invoice tail + cancellation
 

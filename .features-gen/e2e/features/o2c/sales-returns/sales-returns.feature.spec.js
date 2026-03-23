@@ -199,6 +199,81 @@ test.describe("Sales Returns (Phases 1-7 consolidated)", () => {
     await Then("I should be denied access to Sales Return Order report or skip if tenant grants access", null, { page });
   });
 
+  test("QC failed goods receipt does not change inventory available", { tag: ["@SR-PH8-TC-001", "@SR-PH8", "@sales-returns", "@regression", "@p1", "@iacs-md"] }, async ({ Given, And, page, When, Then }) => {
+    await Given("sales return eligible invoice is resolved from database");
+    await And("I am on the create sales return order page", null, { page });
+    await When("I select context invoice in sales return create dialog", null, { page });
+    await Then("sales return create page should show context dealer on dealer trigger", null, { page });
+    await When("I choose return reason Customer Request on sales return create page", null, { page });
+    await And("I enter sales return notes with AUTO_QA prefix", null, { page });
+    await And("I load invoice items on sales return create page", null, { page });
+    await And("I set return quantity 1 on first line on sales return create page", null, { page });
+    await And("I go to review step on sales return create page", null, { page });
+    await And("I submit sales return create order", null, { page });
+    await Then("I should be on sales return detail with Pending Receipt status", null, { page });
+    await When("sales return first line inventory available sum is stored from database before goods receipt", null, { page });
+    await And("I complete record goods receipt on sales return detail with QC failed and default warehouse", null, { page });
+    await Then("sales return receipt QC status should be failed in database", null, { page });
+    await Then("database inventory available sum should remain unchanged after QC failed goods receipt");
+  });
+
+  test("Cancelling pending return before GRN does not change inventory available", { tag: ["@SR-PH8-TC-002", "@SR-PH8", "@sales-returns", "@regression", "@p1", "@iacs-md"] }, async ({ Given, And, page, When, Then }) => {
+    await Given("sales return eligible invoice is resolved from database");
+    await And("I am on the create sales return order page", null, { page });
+    await When("I select context invoice in sales return create dialog", null, { page });
+    await Then("sales return create page should show context dealer on dealer trigger", null, { page });
+    await When("I choose return reason Customer Request on sales return create page", null, { page });
+    await And("I enter sales return notes with AUTO_QA prefix", null, { page });
+    await And("I load invoice items on sales return create page", null, { page });
+    await And("I set return quantity 1 on first line on sales return create page", null, { page });
+    await And("I go to review step on sales return create page", null, { page });
+    await And("I submit sales return create order", null, { page });
+    await Then("I should be on sales return detail with Pending Receipt status", null, { page });
+    await When("sales return first line inventory available sum is stored from database before goods receipt", null, { page });
+    await When("I open cancel return order dialog on sales return detail", null, { page });
+    await And("I confirm cancel return order with AUTO_QA reason", null, { page });
+    await Then("I should be on sales return detail with Cancelled status", null, { page });
+    await And("database inventory available sum should remain unchanged after cancelling pending return");
+  });
+
+  test("Credit memo flow does not cause additional inventory movement after goods receipt", { tag: ["@SR-PH8-TC-003", "@SR-PH8", "@sales-returns", "@regression", "@p1", "@iacs-md"] }, async ({ Given, And, page, When, Then }) => {
+    await Given("sales return eligible invoice is resolved from database");
+    await And("I am on the create sales return order page", null, { page });
+    await When("I select context invoice in sales return create dialog", null, { page });
+    await Then("sales return create page should show context dealer on dealer trigger", null, { page });
+    await When("I choose return reason Customer Request on sales return create page", null, { page });
+    await And("I enter sales return notes with AUTO_QA prefix", null, { page });
+    await And("I load invoice items on sales return create page", null, { page });
+    await And("I set return quantity 1 on first line on sales return create page", null, { page });
+    await And("I go to review step on sales return create page", null, { page });
+    await And("I submit sales return create order", null, { page });
+    await Then("I should be on sales return detail with Pending Receipt status", null, { page });
+    await When("sales return first line inventory available sum is stored from database before goods receipt", null, { page });
+    await And("I complete record goods receipt on sales return detail with QC passed and default warehouse", null, { page });
+    await Then("database inventory available sum should increase by first line return quantity after goods receipt");
+    await When("I store post-receipt inventory available baseline for sales return first line");
+    await And("I complete credit memo flow from sales return detail when applicable", null, { page });
+    await Then("credit memo outcome should be visible on return or finance page", null, { page });
+    await And("database inventory available sum should remain unchanged after credit memo flow");
+  });
+
+  test("Multi-line goods receipt reconciles inventory increase across all return lines", { tag: ["@SR-PH8-TC-004", "@SR-PH8", "@sales-returns", "@regression", "@p1", "@iacs-md"] }, async ({ Given, page, And, When, Then }) => {
+    await Given("sales return multi-line eligible invoice is resolved from database or created as fallback", null, { page });
+    await And("I am on the create sales return order page", null, { page });
+    await When("I select context invoice in sales return create dialog", null, { page });
+    await Then("sales return create page should show context dealer on dealer trigger", null, { page });
+    await When("I choose return reason Customer Request on sales return create page", null, { page });
+    await And("I enter sales return notes with AUTO_QA prefix", null, { page });
+    await And("I load invoice items on sales return create page", null, { page });
+    await And("I set return quantity 1 on at least two eligible lines on sales return create page or skip", null, { page });
+    await And("I go to review step on sales return create page", null, { page });
+    await And("I submit sales return create order", null, { page });
+    await Then("I should be on sales return detail with Pending Receipt status", null, { page });
+    await When("sales return multi-line inventory available sums are stored from database before goods receipt", null, { page });
+    await And("I complete record goods receipt on sales return detail with QC passed and default warehouse", null, { page });
+    await Then("database inventory available sums should increase by return quantities across all selected return lines");
+  });
+
 });
 
 // == technical section ==
@@ -230,4 +305,8 @@ const bddFileMeta = {
   "Cancel pending return requires reason before confirm": {"pickleLocation":"178:3","tags":["@SR-PH6-TC-001","@SR-PH6-TC-002","@SR-PH6","@sales-returns","@regression","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@regression","@sales-returns","@SR-PH6","@SR-PH6-TC-002","@SR-PH6-TC-001"]},
   "Sales Return Order report page loads for authorized user": {"pickleLocation":"199:3","tags":["@SR-PH7-TC-001","@SR-PH7","@sales-returns","@regression","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@regression","@sales-returns","@SR-PH7","@SR-PH7-TC-001"]},
   "Sales Return Order report access denied for ED when sales_orders read is absent": {"pickleLocation":"204:3","tags":["@SR-PH7-TC-002","@SR-PH7","@sales-returns","@regression","@p2","@iacs-ed","@multi-user"],"ownTags":["@multi-user","@iacs-ed","@p2","@regression","@sales-returns","@SR-PH7","@SR-PH7-TC-002"]},
+  "QC failed goods receipt does not change inventory available": {"pickleLocation":"210:3","tags":["@SR-PH8-TC-001","@SR-PH8","@sales-returns","@regression","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@regression","@sales-returns","@SR-PH8","@SR-PH8-TC-001"]},
+  "Cancelling pending return before GRN does not change inventory available": {"pickleLocation":"228:3","tags":["@SR-PH8-TC-002","@SR-PH8","@sales-returns","@regression","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@regression","@sales-returns","@SR-PH8","@SR-PH8-TC-002"]},
+  "Credit memo flow does not cause additional inventory movement after goods receipt": {"pickleLocation":"247:3","tags":["@SR-PH8-TC-003","@SR-PH8","@sales-returns","@regression","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@regression","@sales-returns","@SR-PH8","@SR-PH8-TC-003"]},
+  "Multi-line goods receipt reconciles inventory increase across all return lines": {"pickleLocation":"268:3","tags":["@SR-PH8-TC-004","@SR-PH8","@sales-returns","@regression","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@regression","@sales-returns","@SR-PH8","@SR-PH8-TC-004"]},
 };

@@ -31,11 +31,11 @@ export class SalesReturnDetailPage extends BasePage {
   }
 
   /**
-   * SR-PH4-TC-002 — Submit receipt dialog; warehouse often auto-filled from invoice.
-   * If trigger still shows “Select Warehouse…”, opens nested dialog and picks first row.
-   * @param options.qcPassed — SR-PH4-TC-004: set **QC Passed** so GRN stock update matches accepted path (`RecordGoodsReceiptButton.tsx`).
+   * SR-PH4/SR-PH8 — Submit receipt dialog; warehouse often auto-filled from invoice.
+   * If trigger still shows "Select Warehouse...", opens nested dialog and picks first row.
+   * `qcPassed` and `qcFailed` are mutually exclusive; defaults to app default when omitted.
    */
-  async completeRecordGoodsReceiptDialog(options?: { qcPassed?: boolean }): Promise<void> {
+  async completeRecordGoodsReceiptDialog(options?: { qcPassed?: boolean; qcFailed?: boolean }): Promise<void> {
     await this.page.getByRole('button', { name: 'Record Goods Receipt', exact: true }).click();
     const dialog = this.page.getByRole('dialog', { name: /record goods receipt/i });
     await expect(dialog).toBeVisible();
@@ -43,6 +43,9 @@ export class SalesReturnDetailPage extends BasePage {
     if (options?.qcPassed) {
       await dialog.locator('#qcStatus').click();
       await this.page.getByRole('option', { name: /QC Passed/i }).click();
+    } else if (options?.qcFailed) {
+      await dialog.locator('#qcStatus').click();
+      await this.page.getByRole('option', { name: /QC Failed/i }).click();
     }
 
     const warehouseTrigger = dialog.locator('div.space-y-4').getByRole('button').first();

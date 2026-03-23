@@ -123,4 +123,19 @@
 
 ---
 
-**Full pack (MD):** `npm run bdd:generate && npm run test:dev -- --project=iacs-md --grep "@sales-returns"` — **19** scenarios on `iacs-md` (2026-03-23+). **ED-only:** `npm run test:dev -- --project=iacs-ed --grep "@SR-PH7-TC-002"`. **Implementation:** [IMPL-050](../../../implementations/2026-03/IMPL-053_sales-returns-consolidated.md), [IMPL-051](../../../implementations/2026-03/IMPL-053_sales-returns-consolidated.md), [IMPL-052](../../../implementations/2026-03/IMPL-053_sales-returns-consolidated.md)
+## Phase 8 — Inventory invariants (`@SR-PH8`)
+
+**Feature:** `e2e/features/o2c/sales-returns/sales-returns.feature`
+
+| ID | Scenario | Notes |
+|----|-----------|--------|
+| SR-PH8-TC-001 | Record goods receipt with **QC Failed** should not increase inventory available | DB sandwich on first return line package + SO warehouse; expected delta = `0` |
+| SR-PH8-TC-002 | Cancel pending return before GRN should not change inventory available | DB sandwich on first return line package + SO warehouse; expected delta = `0` |
+| SR-PH8-TC-003 | Credit memo flow should not add extra inventory movement after GRN | Baseline immediately after GRN; expected delta after CM flow = `0` |
+| SR-PH8-TC-004 | Multi-line GRN reconciles inventory increase across all return lines | Aggregate return quantities by package; per-package delta must match DB |
+
+**Run:** `npm run test:dev -- --project=iacs-md --grep "@SR-PH8"`
+
+---
+
+**Full pack (MD):** `npm run bdd:generate && npm run test:dev -- --project=iacs-md --grep "@sales-returns"` — **20** scenarios on `iacs-md` (2026-03-23+). **ED-only:** `npm run test:dev -- --project=iacs-ed --grep "@SR-PH7-TC-002"`. **Implementation:** [IMPL-050](../../../implementations/2026-03/IMPL-053_sales-returns-consolidated.md), [IMPL-051](../../../implementations/2026-03/IMPL-053_sales-returns-consolidated.md), [IMPL-052](../../../implementations/2026-03/IMPL-053_sales-returns-consolidated.md)

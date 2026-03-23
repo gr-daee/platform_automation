@@ -12,7 +12,8 @@ import { getSalesOrderIdByIndentId, getInvoiceIdsBySalesOrderId } from './o2c-db
 
 export type RunO2CFlowParams = {
   dealerName: string;
-  productCode: string;
+  productCode?: string;
+  productCodes?: string[];
   warehouseName: string;
   transporterName: string;
   approvalComment: string;
@@ -34,11 +35,16 @@ export async function runO2CIndentThroughEInvoice(
   const detail = new IndentDetailPage(page);
   await detail.verifyDetailPageLoaded();
   await detail.clickEdit();
-  await detail.clickAddItems();
-  await detail.searchProduct(p.productCode);
-  await detail.waitForAddProductsSearchComplete();
-  await detail.selectFirstProductAndAdd();
-  await detail.waitForSuccessToast(/added|product/i).catch(() => {});
+  const productCodes = (p.productCodes && p.productCodes.length > 0 ? p.productCodes : [p.productCode || '1013']).filter(
+    Boolean
+  );
+  for (const code of productCodes) {
+    await detail.clickAddItems();
+    await detail.searchProduct(code);
+    await detail.waitForAddProductsSearchComplete();
+    await detail.selectFirstProductAndAdd();
+    await detail.waitForSuccessToast(/added|product/i).catch(() => {});
+  }
   await detail.clickSave();
   await detail.waitForSuccessToast(/items updated|updated successfully/i).catch(() => {});
   await page.waitForTimeout(500);
@@ -87,18 +93,56 @@ export async function runO2CIndentThroughEInvoice(
   await soPage.goto(soId!);
   await soPage.verifyPageLoaded();
 
-  await soPage.clickGeneratePicklist();
-  await soPage.clickViewPicklist();
-  const pickModal = new WarehousePicklistDialogPage(page);
-  await pickModal.waitForLoaded();
-  await pickModal.clickStartPickingProcessIfVisible();
-  await pickModal.openPickItemsTab();
-  await pickModal.pickAllItemsWithBatchConfirm();
-  await pickModal.clickCompletePicklist();
-  await pickModal.confirmCompletePicklistInAlert();
-  await pickModal.waitForDialogClosed();
-  await soPage.goto(soId!);
-  await soPage.verifyPageLoaded();
+  const ensurePicklistCompletedIfNeeded = async (): Promise<void> => {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const canGenerate = await soPage.generatePicklistButton.isVisible().catch(() => false);
+      const canView = await soPage.viewPicklistButton.isVisible().catch(() => false);
+      const canGenerateInvoice = await soPage.generateEInvoiceButton.isVisible().catch(() => false);
+      const canViewInvoice = await soPage.viewEInvoiceButton.isVisible().catch(() => false);
+
+      if (canGenerate) {
+        await soPage.clickGeneratePicklist();
+        await soPage.clickViewPicklist();
+        const pickModal = new WarehousePicklistDialogPage(page);
+        await pickModal.waitForLoaded();
+        await pickModal.clickStartPickingProcessIfVisible();
+        await pickModal.openPickItemsTab();
+        await pickModal.pickAllItemsWithBatchConfirm();
+        await pickModal.clickCompletePicklist();
+        await pickModal.confirmCompletePicklistInAlert();
+        await pickModal.waitForDialogClosed();
+        await soPage.goto(soId!);
+        await soPage.verifyPageLoaded();
+        return;
+      }
+
+      if (canView) {
+        await soPage.clickViewPicklist();
+        const pickModal = new WarehousePicklistDialogPage(page);
+        await pickModal.waitForLoaded();
+        await pickModal.clickStartPickingProcessIfVisible();
+        await pickModal.openPickItemsTab();
+        await pickModal.pickAllItemsWithBatchConfirm();
+        await pickModal.clickCompletePicklist();
+        await pickModal.confirmCompletePicklistInAlert();
+        await pickModal.waitForDialogClosed();
+        await soPage.goto(soId!);
+        await soPage.verifyPageLoaded();
+        return;
+      }
+
+      // Picklist may already be complete and SO can directly generate/view invoice.
+      if (canGenerateInvoice || canViewInvoice) return;
+
+      if (attempt < 3) {
+        await page.waitForTimeout(2000);
+        await soPage.goto(soId!);
+        await soPage.verifyPageLoaded();
+      }
+    }
+  };
+
+  await ensurePicklistCompletedIfNeeded();
 
   await soPage.clickGenerateEInvoice();
   const modal = page.getByRole('dialog').filter({ has: page.getByText(/e-invoice|transport|invoice/i) });

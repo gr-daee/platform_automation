@@ -156,6 +156,40 @@ export class CreateSalesReturnOrderPage extends BasePage {
     );
   }
 
+  /**
+   * Multi-line variant used by SR-PH8-TC-004:
+   * selects up to `maxLines` lines with positive availability and fills safe qty.
+   */
+  async setSmartReturnQuantitiesForEligibleLines(
+    preferredQty = 1,
+    maxLines = 2
+  ): Promise<Array<{ lineIndex: number; usedQty: number; availableQty: number }>> {
+    const inputs = this.page.getByLabel('Return Quantity');
+    const count = await inputs.count();
+    expect(count, 'No return quantity inputs found in step 2').toBeGreaterThan(0);
+
+    const selected: Array<{ lineIndex: number; usedQty: number; availableQty: number }> = [];
+    for (let i = 0; i < count; i++) {
+      if (selected.length >= maxLines) break;
+      const input = inputs.nth(i);
+      const enabled = await input.isEnabled().catch(() => false);
+      if (!enabled) continue;
+      const available = await this.getAvailableToReturnByLineIndex(i);
+      if (available === null || available <= 0) continue;
+      const use = Math.min(preferredQty, available);
+      const useStr = Number.isInteger(use) ? String(use) : String(Number(use.toFixed(3)));
+      await input.click();
+      await input.clear();
+      await input.fill(useStr);
+      selected.push({ lineIndex: i, usedQty: use, availableQty: available });
+    }
+
+    if (selected.length === 0) {
+      throw new Error('No eligible return lines with positive available quantity were found.');
+    }
+    return selected;
+  }
+
   /** Parses “Available: N” from first return line (step 2). */
   async getFirstLineAvailableToReturn(): Promise<number> {
     const step2Card = this.page.getByRole('heading', { name: /step 2: select items to return/i }).locator('..');

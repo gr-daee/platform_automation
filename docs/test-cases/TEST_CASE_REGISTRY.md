@@ -64,6 +64,9 @@ This registry tracks all automated test cases with their unique identifiers for 
 | O2C-E2E-TC-004 | O2C | E2E | Cancel e-invoice within 24h (reuse IRN from DB or full O2C flow) | e2e/features/o2c/o2c-e2e-indent-so-invoice.feature | @o2c-flow @regression @p1 @iacs-md | ✅ |
 | O2C-E2E-TC-005 | O2C | E2E | SRI HANUMAN AGENCIES (IACS3558) IGST invoice (picklist → e-invoice → DB tax split) | e2e/features/o2c/o2c-e2e-indent-so-invoice.feature | @o2c-flow @regression @p1 @iacs-md | ✅ |
 | O2C-E2E-TC-006 | O2C | E2E | 90+ day unpaid invoice blocks approval (DB-resolved dealer, toast; skips if none) | e2e/features/o2c/o2c-e2e-indent-so-invoice.feature | @o2c-flow @regression @p1 @iacs-md | ✅ |
+| O2C-E2E-TC-007 | O2C | E2E | Cancel e-invoice restores inventory across all invoice lines (full-line DB reconciliation) | e2e/features/o2c/o2c-e2e-indent-so-invoice.feature | @o2c-flow @regression @p1 @iacs-md | ✅ |
+| O2C-E2E-TC-008 | O2C | E2E | SO creation reconciles package-level allocated deltas exactly | e2e/features/o2c/o2c-e2e-indent-so-invoice.feature | @o2c-flow @regression @p1 @iacs-md | ✅ |
+| O2C-E2E-TC-009 | O2C | E2E | Invoice cancellation is idempotent and does not double-increment inventory | e2e/features/o2c/o2c-e2e-indent-so-invoice.feature | @o2c-flow @regression @p1 @iacs-md | ✅ |
 
 ### Warehouse Inventory (WH-INV)
 
@@ -148,6 +151,15 @@ This registry tracks all automated test cases with their unique identifiers for 
 |--------------|--------|-----------|---------------|--------------|------|--------|
 | SR-PH7-TC-001 | O2C | SR-PH7 | Sales Return Order report shell loads for authorized user | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p2 @iacs-md @sales-returns @SR-PH7 | ✅ |
 | SR-PH7-TC-002 | O2C | SR-PH7 | Sales Return Order report denied for ED without sales_orders read when applicable | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p2 @iacs-ed @multi-user @sales-returns @SR-PH7 | ✅ |
+
+### Sales Returns Phase 8 (SR-PH8)
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| SR-PH8-TC-001 | O2C | SR-PH8 | QC failed goods receipt does not change inventory available | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p1 @iacs-md @sales-returns @SR-PH8 | ✅ |
+| SR-PH8-TC-002 | O2C | SR-PH8 | Cancelling pending return before GRN does not change inventory available | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p1 @iacs-md @sales-returns @SR-PH8 | ✅ |
+| SR-PH8-TC-003 | O2C | SR-PH8 | Credit memo flow does not cause additional inventory movement after goods receipt | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p1 @iacs-md @sales-returns @SR-PH8 | ✅ |
+| SR-PH8-TC-004 | O2C | SR-PH8 | Multi-line goods receipt reconciles inventory increase across all return lines | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p1 @iacs-md @sales-returns @SR-PH8 | ✅ |
 
 ### Reports / Hierarchical Sales SubModule (HSR)
 
