@@ -23,7 +23,7 @@ The O2C module handles the complete order-to-cash process including indent creat
 5. **Approve / Reject**: Buttons visible for submitted indent (with `indents:approve` permission). **Approve** (optional comments) or **Reject** (comments required). Dialog: "Approve Indent" / "Reject Indent" with Comments textarea. Approval is blocked if dealer has any invoice with pending payment 90+ days; **credit limit** is also checked (UI shows "Credit OK" / "Credit Warning").
 6. **Process Workflow** (approved indent only): Button "Process Workflow" opens dialog; "Confirm & Process" creates **Sales Order** for in-stock items and **Back Order** for items with no stock. Stock is evaluated for the selected warehouse.
 
-### System E2E Flows (O2C-E2E-TC-001 – TC-004)
+### System E2E Flows (O2C-E2E-TC-001 – TC-006)
 **TC-001** runs the full pipeline with fixed data: **Dealer IACS5509** (Ramesh ningappa diggai), **Product 1013**, **Warehouse Kurnook**, **Transporter "Just In Time Shipper"**. Flow: (1) DB note inventory for product 1013 at Kurnook and dealer credit for IACS5509; (2) Create indent → add product 1013 → save → submit → select warehouse "Kurnook Warehouse" → select transporter "Just In Time Shipper" → approve → Process Workflow; (3) Navigate to SO (by indent_id from URL + DB lookup), verify dealer/warehouse/source indent, allocation and dealer credit unchanged; (4) **Warehouse picklist (DAEE-139)**: **Generate Picklist** → **View Picklist** → *Start Picking Process* (when picklist status is pending) → **Pick Items** tab → **Pick** per line → **Confirm Pick** (batch/quantity) → **Complete Picklist** + confirm → SO moves to **picked**; (5) **Generate E-Invoice** (modal, Transport tab + transporter), wait for invoice link; (6) **Mark as Packed** → **Ready to Ship** → **Dispatch Order** (transporter name; optional “vehicle details later” checkbox per DAEE-247); (7) Navigate to Invoice, Generate Custom eInvoice PDF, download; (8) DB: stock reduced, dealer credit updated; (9) Dealer Ledger: select dealer IACS5509, assert invoice transaction.
 
 **TC-002**: **`resolveMixedIndentProductPairAtWarehouse("Kurnook")`** dynamically selects **one in-stock** and **one out-of-stock** material code (SQL + verification; fallbacks e.g. 1013/NPK; env **`E2E_O2C_MIXED_IN_STOCK_CODE`** / **`E2E_O2C_MIXED_OUT_OF_STOCK_CODE`** optional) → indent with **both** products → Process Workflow → **back order** (OOS) + **SO** (in-stock lines) → Inventory UI confirms OOS has no rows at Kurnook → **full pipeline** through invoice PDF and Dealer Ledger (same as TC-001 after SO).
@@ -31,6 +31,10 @@ The O2C module handles the complete order-to-cash process including indent creat
 **TC-003**: Same as TC-001 through picklist → E-Invoice modal: uncheck **E-Way Bill Required** (`#eWayBillRequired`) → **Generate E-Invoice Only** (no transporter path).
 
 **TC-004**: Prefer invoice with **IRN** in last 24h, **no E-Way bill**, **posted to GL**, **full balance** (`getInvoiceIdWithRecentIrnWithoutEwayBill`). If none, **`runO2CIndentThroughEInvoice`** (e-invoice only, TC-003) → **Post to General Ledger** if needed → header **Cancel Invoice** (`CancelInvoiceDialog`, not E-Invoice card — card path fails with 400, **DAEE-362**) → DB `einvoice_status` **cancelled**.
+
+**TC-005**: **SRI HANUMAN AGENCIES** (**IACS3558**) — same IGST path as prior GG01 case: indent → approve → Process Workflow → picklist → e-invoice → invoice; DB assert **`getInvoiceItemsTaxSplit`** (IGST positive, CGST/SGST zero).
+
+**TC-006**: **`findFirstDealerWithUnpaidInvoicesOlderThan90Days`** (single efficient query) picks any tenant dealer with unpaid invoice(s) whose **invoice_date** is older than 90 days; indent is created for that dealer’s **dealer_code**. Server **`processApproval`** blocks **Approve** (`processApproval.ts`); UI **`toast.error`** lists invoices and **Total outstanding**. E2E **skips** if no dealer qualifies.
 
 UI source: `WarehousePicklistDialog.tsx`, `sales-orders/[id]/page.tsx`, `DispatchOrderDialog.tsx`, `EInvoiceGenerationModal.tsx`, `invoices/[id]/components/InvoiceDetailsContent.tsx` (+ `EInvoiceCancellation`). Automation: `WarehousePicklistDialogPage.ts`, `SalesOrderDetailPage.ts`, `O2CInventoryPage.ts`, `InvoiceDetailPage.ts`, `o2c-e2e-steps.ts`, `o2c-e2e-flow-helpers.ts`. All DB usage is read-only (SELECT). See `e2e/features/o2c/o2c-e2e-indent-so-invoice.feature`.
 
@@ -121,6 +125,14 @@ UI source: `WarehousePicklistDialog.tsx`, `sales-orders/[id]/page.tsx`, `Dispatc
 - **Test tagging:** Use **`@WH-INV-TC-###`** for this feature; document **route** in `test-cases.md` / `TEST_CASE_REGISTRY.md` as **current:** `/o2c/inventory` until migration.
 - **Automation hint:** Centralize the list URL in a POM constant (e.g. `INVENTORY_LIST_PATH`) so the future path change is a single edit.
 
+## Sales Returns (SR)
+
+- **Routes:** `/o2c/sales-returns`, create `/o2c/sales-returns/new`, detail `/o2c/sales-returns/[id]`; report `/o2c/reports/sales-return` (different module: `sales_orders` read).
+- **App source:** `../web_app/src/app/o2c/sales-returns/*`, edge **`o2c-sales-return-management`**.
+- **Automation note:** Header **Create Return Order** is a `Link` wrapping a `Button` — E2E should use `getByRole('link', { name: /create return order/i })` (see [sales-returns/test-cases.md](sales-returns/test-cases.md)).
+- **Phased E2E plan (Design → Develop → Test → gate per phase):** [sales-returns/FEATURE-SR-phased-plan.md](sales-returns/FEATURE-SR-phased-plan.md)
+- **Tags (planned):** `@sales-returns`, `@SR-PH1` … `@SR-PH7` per phase doc.
+
 ## Test Data (Tenant-Specific)
 
 - **Products**: **1013** and **1041** are available for Add Products search and in stock at Kurnook Warehouse.
@@ -140,3 +152,4 @@ UI source: `WarehousePicklistDialog.tsx`, `sales-orders/[id]/page.tsx`, `Dispatc
 - **Source:** [test-cases.md](test-cases.md) (TC-001–TC-020)
 - ✅ Hierarchical Sales Report: filters, generate, summary, hierarchy, export (O2C-HSR-TC-003–TC-028); access tests (TC-001, TC-002) documented only. **Source:** [reports/hierarchical-sales/test-cases.md](reports/hierarchical-sales/test-cases.md)
 - ✅ Warehouse inventory (WH-INV-TC-001–015): shell, tabs, filters, search/pagination, page size. **Source:** [test-cases.md](test-cases.md) (WH-INV), [inventory/FEATURE-WH-INV-phased-plan.md](inventory/FEATURE-WH-INV-phased-plan.md)
+- ✅ Sales Returns (SR): **Phase 1–7** — list, filters, create wizard, detail + receipt, **GRN → inventory sandwich** (SR-PH4-TC-004: `SUM(available_units)` before/after by `product_variant_package_id` + SO warehouse, QC Passed), credit memo + **Retry E-Credit shell** (SR-PH5-TC-003), validation/cancel, report + **ED RBAC** (SR-PH7-TC-002) — [sales-returns/test-cases.md](sales-returns/test-cases.md); [IMPL-050](../../implementations/2026-03/IMPL-053_sales-returns-consolidated.md), [IMPL-051](../../implementations/2026-03/IMPL-053_sales-returns-consolidated.md), [IMPL-052](../../implementations/2026-03/IMPL-053_sales-returns-consolidated.md). **Search gap:** list placeholder vs `return_order_number` only. **Receipt/CM:** badge may show **Goods Received** or **Credit Memo Created**; DB sandwich accepts `received` or `credit_memo_created`. **Native `alert`:** use `page.once('dialog', …)` before `evaluate(click)` / keyboard qty.

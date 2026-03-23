@@ -129,7 +129,7 @@ function getCliArgValues(flagName: string): string[] {
 
 function detectEdRequirementFromSelection(): boolean {
   const grepTokens = [...getCliArgValues('--grep'), ...getCliArgValues('-g')].join(' ');
-  if (/P2P-P4-TC-003|requires-iacs-ed|@iacs-ed|FIN-AR-TC-009|FIN-DL-TC-008|FIN-CM-TC-022/i.test(grepTokens)) return true;
+  if (/P2P-P4-TC-003|requires-iacs-ed|@iacs-ed|FIN-AR-TC-009|FIN-DL-TC-008|FIN-CM-TC-022|SR-PH7-TC-002/i.test(grepTokens)) return true;
 
   const featurePaths = process.argv.filter(arg => arg.endsWith('.feature'));
   for (const featurePath of featurePaths) {

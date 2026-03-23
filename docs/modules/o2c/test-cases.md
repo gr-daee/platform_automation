@@ -311,7 +311,7 @@ Scenario: User searches and selects dealer from Create Indent modal
 
 ---
 
-## System E2E Tests (O2C-E2E-TC-001 – TC-004)
+## System E2E Tests (O2C-E2E-TC-001 – TC-006)
 
 ### @O2C-E2E-TC-001 - Full E2E flow with Dealer IACS5509, Product 1013, Warehouse Kurnook, Transporter Just In Time Shipper
 - **Feature File**: `e2e/features/o2c/o2c-e2e-indent-so-invoice.feature`
@@ -364,6 +364,30 @@ Scenario: User searches and selects dealer from Create Indent modal
 
 ---
 
+### @O2C-E2E-TC-005 - SRI HANUMAN AGENCIES (IACS3558) IGST invoice (full picklist → e-invoice path)
+- **Feature File**: `e2e/features/o2c/o2c-e2e-indent-so-invoice.feature`
+- **Scenario**: Dealer credit **IACS3558** → create indent (search **IACS3558**) → product **1013** → Kurnook + transporter → approve → Process Workflow → picklist → e-invoice → invoice → DB **`getInvoiceItemsTaxSplit`**: IGST present, CGST/SGST zero
+- **Status**: ✅ Automated
+- **Tags**: @o2c-flow @regression @p1 @iacs-tenant @iacs-md
+- **Last Updated**: 2026-03-21
+
+**Test Data (Fixed)**:
+- Dealer: Code **IACS3558**, search/select **IACS3558** (business name **SRI HANUMAN AGENCIES**)
+- Product / warehouse / transporter: same as TC-001
+
+---
+
+### @O2C-E2E-TC-006 - 90+ day unpaid invoice blocks approval (toast; cannot reach Process Workflow / SO)
+- **Feature File**: `e2e/features/o2c/o2c-e2e-indent-so-invoice.feature`
+- **Scenario**: **`findFirstDealerWithUnpaidInvoicesOlderThan90Days`** (single query, `ORDER BY invoice_date` + `LIMIT 1`) resolves dealer + **`getDealerCreditByCode`**; create indent by **dealer_code** search → submit → warehouse/transporter → **Approve** → **`toast.error`** from **`processApproval`** (90+ days, invoice numbers, **Total outstanding**, ₹). No Process Workflow step. **Skips** if no qualifying dealer in tenant.
+- **Status**: ✅ Automated (conditional: skips when no dealer has old unpaid invoices)
+- **Tags**: @o2c-flow @regression @p1 @iacs-tenant @iacs-md
+- **Last Updated**: 2026-03-21
+
+**Notes**: Aligns with **`web_app`** `processApproval.ts` (90-day unpaid block on **approve**). **`processIndentWorkflow`** does not re-check; blocking happens before SO.
+
+---
+
 ## Warehouse Inventory (WH-INV) — Phases 1–2
 
 **Feature file:** `e2e/features/o2c/inventory/warehouse-inventory.feature`  
@@ -389,6 +413,78 @@ Scenario: User searches and selects dealer from Create Indent modal
 | WH-INV-TC-013 | Next page; `test.skip` if only one page | @regression @p2 @iacs-md | ✅ |
 | WH-INV-TC-014 | Page size 25 per page | @regression @p2 @iacs-md | ✅ |
 | WH-INV-TC-015 | Kurnook + In Stock combined | @regression @p3 @iacs-md | ✅ |
+
+---
+
+## Sales Returns (SR-PH1) — Phase 1 (list shell)
+
+**Feature file:** `e2e/features/o2c/sales-returns/sales-returns.feature`  
+**POM:** `e2e/src/pages/o2c/SalesReturnsListPage.ts`  
+**Steps:** `e2e/src/steps/o2c/sales-returns-steps.ts`  
+**Phased plan:** [sales-returns/FEATURE-SR-phased-plan.md](sales-returns/FEATURE-SR-phased-plan.md)  
+**Detail:** [sales-returns/test-cases.md](sales-returns/test-cases.md)  
+**Implementation:** [IMPL-046](../../implementations/2026-03/IMPL-053_sales-returns-consolidated.md)
+
+| ID | Scenario (summary) | Tags | Status |
+|----|-------------------|------|--------|
+| SR-PH1-TC-001 | Heading + subtitle | @smoke @regression @p1 @iacs-md @sales-returns @SR-PH1 | ✅ |
+| SR-PH1-TC-002 | Create Return Order → `/new` | @regression @p1 @iacs-md @sales-returns @SR-PH1 | ✅ |
+| SR-PH1-TC-003 | Statistics cards (or graceful empty) | @regression @p1 @iacs-md @sales-returns @SR-PH1 | ✅ |
+| SR-PH1-TC-004 | Table or empty state, no error card | @regression @p1 @iacs-md @sales-returns @SR-PH1 | ✅ |
+| SR-PH1-TC-005 | Breadcrumb O2C + Sales Returns | @regression @p2 @iacs-md @sales-returns @SR-PH1 | ✅ |
+
+---
+
+## Sales Returns (SR-PH2) — Phase 2 (filters, search, pagination)
+
+**Feature file:** `e2e/features/o2c/sales-returns/sales-returns.feature`  
+**POM:** `e2e/src/pages/o2c/SalesReturnsListPage.ts`  
+**Steps:** `e2e/src/steps/o2c/sales-returns-steps.ts`  
+**Phased plan:** [sales-returns/FEATURE-SR-phased-plan.md](sales-returns/FEATURE-SR-phased-plan.md)  
+**Detail:** [sales-returns/test-cases.md](sales-returns/test-cases.md)  
+**Implementation:** [IMPL-047](../../implementations/2026-03/IMPL-053_sales-returns-consolidated.md)
+
+| ID | Scenario (summary) | Tags | Status |
+|----|---------------------|------|--------|
+| SR-PH2-TC-001 | Status facet Pending | @regression @p2 @iacs-md @sales-returns @SR-PH2 | ✅ |
+| SR-PH2-TC-002 | Return reason Defective | @regression @p2 @iacs-md @sales-returns @SR-PH2 | ✅ |
+| SR-PH2-TC-003 | Search by return order substring (DB) | @regression @p2 @iacs-md @sales-returns @SR-PH2 | ✅ |
+| SR-PH2-TC-004 | Clear filters | @regression @p2 @iacs-md @sales-returns @SR-PH2 | ✅ |
+| SR-PH2-TC-005 | Pagination page 2 (`test.skip` if one page) | @regression @p3 @iacs-md @sales-returns @SR-PH2 | ✅ |
+
+---
+
+## Sales Returns (SR-PH3) — Phase 3 (create wizard)
+
+**Feature file:** `e2e/features/o2c/sales-returns/sales-returns.feature`  
+**POM:** `e2e/src/pages/o2c/CreateSalesReturnOrderPage.ts`  
+**Steps:** `e2e/src/steps/o2c/sales-returns-steps.ts`  
+**Phased plan:** [sales-returns/FEATURE-SR-phased-plan.md](sales-returns/FEATURE-SR-phased-plan.md)  
+**Detail:** [sales-returns/test-cases.md](sales-returns/test-cases.md)  
+**Implementation:** [IMPL-048](../../implementations/2026-03/IMPL-053_sales-returns-consolidated.md)
+
+| ID | Scenario (summary) | Tags | Status |
+|----|-------------------|------|--------|
+| SR-PH3-TC-001 | Eligible invoice + dealer (DB + dialog fallback) | @regression @p1 @iacs-md @sales-returns @SR-PH3 | ✅ |
+| SR-PH3-TC-002 | Return qty on first line | @regression @p1 @iacs-md @sales-returns @SR-PH3 | ✅ |
+| SR-PH3-TC-003 | Reason, notes, submit wizard | @regression @p1 @iacs-md @sales-returns @SR-PH3 | ✅ |
+| SR-PH3-TC-004 | Detail pending + DB sandwich | @regression @p1 @iacs-md @sales-returns @SR-PH3 | ✅ |
+
+---
+
+## Sales Returns (SR-PH4–PH7) — Detail, credit memo, validation, report
+
+**Phased plan / detail:** [sales-returns/FEATURE-SR-phased-plan.md](sales-returns/FEATURE-SR-phased-plan.md), [sales-returns/test-cases.md](sales-returns/test-cases.md)  
+**Implementation:** [IMPL-050](../../implementations/2026-03/IMPL-053_sales-returns-consolidated.md)
+
+| Phase | Feature file(s) | Summary |
+|-------|-----------------|--------|
+| SR-PH4 | `sales-returns.feature` | Receipt + cancel hidden; DB `received` or `credit_memo_created` |
+| SR-PH5 | `sales-returns.feature` | Credit memo create or already-linked CM |
+| SR-PH6 | `sales-returns.feature` | Cancel guardrails + `alert()` validation on wizard |
+| SR-PH7 | `sales-returns.feature` | Report page **Load Report** + **Filters** |
+
+**Full Sales Returns pack:** `npm run test:dev -- --project=iacs-md --grep "@sales-returns"` — **17** scenarios (2026-03-23).
 
 ---
 

@@ -1,16 +1,25 @@
 # O2C Module - Implementation History
 
-**Last Updated**: 2026-03-21
+**Last Updated**: 2026-03-23 (IMPL-053 Sales Returns consolidated)
 
 ---
 
 ## Overview
 
-This document tracks all test automation implementations for the Order-to-Cash (O2C) module. **Indent flow** is fully automated (TC-001–TC-020). **System E2E** scenarios **O2C-E2E-TC-001–TC-004** live in `o2c-e2e-indent-so-invoice.feature` (see [IMPL-045](../../implementations/2026-03/IMPL-045_o2c-e2e-backorder-eway-cancel.md)).
+This document tracks all test automation implementations for the Order-to-Cash (O2C) module. **Indent flow** is fully automated (TC-001–TC-020). **System E2E** scenarios **O2C-E2E-TC-001–TC-006** live in `o2c-e2e-indent-so-invoice.feature` (see [IMPL-045](../../implementations/2026-03/IMPL-045_o2c-e2e-backorder-eway-cancel.md), [IMPL-051](../../implementations/2026-03/IMPL-051_o2c-e2e-igst-iacs3558-90day-approve-block.md)). **Sales Returns** phases **SR-PH1–SR-PH7** are consolidated in [IMPL-053](../../implementations/2026-03/IMPL-053_sales-returns-consolidated.md) with unified feature `e2e/features/o2c/sales-returns/sales-returns.feature`.
 
 ---
 
 ## Implementations
+
+### [IMPL-051 - O2C E2E IACS3558 IGST + GG01 90-day approve block](../../implementations/2026-03/IMPL-051_o2c-e2e-igst-iacs3558-90day-approve-block.md) ✅
+
+- **O2C-E2E-TC-005** (IACS3558 / SRI HANUMAN AGENCIES IGST path); **O2C-E2E-TC-006** (DB-resolved dealer, 90-day overdue toast at approve; conditional skip).
+
+### [IMPL-053 - Sales Returns consolidated (SR-PH1-SR-PH7)](../../implementations/2026-03/IMPL-053_sales-returns-consolidated.md) ✅
+
+- Consolidated Sales Returns into one feature (`sales-returns.feature`) and one implementation document.
+- Coverage retained: list, filters, create wizard, detail/receipt, GRN inventory sandwich, credit memo/retry e-credit, validation/cancel, report access.
 
 ### [IMPL-045 - O2C E2E back order, e-invoice without e-way, cancel e-invoice](../../implementations/2026-03/IMPL-045_o2c-e2e-backorder-eway-cancel.md) ✅
 

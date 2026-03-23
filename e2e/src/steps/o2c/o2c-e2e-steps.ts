@@ -5,7 +5,7 @@
  * Reuses indent-steps where possible; uses o2c-db-helpers for read-only DB.
  */
 
-import { expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { createBdd } from 'playwright-bdd';
 import { SalesOrderDetailPage } from '../../pages/o2c/SalesOrderDetailPage';
 import { WarehousePicklistDialogPage } from '../../pages/o2c/WarehousePicklistDialogPage';
@@ -22,11 +22,18 @@ import {
   resolveMixedIndentProductPairAtWarehouse,
   getInvoiceIdWithRecentIrnWithoutEwayBill,
   getInvoiceEinvoiceStatus,
+  getInvoiceItemsTaxSplit,
+  getInvoicedQuantityForProductCodeOnInvoice,
+  getInvoiceCancelInventoryContext,
+  getInventoryAvailableSumByPackageAndWarehouse,
+  findFirstDealerWithUnpaidInvoicesOlderThan90Days,
+  type DealerWith90DayUnpaidInvoices,
   type InventorySnapshot,
   type DealerCreditSnapshot,
 } from '../../support/o2c-db-helpers';
 import { runO2CIndentThroughEInvoice } from '../../support/o2c-e2e-flow-helpers';
 import { O2CInventoryPage } from '../../pages/o2c/O2CInventoryPage';
+import { IndentsPage } from '../../pages/o2c/IndentsPage';
 
 const { Given, When, Then } = createBdd();
 
@@ -47,6 +54,15 @@ const o2cContext: {
   /** Resolved by DB for mixed back-order + SO scenario (TC-002). */
   mixedInStockCode: string;
   mixedOutOfStockCode: string;
+  invoiceCancelInventoryBefore: number | null;
+  invoiceCancelInventoryExpectedIncrease: number | null;
+  invoiceCancelInventoryContext: {
+    tenantId: string;
+    warehouseId: string;
+    productVariantPackageId: string;
+  } | null;
+  /** @O2C-E2E-TC-006: dealer discovered via DB (90+ day unpaid invoices). */
+  ninetyDayBlockDealer: DealerWith90DayUnpaidInvoices | null;
 } = {
   indentId: null,
   salesOrderId: null,
@@ -58,6 +74,10 @@ const o2cContext: {
   warehouseForInventory: '',
   mixedInStockCode: '',
   mixedOutOfStockCode: '',
+  invoiceCancelInventoryBefore: null,
+  invoiceCancelInventoryExpectedIncrease: null,
+  invoiceCancelInventoryContext: null,
+  ninetyDayBlockDealer: null,
 };
 
 // --- DB "Note" step: inventory from DB (material_code/package_code + warehouse). See docs/database/o2c-inventory-tables.md ---
@@ -76,6 +96,54 @@ Given('I have noted dealer credit for dealer code {string}', async function ({ p
   o2cContext.dealerCreditBefore = snapshot!;
   console.log('✅ Noted dealer credit:', o2cContext.dealerCreditBefore);
 });
+
+/**
+ * @O2C-E2E-TC-006: one DB round-trip finds any tenant dealer with qualifying old unpaid invoices; notes credit snapshot.
+ */
+Given(
+  'I have resolved and noted dealer credit for a dealer with unpaid invoices older than 90 days or skip the scenario',
+  async function ({}) {
+    const dealer = await findFirstDealerWithUnpaidInvoicesOlderThan90Days();
+    if (!dealer) {
+      test.skip(
+        true,
+        'No dealer in this tenant has qualifying unpaid invoices (invoice_date older than 90 days, balance_amount > 0).'
+      );
+    }
+    o2cContext.ninetyDayBlockDealer = dealer;
+    const credit = await getDealerCreditByCode(dealer.dealerCode);
+    expect(credit).not.toBeNull();
+    o2cContext.dealerCreditBefore = credit!;
+    console.log(
+      `✅ 90-day block dealer resolved: ${dealer.dealerCode} (${dealer.businessName}); credit noted for assertions.`
+    );
+  }
+);
+
+When('I create an indent for the resolved 90-day block dealer', async function ({ page }) {
+  expect(o2cContext.ninetyDayBlockDealer).not.toBeNull();
+  const d = o2cContext.ninetyDayBlockDealer!;
+  const indentsPage = new IndentsPage(page);
+  const searchTerm = d.dealerCode;
+  await indentsPage.clickCreateIndent();
+  await indentsPage.searchDealer(searchTerm);
+  await indentsPage.selectDealer(searchTerm);
+  await expect(page).toHaveURL(/\/o2c\/indents\/[a-f0-9-]+/, { timeout: 15000 });
+  console.log(`✅ Created indent for 90-day block dealer: ${d.dealerCode}`);
+});
+
+Then(
+  'I should see a toast blocking indent approval for 90-day unpaid invoices with invoice and amount details',
+  async function ({ page }) {
+    const toast = page.locator('[data-sonner-toast]').filter({ hasText: /Cannot approve indent/i });
+    await expect(toast.first()).toBeVisible({ timeout: 15000 });
+    await expect(toast.first()).toContainText(/90\+ days/i);
+    await expect(toast.first()).toContainText(/Total outstanding/i);
+    await expect(toast.first()).toContainText(/₹/);
+    await expect(toast.first()).toContainText(/invoice/i);
+    console.log('✅ 90-day unpaid invoice block toast visible');
+  }
+);
 
 // --- Indent flow: use steps from indent-steps; capture indent id from URL when navigating to SO ---
 
@@ -423,7 +491,29 @@ Then('stock is reduced as per allocation', async function ({ page }) {
   const warehouse = o2cContext.warehouseForInventory || 'Kurnook';
   const after = await getInventoryForProductAndWarehouse(productCode, warehouse);
   expect(after).not.toBeNull();
-  expect(after!.available).toBeLessThanOrEqual(o2cContext.inventoryBefore!.available);
+
+  if (!o2cContext.invoiceId) {
+    expect(after!.available).toBeLessThanOrEqual(o2cContext.inventoryBefore!.available);
+    return;
+  }
+
+  const invoicedQty = await getInvoicedQuantityForProductCodeOnInvoice(o2cContext.invoiceId, productCode);
+  if (invoicedQty === null || invoicedQty <= 0) {
+    expect(after!.available).toBeLessThanOrEqual(o2cContext.inventoryBefore!.available);
+    return;
+  }
+
+  const baseline = o2cContext.inventoryBefore!.available;
+  let finalAfter = after!.available;
+  for (let i = 0; i < 20; i++) {
+    const snap = await getInventoryForProductAndWarehouse(productCode, warehouse);
+    if (snap) finalAfter = snap.available;
+    const delta = baseline - finalAfter;
+    if (Math.abs(delta - invoicedQty) <= 0.0001) break;
+    await page.waitForTimeout(2000);
+  }
+
+  expect(baseline - finalAfter).toBeCloseTo(invoicedQty, 4);
 });
 
 Then('dealer credit is updated as per invoice totals', async function ({ page }) {
@@ -632,8 +722,43 @@ When('I cancel the e-invoice from the invoice detail using the default cancellat
   await invoiceDetailPage.fillCancelInvoiceDialogAndConfirm(
     `AUTO_QA_${Date.now()}_TC004_header_cancel_invoice`
   );
-  await invoiceDetailPage.waitForEInvoiceCancelledToast();
+  try {
+    await invoiceDetailPage.waitForEInvoiceCancelledToast();
+  } catch (e) {
+    const msg = (e as Error).message || '';
+    if (/active return order|Please cancel or complete the return order first/i.test(msg)) {
+      test.skip(
+        true,
+        'Invoice cancellation blocked by active sales return order in this environment; inventory-restoration assertion not applicable.'
+      );
+    }
+    throw e;
+  }
   console.log('✅ Invoice cancellation submitted (header Cancel Invoice)');
+});
+
+Given('I have noted invoice cancellation inventory baseline from database', async function ({ page }) {
+  expect(o2cContext.invoiceId).toBeTruthy();
+  const ctx = await getInvoiceCancelInventoryContext(o2cContext.invoiceId!);
+  expect(ctx).not.toBeNull();
+  const before = await getInventoryAvailableSumByPackageAndWarehouse(
+    ctx!.tenantId,
+    ctx!.warehouseId,
+    ctx!.productVariantPackageId
+  );
+  o2cContext.invoiceCancelInventoryContext = {
+    tenantId: ctx!.tenantId,
+    warehouseId: ctx!.warehouseId,
+    productVariantPackageId: ctx!.productVariantPackageId,
+  };
+  o2cContext.invoiceCancelInventoryExpectedIncrease = ctx!.cancelledQty;
+  o2cContext.invoiceCancelInventoryBefore = before;
+  console.log('✅ Noted invoice cancel inventory baseline:', {
+    before,
+    expectedIncrease: ctx!.cancelledQty,
+    warehouseId: ctx!.warehouseId,
+    productVariantPackageId: ctx!.productVariantPackageId,
+  });
 });
 
 Then('the invoice e-invoice status in the database should be {string}', async function ({ page }, expected: string) {
@@ -648,3 +773,38 @@ Then('the invoice e-invoice status in the database should be {string}', async fu
   expect((last || '').toLowerCase()).toBe(want);
   console.log(`✅ DB einvoice_status=${last}`);
 });
+
+Then('inventory available should increase by cancelled quantity in database', async function ({ page }) {
+  expect(o2cContext.invoiceCancelInventoryContext).not.toBeNull();
+  expect(o2cContext.invoiceCancelInventoryBefore).not.toBeNull();
+  expect(o2cContext.invoiceCancelInventoryExpectedIncrease).not.toBeNull();
+
+  const ctx = o2cContext.invoiceCancelInventoryContext!;
+  const before = o2cContext.invoiceCancelInventoryBefore!;
+  const expectedIncrease = o2cContext.invoiceCancelInventoryExpectedIncrease!;
+
+  let delta = 0;
+  for (let i = 0; i < 30; i++) {
+    const after = await getInventoryAvailableSumByPackageAndWarehouse(
+      ctx.tenantId,
+      ctx.warehouseId,
+      ctx.productVariantPackageId
+    );
+    delta = after - before;
+    if (Math.abs(delta - expectedIncrease) <= 0.0001) break;
+    await page.waitForTimeout(2000);
+  }
+  expect(delta).toBeCloseTo(expectedIncrease, 4);
+  console.log(`✅ DB inventory available increased by ${delta} (expected ${expectedIncrease})`);
+});
+
+Then('the invoice should have IGST and no CGST SGST in database', async function ({ page }) {
+  expect(o2cContext.invoiceId).toBeTruthy();
+  const split = await getInvoiceItemsTaxSplit(o2cContext.invoiceId!);
+  expect(split).not.toBeNull();
+  expect(split!.igst).toBeGreaterThan(0);
+  expect(split!.cgst).toBeCloseTo(0, 4);
+  expect(split!.sgst).toBeCloseTo(0, 4);
+  console.log(`✅ Invoice tax split (DB): IGST=${split!.igst}, CGST=${split!.cgst}, SGST=${split!.sgst}`);
+});
+

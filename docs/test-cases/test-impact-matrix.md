@@ -2,7 +2,7 @@
 
 **Purpose**: Maps automated tests to source code files for change impact analysis
 
-**Last Updated**: 2026-03-22 (WH-INV Phase 2)
+**Last Updated**: 2026-03-23 (Sales Returns SR-PH4–PH7)
 
 ---
 
@@ -176,6 +176,34 @@ Each entry maps:
   - **Last Verified**: 2026-03-22
 
 **Change Risk**: 🟡 Medium
+
+---
+
+### `../web_app/src/app/o2c/sales-returns/page.tsx`
+### `../web_app/src/app/o2c/sales-returns/components/SalesReturnsListClient.tsx`
+### `../web_app/src/app/o2c/sales-returns/components/SalesReturnsTable.tsx`
+### `../web_app/src/app/o2c/sales-returns/new/page.tsx`
+### `../web_app/src/app/o2c/sales-returns/[id]/page.tsx`
+### `../web_app/src/app/o2c/sales-returns/[id]/components/RecordGoodsReceiptButton.tsx`
+### `../web_app/src/app/o2c/sales-returns/[id]/components/CancelReturnOrderButton.tsx`
+### `../web_app/src/app/o2c/sales-returns/[id]/components/CreateCreditMemoButton.tsx`
+### `../web_app/src/app/o2c/sales-returns/[id]/components/RetryECreditNoteButton.tsx`
+### `../web_app/src/app/o2c/sales-returns/actions/returnOrderActions.ts`
+### `../web_app/src/app/o2c/reports/sales-return/page.tsx`
+### `../web_app/src/app/o2c/reports/sales-return/components/SalesReturnContent.tsx`
+
+**Affected Tests**:
+- `SR-PH1-TC-001`–`SR-PH1-TC-005`: Sales Returns Phase 1 (list shell, stats, table/empty, create nav, breadcrumb)
+- `SR-PH2-TC-001`–`SR-PH2-TC-005`: Sales Returns Phase 2 (FacetedFilter status/reason, list search, clear filters, pagination)
+- `SR-PH3-TC-001`–`SR-PH3-TC-004`: Phase 3 create wizard
+- `SR-PH4-TC-001`–`SR-PH4-TC-004`: Phase 4 detail + record receipt + cancel hidden + GRN inventory DB sandwich (`inventory`, `sales_return_order_items`, invoice→SO warehouse)
+- `SR-PH5-TC-001`–`SR-PH5-TC-003`: Phase 5 credit memo branching + Retry E-Credit shell
+- `SR-PH6-TC-001`–`SR-PH6-TC-004`: Phase 6 cancel + wizard `alert()` validation
+- `SR-PH7-TC-001`–`SR-PH7-TC-002`: Phase 7 report shell + ED access denied (or tenant-aware skip)
+  - **Interaction**: POMs (`SalesReturnsListPage.ts`, `CreateSalesReturnOrderPage.ts`, `SalesReturnDetailPage.ts`, `SalesReturnReportPage.ts`), steps (`sales-returns-steps.ts`), DB helpers (`o2c-db-helpers.ts`); `playwright.config.ts` (`iacs-ed` `testMatch` includes `sales-returns.feature.spec.js`)
+  - **Last Verified**: 2026-03-23
+
+**Change Risk**: 🟡 Medium — finance credit memo + report paths included.
 
 ---
 
@@ -403,6 +431,17 @@ Each entry maps:
   - **Last Verified**: 2026-03-21
 
 **Change Risk**: 🟡 Medium - O2C E2E invoice tail + cancellation
+
+---
+
+### `../web_app/src/app/o2c/actions/processApproval.ts`
+**Affected Tests**:
+- `O2C-E2E-TC-006` (90+ day unpaid invoice block on **approve**; error string → `toast.error` on indent detail; dealer resolved via `findFirstDealerWithUnpaidInvoicesOlderThan90Days`)
+  - **Interaction**: Steps `e2c-e2e-steps.ts`, `indent-steps.ts`; POM `IndentDetailPage.ts`
+  - **Locators Used**: `[data-sonner-toast]` (destructive/error), Approve Indent dialog
+  - **Last Verified**: 2026-03-21
+
+**Change Risk**: 🟡 Medium — conditional E2E (skips when no tenant dealer has qualifying old unpaid invoices)
 
 ---
 

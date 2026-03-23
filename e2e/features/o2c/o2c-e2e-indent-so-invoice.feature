@@ -157,6 +157,61 @@ Feature: O2C End-to-End Flow (Indent → Sales Order → Picklist → eInvoice �
   # Staging: IRN cancel requires no E-Way bill — DB picks invoices with empty eway_bill_number; else TC-003-style e-invoice-only create.
   Scenario: Cancel e-invoice within 24 hours (recent IRN without E-Way bill, or e-invoice-only O2C setup)
     When I open an invoice with IRN from the last 24 hours or complete O2C flow to generate one
+    And I have noted invoice cancellation inventory baseline from database
     # Uses header **Cancel Invoice** (not E-Invoice card — DAEE-362); Post to GL first if required.
     When I cancel the e-invoice from the invoice detail using the default cancellation reason
     Then the invoice e-invoice status in the database should be "cancelled"
+    And inventory available should increase by cancelled quantity in database
+
+  @O2C-E2E-TC-005 @o2c-flow @regression @p1 @iacs-tenant @iacs-md
+  Scenario: SRI HANUMAN AGENCIES (IACS3558) dealer flow generates IGST invoice
+    Given I have noted inventory for product "1013" at warehouse "Kurnook"
+    And I have noted dealer credit for dealer code "IACS3558"
+    Given I am on the O2C Indents page
+    When I create an indent for dealer "IACS3558"
+    Then I should be on the indent detail page
+    When I click Edit on the indent detail page
+    And I add a product by searching for "1013"
+    And I save the indent
+    Then the indent should be saved successfully
+    When I submit the indent
+    Then the indent should be submitted successfully
+    Then the Warehouse Selection card should be visible
+    When I select warehouse "Kurnook Warehouse" for the indent
+    When I select transporter "Just In Time Shipper" for the indent
+    When I click Approve on the indent detail page
+    And I fill approval comments "AUTO_QA IACS3558 IGST flow" and submit the approval dialog
+    When I confirm the stock availability warning with Approve Anyway if it appears
+    Then the indent should be approved successfully
+    When I click Process Workflow
+    When I confirm and process the workflow
+    Then the workflow should complete successfully
+    When I navigate to the Sales Order created from the indent
+    When I generate picklist from the Sales Order page
+    And I run the warehouse picklist flow picking all lines to completion
+    When I generate E-Invoice with transporter "Just In Time Shipper" on the Sales Order page
+    Then E-Invoice generation completes and invoice link appears on the Sales Order page
+    When I navigate to the Invoice from the Sales Order
+    Then the invoice should have IGST and no CGST SGST in database
+
+  @O2C-E2E-TC-006 @o2c-flow @regression @p1 @iacs-tenant @iacs-md
+  # Block is enforced at indent approval (processApproval.ts); user cannot reach Process Workflow / SO until resolved.
+  # DB: findFirstDealerWithUnpaidInvoicesOlderThan90Days (single query); skips if no tenant dealer qualifies.
+  Scenario: 90+ day unpaid invoice blocks approval with toast — dealer resolved from database
+    Given I have noted inventory for product "1013" at warehouse "Kurnook"
+    And I have resolved and noted dealer credit for a dealer with unpaid invoices older than 90 days or skip the scenario
+    Given I am on the O2C Indents page
+    When I create an indent for the resolved 90-day block dealer
+    Then I should be on the indent detail page
+    When I click Edit on the indent detail page
+    And I add a product by searching for "1013"
+    And I save the indent
+    Then the indent should be saved successfully
+    When I submit the indent
+    Then the indent should be submitted successfully
+    Then the Warehouse Selection card should be visible
+    When I select warehouse "Kurnook Warehouse" for the indent
+    When I select transporter "Just In Time Shipper" for the indent
+    When I click Approve on the indent detail page
+    And I fill approval comments "AUTO_QA 90-day unpaid block" and submit the approval dialog
+    Then I should see a toast blocking indent approval for 90-day unpaid invoices with invoice and amount details

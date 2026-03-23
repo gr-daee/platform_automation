@@ -271,7 +271,8 @@ export default defineConfig({
         ...chromeConfig,
         storageState: 'e2e/.auth/iacs-ed.json',
       },
-      testMatch: /finance[/\\](dealer-ledger|ar-aging|credit-memos|dealer-outstanding)[/\\].*\.spec\.js$/,
+      testMatch:
+        /(finance[/\\](dealer-ledger|ar-aging|credit-memos|dealer-outstanding)[/\\].*\.spec\.js$)|(o2c[/\\]sales-returns[/\\]sales-returns-report\.feature\.spec\.js$)/,
       grep: /@iacs-ed/,
       grepInvert: /@skip-iacs-ed/,
       dependencies: ['setup'],

@@ -140,10 +140,63 @@ test.describe("O2C End-to-End Flow (Indent → Sales Order → Picklist → eInv
     await Then("E-Invoice generation completes and invoice link appears on the Sales Order page", null, { page });
   });
 
-  test("Cancel e-invoice within 24 hours (recent IRN without E-Way bill, or e-invoice-only O2C setup)", { tag: ["@O2C-E2E-TC-004", "@o2c-flow", "@regression", "@p1", "@iacs-tenant", "@iacs-md"] }, async ({ When, page, Then }) => {
+  test("Cancel e-invoice within 24 hours (recent IRN without E-Way bill, or e-invoice-only O2C setup)", { tag: ["@O2C-E2E-TC-004", "@o2c-flow", "@regression", "@p1", "@iacs-tenant", "@iacs-md"] }, async ({ When, page, And, Then }) => {
     await When("I open an invoice with IRN from the last 24 hours or complete O2C flow to generate one", null, { page });
+    await And("I have noted invoice cancellation inventory baseline from database", null, { page });
     await When("I cancel the e-invoice from the invoice detail using the default cancellation reason", null, { page });
     await Then("the invoice e-invoice status in the database should be \"cancelled\"", null, { page });
+    await And("inventory available should increase by cancelled quantity in database", null, { page });
+  });
+
+  test("SRI HANUMAN AGENCIES (IACS3558) dealer flow generates IGST invoice", { tag: ["@O2C-E2E-TC-005", "@o2c-flow", "@regression", "@p1", "@iacs-tenant", "@iacs-md"] }, async ({ Given, page, And, When, Then }) => {
+    await Given("I have noted inventory for product \"1013\" at warehouse \"Kurnook\"", null, { page });
+    await And("I have noted dealer credit for dealer code \"IACS3558\"", null, { page });
+    await Given("I am on the O2C Indents page", null, { page });
+    await When("I create an indent for dealer \"IACS3558\"", null, { page });
+    await Then("I should be on the indent detail page", null, { page });
+    await When("I click Edit on the indent detail page", null, { page });
+    await And("I add a product by searching for \"1013\"", null, { page });
+    await And("I save the indent", null, { page });
+    await Then("the indent should be saved successfully", null, { page });
+    await When("I submit the indent", null, { page });
+    await Then("the indent should be submitted successfully", null, { page });
+    await Then("the Warehouse Selection card should be visible", null, { page });
+    await When("I select warehouse \"Kurnook Warehouse\" for the indent", null, { page });
+    await When("I select transporter \"Just In Time Shipper\" for the indent", null, { page });
+    await When("I click Approve on the indent detail page", null, { page });
+    await And("I fill approval comments \"AUTO_QA IACS3558 IGST flow\" and submit the approval dialog", null, { page });
+    await When("I confirm the stock availability warning with Approve Anyway if it appears", null, { page });
+    await Then("the indent should be approved successfully", null, { page });
+    await When("I click Process Workflow", null, { page });
+    await When("I confirm and process the workflow", null, { page });
+    await Then("the workflow should complete successfully", null, { page });
+    await When("I navigate to the Sales Order created from the indent", null, { page });
+    await When("I generate picklist from the Sales Order page", null, { page });
+    await And("I run the warehouse picklist flow picking all lines to completion", null, { page });
+    await When("I generate E-Invoice with transporter \"Just In Time Shipper\" on the Sales Order page", null, { page });
+    await Then("E-Invoice generation completes and invoice link appears on the Sales Order page", null, { page });
+    await When("I navigate to the Invoice from the Sales Order", null, { page });
+    await Then("the invoice should have IGST and no CGST SGST in database", null, { page });
+  });
+
+  test("90+ day unpaid invoice blocks approval with toast — dealer resolved from database", { tag: ["@O2C-E2E-TC-006", "@o2c-flow", "@regression", "@p1", "@iacs-tenant", "@iacs-md"] }, async ({ Given, page, And, When, Then }) => {
+    await Given("I have noted inventory for product \"1013\" at warehouse \"Kurnook\"", null, { page });
+    await And("I have resolved and noted dealer credit for a dealer with unpaid invoices older than 90 days or skip the scenario");
+    await Given("I am on the O2C Indents page", null, { page });
+    await When("I create an indent for the resolved 90-day block dealer", null, { page });
+    await Then("I should be on the indent detail page", null, { page });
+    await When("I click Edit on the indent detail page", null, { page });
+    await And("I add a product by searching for \"1013\"", null, { page });
+    await And("I save the indent", null, { page });
+    await Then("the indent should be saved successfully", null, { page });
+    await When("I submit the indent", null, { page });
+    await Then("the indent should be submitted successfully", null, { page });
+    await Then("the Warehouse Selection card should be visible", null, { page });
+    await When("I select warehouse \"Kurnook Warehouse\" for the indent", null, { page });
+    await When("I select transporter \"Just In Time Shipper\" for the indent", null, { page });
+    await When("I click Approve on the indent detail page", null, { page });
+    await And("I fill approval comments \"AUTO_QA 90-day unpaid block\" and submit the approval dialog", null, { page });
+    await Then("I should see a toast blocking indent approval for 90-day unpaid invoices with invoice and amount details", null, { page });
   });
 
 });
@@ -161,4 +214,6 @@ const bddFileMeta = {
   "Mixed indent — DB-resolved OOS + in-stock at Kurnook → back order + SO → invoice (full pipeline)": {"pickleLocation":"70:3","tags":["@O2C-E2E-TC-002","@o2c-flow","@regression","@p1","@iacs-tenant","@iacs-md"],"ownTags":["@iacs-md","@iacs-tenant","@p1","@regression","@o2c-flow","@O2C-E2E-TC-002"]},
   "Generate E-Invoice without E-Way bill (picklist path)": {"pickleLocation":"129:3","tags":["@O2C-E2E-TC-003","@o2c-flow","@regression","@p1","@iacs-tenant","@iacs-md"],"ownTags":["@iacs-md","@iacs-tenant","@p1","@regression","@o2c-flow","@O2C-E2E-TC-003"]},
   "Cancel e-invoice within 24 hours (recent IRN without E-Way bill, or e-invoice-only O2C setup)": {"pickleLocation":"158:3","tags":["@O2C-E2E-TC-004","@o2c-flow","@regression","@p1","@iacs-tenant","@iacs-md"],"ownTags":["@iacs-md","@iacs-tenant","@p1","@regression","@o2c-flow","@O2C-E2E-TC-004"]},
+  "SRI HANUMAN AGENCIES (IACS3558) dealer flow generates IGST invoice": {"pickleLocation":"167:3","tags":["@O2C-E2E-TC-005","@o2c-flow","@regression","@p1","@iacs-tenant","@iacs-md"],"ownTags":["@iacs-md","@iacs-tenant","@p1","@regression","@o2c-flow","@O2C-E2E-TC-005"]},
+  "90+ day unpaid invoice blocks approval with toast — dealer resolved from database": {"pickleLocation":"200:3","tags":["@O2C-E2E-TC-006","@o2c-flow","@regression","@p1","@iacs-tenant","@iacs-md"],"ownTags":["@iacs-md","@iacs-tenant","@p1","@regression","@o2c-flow","@O2C-E2E-TC-006"]},
 };

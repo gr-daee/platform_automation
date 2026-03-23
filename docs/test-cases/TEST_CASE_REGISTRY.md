@@ -62,6 +62,8 @@ This registry tracks all automated test cases with their unique identifiers for 
 | O2C-E2E-TC-002 | O2C | E2E | Mixed indent: DB-resolved OOS + in-stock at Kurnook → back order + SO → full invoice pipeline | e2e/features/o2c/o2c-e2e-indent-so-invoice.feature | @o2c-flow @regression @p1 @iacs-md | ✅ |
 | O2C-E2E-TC-003 | O2C | E2E | Generate E-Invoice without E-Way bill (picklist path) | e2e/features/o2c/o2c-e2e-indent-so-invoice.feature | @o2c-flow @regression @p1 @iacs-md | ✅ |
 | O2C-E2E-TC-004 | O2C | E2E | Cancel e-invoice within 24h (reuse IRN from DB or full O2C flow) | e2e/features/o2c/o2c-e2e-indent-so-invoice.feature | @o2c-flow @regression @p1 @iacs-md | ✅ |
+| O2C-E2E-TC-005 | O2C | E2E | SRI HANUMAN AGENCIES (IACS3558) IGST invoice (picklist → e-invoice → DB tax split) | e2e/features/o2c/o2c-e2e-indent-so-invoice.feature | @o2c-flow @regression @p1 @iacs-md | ✅ |
+| O2C-E2E-TC-006 | O2C | E2E | 90+ day unpaid invoice blocks approval (DB-resolved dealer, toast; skips if none) | e2e/features/o2c/o2c-e2e-indent-so-invoice.feature | @o2c-flow @regression @p1 @iacs-md | ✅ |
 
 ### Warehouse Inventory (WH-INV)
 
@@ -84,6 +86,68 @@ This registry tracks all automated test cases with their unique identifiers for 
 | WH-INV-TC-013 | O2C | WH-INV | Next page updates pagination indicator | e2e/features/o2c/inventory/warehouse-inventory.feature | @regression @p2 @iacs-md | ✅ |
 | WH-INV-TC-014 | O2C | WH-INV | Page size twenty-five per page updates control and footer range | e2e/features/o2c/inventory/warehouse-inventory.feature | @regression @p2 @iacs-md | ✅ |
 | WH-INV-TC-015 | O2C | WH-INV | Combined warehouse Kurnook and In Stock status filters apply | e2e/features/o2c/inventory/warehouse-inventory.feature | @regression @p3 @iacs-md | ✅ |
+
+### Sales Returns Phase 1 (SR-PH1)
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| SR-PH1-TC-001 | O2C | SR-PH1 | Sales Returns page shows heading and description | e2e/features/o2c/sales-returns/sales-returns.feature | @smoke @regression @p1 @iacs-md @sales-returns @SR-PH1 | ✅ |
+| SR-PH1-TC-002 | O2C | SR-PH1 | Create Return Order navigates to new return wizard | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p1 @iacs-md @sales-returns @SR-PH1 | ✅ |
+| SR-PH1-TC-003 | O2C | SR-PH1 | Sales Returns statistics cards are visible | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p1 @iacs-md @sales-returns @SR-PH1 | ✅ |
+| SR-PH1-TC-004 | O2C | SR-PH1 | Sales Returns list shows table or empty state without error | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p1 @iacs-md @sales-returns @SR-PH1 | ✅ |
+| SR-PH1-TC-005 | O2C | SR-PH1 | Sales Returns breadcrumb shows Order to Cash and current page | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p2 @iacs-md @sales-returns @SR-PH1 | ✅ |
+
+### Sales Returns Phase 2 (SR-PH2)
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| SR-PH2-TC-001 | O2C | SR-PH2 | Sales Returns status filter Pending applies | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p2 @iacs-md @sales-returns @SR-PH2 | ✅ |
+| SR-PH2-TC-002 | O2C | SR-PH2 | Sales Returns return reason filter Defective applies | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p2 @iacs-md @sales-returns @SR-PH2 | ✅ |
+| SR-PH2-TC-003 | O2C | SR-PH2 | Sales Returns search finds return order by substring from database | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p2 @iacs-md @sales-returns @SR-PH2 | ✅ |
+| SR-PH2-TC-004 | O2C | SR-PH2 | Sales Returns clear filters resets search and status filter | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p2 @iacs-md @sales-returns @SR-PH2 | ✅ |
+| SR-PH2-TC-005 | O2C | SR-PH2 | Sales Returns pagination page 2 when more than one page | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p3 @iacs-md @sales-returns @SR-PH2 | ✅ |
+
+### Sales Returns Phase 3 (SR-PH3)
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| SR-PH3-TC-001 | O2C | SR-PH3 | Create return: step 1 eligible invoice and dealer | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p1 @iacs-md @sales-returns @SR-PH3 | ✅ |
+| SR-PH3-TC-002 | O2C | SR-PH3 | Create return: step 2 return quantity on line | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p1 @iacs-md @sales-returns @SR-PH3 | ✅ |
+| SR-PH3-TC-003 | O2C | SR-PH3 | Create return: reason, notes, review and submit | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p1 @iacs-md @sales-returns @SR-PH3 | ✅ |
+| SR-PH3-TC-004 | O2C | SR-PH3 | Create return: detail pending and DB status | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p1 @iacs-md @sales-returns @SR-PH3 | ✅ |
+
+### Sales Returns Phase 4 (SR-PH4)
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| SR-PH4-TC-001 | O2C | SR-PH4 | Pending return detail shows record receipt and cancel actions | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p1 @iacs-md @sales-returns @SR-PH4 | ✅ |
+| SR-PH4-TC-002 | O2C | SR-PH4 | Record goods receipt to received or credit memo state | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p1 @iacs-md @sales-returns @SR-PH4 | ✅ |
+| SR-PH4-TC-003 | O2C | SR-PH4 | Cancel action absent after receipt | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p1 @iacs-md @sales-returns @SR-PH4 | ✅ |
+| SR-PH4-TC-004 | O2C | SR-PH4 | GRN (QC Passed) increases inventory available by return qty (DB sandwich) | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p1 @iacs-md @sales-returns @SR-PH4 | ✅ |
+
+### Sales Returns Phase 5 (SR-PH5)
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| SR-PH5-TC-001 | O2C | SR-PH5 | Credit memo flow from return after receipt when applicable | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p1 @iacs-md @sales-returns @SR-PH5 | ✅ |
+| SR-PH5-TC-002 | O2C | SR-PH5 | Credit memo outcome on return or finance page | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p1 @iacs-md @sales-returns @SR-PH5 | ✅ |
+| SR-PH5-TC-003 | O2C | SR-PH5 | Retry E-Credit Note shell when CM pending e-credit | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p2 @iacs-md @sales-returns @SR-PH5 | ✅ |
+
+### Sales Returns Phase 6 (SR-PH6)
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| SR-PH6-TC-001 | O2C | SR-PH6 | Cancel return confirm disabled when reason empty | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p2 @iacs-md @sales-returns @SR-PH6 | ✅ |
+| SR-PH6-TC-002 | O2C | SR-PH6 | Cancel pending return with reason shows Cancelled | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p2 @iacs-md @sales-returns @SR-PH6 | ✅ |
+| SR-PH6-TC-003 | O2C | SR-PH6 | Review blocked with zero items selected (alert) | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p2 @iacs-md @sales-returns @SR-PH6 | ✅ |
+| SR-PH6-TC-004 | O2C | SR-PH6 | Return quantity cannot exceed available (alert) | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p2 @iacs-md @sales-returns @SR-PH6 | ✅ |
+
+### Sales Returns Phase 7 (SR-PH7)
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| SR-PH7-TC-001 | O2C | SR-PH7 | Sales Return Order report shell loads for authorized user | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p2 @iacs-md @sales-returns @SR-PH7 | ✅ |
+| SR-PH7-TC-002 | O2C | SR-PH7 | Sales Return Order report denied for ED without sales_orders read when applicable | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p2 @iacs-ed @multi-user @sales-returns @SR-PH7 | ✅ |
 
 ### Reports / Hierarchical Sales SubModule (HSR)
 

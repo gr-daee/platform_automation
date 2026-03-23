@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-03-22
 **Module**: Order-to-Cash (O2C)
-**Overall Coverage**: Indent flow 20/20 automated (TC-001–TC-020); system E2E extended: O2C-E2E-TC-001 (full ledger path), **TC-002** (back order + inventory UI), **TC-003** (e-invoice without e-way), **TC-004** (cancel e-invoice); additional SO/Invoice edge cases may still be backlog.
+**Overall Coverage**: Indent flow 20/20 automated (TC-001–TC-020); system E2E extended: O2C-E2E-TC-001 (full ledger path), **TC-002** (back order + inventory UI), **TC-003** (e-invoice without e-way), **TC-004** (cancel e-invoice), **TC-005** (IACS3558 IGST DB assert), **TC-006** (DB-resolved dealer, 90-day unpaid block toast at approve); additional SO/Invoice edge cases may still be backlog.
 
 ---
 
@@ -23,7 +23,7 @@ Tracks test coverage gaps for the Order-to-Cash module, including indents, order
 | Transporter / Credit / Stock | 4 | 4 | 0 | 100% |
 | Sales Order (O2C-SO-TC-*) | 11 | 0 | 11 | 0% |
 | Invoice (O2C-INV-TC-*) | 13 | 0 | 13 | 0% |
-| System E2E (O2C-E2E-TC-001–004) | 4 | 4 | 0 | 100% |
+| System E2E (O2C-E2E-TC-001–006) | 6 | 6 | 0 | 100% |
 | **Indent total** | **20** | **20** | **0** | **100%** |
 
 ---
