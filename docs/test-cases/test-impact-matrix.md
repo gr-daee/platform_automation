@@ -247,8 +247,56 @@ Each entry maps:
 - `O2C-HSR-TC-022`–`O2C-HSR-TC-024`: Export Excel disabled when no data; export with data; Exporting... state
   - **Interaction**: Client-side export (via UI Export Excel button)
   - **Last Verified**: 2026-02-18
+- `O2C-HSR-TC-029`: By Dealer sheet City column is present in exported workbook
+  - **Interaction**: Excel workbook assertion from download (`ExcelJS`)
+  - **Last Verified**: 2026-03-24
 
 **Change Risk**: 🟡 Medium - 3 tests affected
+
+---
+
+## O2C Reports - Collection Report
+
+### `../web_app/src/app/o2c/reports/collection-report/components/CollectionReportContent.tsx`
+**Affected Tests**:
+- `O2C-CR-TC-001`–`O2C-CR-TC-005`: quick period, KPI cards, breakdown parity (period/payment/region/dealer), export trigger
+  - **Interaction**: POM (`e2e/src/pages/o2c/CollectionReportPage.ts`) + steps (`e2e/src/steps/o2c/collection-report-steps.ts`)
+  - **Locators Used**: quick period combobox, Load Report, Export Excel, tabs Summary/By Period/By Region/By Dealer, "Collections vs Outstanding %" card
+  - **Last Verified**: 2026-03-24
+
+**Change Risk**: 🔴 High - 5 tests affected
+
+---
+
+### `../web_app/src/app/o2c/reports/collection-report/actions/collectionReportActions.ts`
+**Affected Tests**:
+- `O2C-CR-TC-002`–`O2C-CR-TC-005`: KPI data population, aggregation parity, and export data sections
+  - **Interaction**: Server action via UI/report exports
+  - **Last Verified**: 2026-03-24
+
+**Change Risk**: 🟡 Medium - 4 tests affected
+
+---
+
+## O2C Reports - Hierarchical Product Sales
+
+### `../web_app/src/app/o2c/reports/hierarchical-product-sales/components/HierarchicalProductSalesContent.tsx`
+**Affected Tests**:
+- `O2C-HPS-TC-001`, `O2C-HPS-TC-002`: Dealer level visibility and city badge/fallback in hierarchy
+  - **Interaction**: POM (`e2e/src/pages/o2c/HierarchicalProductSalesReportPage.ts`)
+  - **Last Verified**: 2026-03-24
+
+**Change Risk**: 🟡 Medium - 2 tests affected
+
+---
+
+### `../web_app/src/app/o2c/reports/actions/hierarchicalProductSalesActions.ts`
+**Affected Tests**:
+- `O2C-HPS-TC-003`, `O2C-HPS-TC-004`: detailed Excel sheets contain DEALER rows and City columns
+  - **Interaction**: Excel download + workbook assertions (`ExcelJS`)
+  - **Last Verified**: 2026-03-24
+
+**Change Risk**: 🟡 Medium - 2 tests affected
 
 ---
 

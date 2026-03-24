@@ -83,3 +83,11 @@ Feature: Hierarchical Sales Report
     When I set date range to a future period with no data
     And I click Generate Report
     Then I should see "No Sales Data Found" or report loads with zero dealers
+
+  @O2C-HSR-TC-029 @regression @p1 @iacs-md
+  Scenario: Exported By Dealer sheet includes City column and values
+    Given I am on the Hierarchical Sales Report page
+    When I set date range to a valid past period
+    And I click Generate Report
+    And I export Hierarchical Sales report to Excel
+    Then the Hierarchical Sales By Dealer sheet should include City column

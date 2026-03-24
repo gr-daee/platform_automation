@@ -83,3 +83,18 @@ Feature: Phase 1 - Procurement Request Requirement and Approval
     When I open the procurement request audit trail
     Then the audit trail should show "Created By" and "Last Updated By" as user names
     And the audit trail should list status transitions such as "Draft" to "Submitted" or "Approved"
+
+  # --- Defect regression: complete audit trail timeline (DAEE-149 comment-53bb2100) ---
+  @P2P-P1-TC-010 @p1 @regression @iacs-md @daee-149 @audit
+  Scenario: Procurement Request audit trail should show complete chronological status changes with actor and timestamp
+    Given I am on the "p2p/procurement-requests" page
+    When I create a new procurement request in draft with unique purpose prefix "AUTO_QA_P1_TC010"
+    Then I should see a success message for procurement request creation
+    And the new procurement request should appear in the list with status "Draft"
+    When I submit the draft procurement request for approval
+    Then the procurement request status should be "Submitted"
+    When I approve the submitted procurement request
+    Then I should see a success message for approval
+    And the procurement request status should be "Approved"
+    When I open the procurement request audit trail
+    Then the audit trail should show complete chronological status changes with actor and timestamp

@@ -171,6 +171,26 @@ This registry tracks all automated test cases with their unique identifiers for 
 | O2C-HSR-TC-002 | O2C | HSR | User without sales_reports.read is denied | e2e/features/o2c/reports/hierarchical-sales.feature | @critical @p0 @multi-user | ⏳ Pending |
 | O2C-HSR-TC-003 | O2C | HSR | Generate Report disabled when From or To date missing | e2e/features/o2c/reports/hierarchical-sales.feature | @regression | ✅ |
 | O2C-HSR-TC-004–TC-028 | O2C | HSR | Filters, quick period, report gen, hierarchy, export, empty/no-data, optional DB | e2e/features/o2c/reports/hierarchical-sales.feature | @regression @smoke | ✅ |
+| O2C-HSR-TC-029 | O2C | HSR | Exported By Dealer sheet includes City column and values | e2e/features/o2c/reports/hierarchical-sales.feature | @regression @p1 @iacs-md | ✅ |
+
+### Reports / Collection Report SubModule (CR)
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| O2C-CR-TC-001 | O2C | CR | Quick period This Month sets From and To date correctly | e2e/features/o2c/reports/collection-report.feature | @smoke @p0 @iacs-md | ✅ |
+| O2C-CR-TC-002 | O2C | CR | Collection efficiency KPI card is visible after loading report | e2e/features/o2c/reports/collection-report.feature | @smoke @p0 @iacs-md | ✅ |
+| O2C-CR-TC-003 | O2C | CR | Period totals should match summary total amount | e2e/features/o2c/reports/collection-report.feature | @regression @p1 @iacs-md | ✅ |
+| O2C-CR-TC-004 | O2C | CR | Export Excel includes efficiency and comparison sections | e2e/features/o2c/reports/collection-report.feature | @regression @p1 @iacs-md | ✅ |
+| O2C-CR-TC-005 | O2C | CR | Payment/Region/Dealer totals match summary total amount | e2e/features/o2c/reports/collection-report.feature | @regression @p1 @iacs-md | ✅ |
+
+### Reports / Hierarchical Product Sales SubModule (HPS)
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| O2C-HPS-TC-001 | O2C | HPS | Dealer hierarchy appears between Territory and Product in UI | e2e/features/o2c/reports/hierarchical-product-sales.feature | @smoke @p0 @iacs-md | ✅ |
+| O2C-HPS-TC-002 | O2C | HPS | Dealer city is visible in UI hierarchy rows | e2e/features/o2c/reports/hierarchical-product-sales.feature | @regression @p1 @iacs-md | ✅ |
+| O2C-HPS-TC-003 | O2C | HPS | Detailed Excel hierarchy report includes DEALER rows and City column | e2e/features/o2c/reports/hierarchical-product-sales.feature | @smoke @p0 @iacs-md | ✅ |
+| O2C-HPS-TC-004 | O2C | HPS | Invoice Details and Dealer Ranking sheets include City column | e2e/features/o2c/reports/hierarchical-product-sales.feature | @regression @p1 @iacs-md | ✅ |
 
 ### Sales Order SubModule (SO)
 

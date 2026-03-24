@@ -331,6 +331,33 @@ Scenario: User searches and selects dealer from Create Indent modal
 
 ---
 
+## O2C Reports - Collection Report (CR)
+
+**Feature file:** `e2e/features/o2c/reports/collection-report.feature`
+
+| ID | Scenario (summary) | Tags | Status |
+|----|---------------------|------|--------|
+| O2C-CR-TC-001 | This Month quick period sets month start to today | @smoke @p0 @iacs-md | ✅ |
+| O2C-CR-TC-002 | Collections vs Outstanding % KPI visible after load | @smoke @p0 @iacs-md | ✅ |
+| O2C-CR-TC-003 | By Period totals approximately match summary total amount | @regression @p1 @iacs-md | ✅ |
+| O2C-CR-TC-004 | Excel export contains efficiency and comparison sections | @regression @p1 @iacs-md | ✅ |
+| O2C-CR-TC-005 | By Payment/Region/Dealer totals approximately match summary | @regression @p1 @iacs-md | ✅ |
+
+---
+
+## O2C Reports - Hierarchical Product Sales (HPS)
+
+**Feature file:** `e2e/features/o2c/reports/hierarchical-product-sales.feature`
+
+| ID | Scenario (summary) | Tags | Status |
+|----|---------------------|------|--------|
+| O2C-HPS-TC-001 | Dealer level exists between Territory and Product in UI hierarchy | @smoke @p0 @iacs-md | ✅ |
+| O2C-HPS-TC-002 | Dealer rows show city badge or fallback in UI | @regression @p1 @iacs-md | ✅ |
+| O2C-HPS-TC-003 | Detailed Excel Hierarchy Report contains DEALER rows and City | @smoke @p0 @iacs-md | ✅ |
+| O2C-HPS-TC-004 | Detailed Excel Invoice Details and Dealer Ranking include City | @regression @p1 @iacs-md | ✅ |
+
+---
+
 ### @O2C-E2E-TC-002 - Mixed indent: dynamic OOS + in-stock at Kurnook → back order + SO → full invoice pipeline
 - **Feature File**: `e2e/features/o2c/o2c-e2e-indent-so-invoice.feature`
 - **Scenario**: **`resolveMixedIndentProductPairAtWarehouse("Kurnook")`** picks **in-stock** and **out-of-stock** material codes (tenant SQL on `inventory` + `product_variant_packages`, verified via existing snapshot helpers; fallbacks **1013/NPK**; optional **`E2E_O2C_MIXED_IN_STOCK_CODE`** / **`E2E_O2C_MIXED_OUT_OF_STOCK_CODE`**) → indent with **both** lines → Kurnook + transporter → approve → Process Workflow → DB **back_order_management** + Inventory UI empty for OOS code → **SO** (allocates in-stock only) → picklist → e-invoice → pack → dispatch → invoice PDF → DB stock/credit → Dealer Ledger (same tail as TC-001)

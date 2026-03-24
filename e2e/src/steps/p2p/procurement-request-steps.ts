@@ -507,3 +507,56 @@ Then(
     console.log('✅ [P2P] Audit trail shows status transition entries');
   }
 );
+
+Then(
+  'the audit trail should show complete chronological status changes with actor and timestamp',
+  async function ({ page }) {
+    await ensureAuditTrailTabOpen(page);
+    const auditSection = page.locator('[role="tabpanel"]').first().or(page.locator('main'));
+
+    const prIdFromCtx = (this as any).submittedPrIdForAudit as string | undefined;
+    const prIdFromUrl = page.url().match(/\/p2p\/procurement-requests\/([^/?#]+)/)?.[1];
+    const prId = prIdFromCtx ?? prIdFromUrl;
+    if (!prId) {
+      throw new Error('Could not determine procurement request ID for complete audit trail validation.');
+    }
+
+    const dbTransitions = await executeQuery<{ cnt: string }>(
+      `
+        SELECT COUNT(*)::text AS cnt
+        FROM audit_logs
+        WHERE entity_type = 'procurement_requests'
+          AND entity_id = $1
+          AND (old_values->>'status') IS NOT NULL
+          AND (new_values->>'status') IS NOT NULL
+          AND (old_values->>'status') <> (new_values->>'status')
+      `,
+      [prId]
+    );
+    const transitionCount = Number(dbTransitions[0]?.cnt ?? '0');
+    expect(transitionCount, `Expected status transition audit logs for PR ${prId}`).toBeGreaterThanOrEqual(2);
+
+    const transitionRows = auditSection
+      .locator('tr, [role="listitem"], .timeline-item, [data-testid*="audit"]')
+      .filter({ hasText: /status|draft|submitted|approved|rejected|cancelled/i });
+    const uiTransitionCount = await transitionRows.count();
+    expect(
+      uiTransitionCount,
+      `UI should render at least two transition-like audit entries for PR ${prId}`
+    ).toBeGreaterThanOrEqual(2);
+
+    const actorHints = await auditSection
+      .getByText(/by\s+[A-Za-z]|Created By|Last Updated By|Updated By|Approved By|Submitted By/i)
+      .count();
+    expect(actorHints, 'Audit UI should include actor/user context').toBeGreaterThan(0);
+
+    const timestampHints = await auditSection
+      .getByText(/\d{4}[-/]\d{2}[-/]\d{2}|\d{1,2}:\d{2}|\bAM\b|\bPM\b|ago/i)
+      .count();
+    expect(timestampHints, 'Audit UI should include timestamp/date context').toBeGreaterThan(0);
+
+    console.log(
+      `✅ [P2P] Complete audit trail validated (DB transitions=${transitionCount}, UI rows≈${uiTransitionCount})`
+    );
+  }
+);

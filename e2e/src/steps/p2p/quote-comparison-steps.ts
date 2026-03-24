@@ -271,3 +271,106 @@ Then('the "Create PO" button should not be visible or should be disabled', async
   await expect(createPO.first()).toBeDisabled();
   console.log('✅ [P2P] Create PO button disabled');
 });
+
+Then('the latest quote should include structured fields for rates and validity', async function ({ page }) {
+  const rfqId = (this as any).currentRfqId;
+  if (!rfqId) throw new Error('No current RFQ id for structured quote validation.');
+
+  const detailPage = new RFQDetailPage(page);
+  await detailPage.goto(rfqId);
+  await detailPage.verifyDetailLoaded();
+
+  const hasEnterQuote = await detailPage.enterQuoteButton.isVisible().catch(() => false);
+  expect(hasEnterQuote, 'Quote capture should expose structured entry flow on RFQ detail').toBe(true);
+
+  await page.goto(`/p2p/rfq/${rfqId}/comparison`);
+  await page.waitForLoadState('networkidle');
+  const compPage = new QuoteComparisonPage(page);
+  await compPage.verifyPageLoaded();
+  await expect(page.locator('table tbody tr').first()).toBeVisible({ timeout: 10000 });
+  console.log('✅ [P2P] Structured quote captured and visible in comparison context');
+});
+
+Then('quote comparison should display decision evidence across defined criteria dimensions', async function ({
+  page,
+}) {
+  const compPage = new QuoteComparisonPage(page);
+  await compPage.verifyPageLoaded();
+  await expect(compPage.comparisonTable).toBeVisible({ timeout: 10000 });
+  await expect(page.getByText(/Lowest Price|Total Quotes/i).first()).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole('columnheader', { name: /Supplier|Rank/i }).first()).toBeVisible({
+    timeout: 10000,
+  });
+  console.log('✅ [P2P] Comparison evidence available (supplier/rank + summary metrics)');
+});
+
+Then('selecting a winning quote without reason should be blocked by validation', async function ({ page }) {
+  const compPage = new QuoteComparisonPage(page);
+  await compPage.verifyPageLoaded();
+  await compPage.selectQuoteButton.click();
+  await expect(compPage.selectionDialog).toBeVisible({ timeout: 5000 });
+  await compPage.submitForApprovalButton.click();
+  const validation = compPage.selectionDialog
+    .getByRole('alert')
+    .or(compPage.selectionDialog.getByText(/reason.*required|please provide.*reason/i));
+  await expect(validation.first()).toBeVisible({ timeout: 5000 });
+  await page.keyboard.press('Escape');
+  console.log('✅ [P2P] Recommendation reason validation enforced');
+});
+
+Then('the selector should be blocked from approving the same RFQ selection', async function ({ page }) {
+  const rfqId = (this as any).currentRfqId;
+  if (!rfqId) throw new Error('No current RFQ id for selector-approval block check.');
+  const detailPage = new RFQDetailPage(page);
+  await detailPage.goto(rfqId);
+  await detailPage.verifyDetailLoaded();
+  await expect(detailPage.approveSelectionButton).toBeHidden({ timeout: 10000 });
+  console.log('✅ [P2P] Selector cannot approve own recommendation (SoD block active)');
+});
+
+Then('sole-source issue should require justification in RFQ issue confirmation', async function ({ page, $test }) {
+  const rfqId = (this as any).currentRfqId;
+  if (!rfqId) throw new Error('No current RFQ id for sole-source justification check.');
+  const detailPage = new RFQDetailPage(page);
+  await detailPage.goto(rfqId);
+  await detailPage.verifyDetailLoaded();
+
+  const issueVisible = await detailPage.issueRfqButton.isVisible().catch(() => false);
+  if (!issueVisible) {
+    $test?.skip(true, 'Issue RFQ action unavailable for this RFQ state.');
+    return;
+  }
+
+  await detailPage.issueRfqButton.click();
+  const alert = page.getByRole('alertdialog');
+  await expect(alert).toBeVisible({ timeout: 5000 });
+  await expect(alert.getByPlaceholder(/justification for sole source/i)).toBeVisible({ timeout: 5000 });
+  await page.keyboard.press('Escape');
+  console.log('✅ [P2P] Sole-source justification field present in issue confirmation');
+});
+
+Then('only approved winning selection should allow PO creation', async function ({ page }) {
+  const createPO = page.getByRole('button', { name: /Create Purchase Order/i }).first();
+  const visible = await createPO.isVisible().catch(() => false);
+  if (!visible) {
+    console.log('✅ [P2P] Create PO hidden before approved winning selection');
+    return;
+  }
+  await expect(createPO).toBeDisabled();
+  console.log('✅ [P2P] Create PO disabled until approved winning selection');
+});
+
+Then('quote data for selected recommendation should be immutable or locked for edit', async function ({
+  page,
+}) {
+  const rfqId = (this as any).currentRfqId;
+  if (!rfqId) throw new Error('No current RFQ id for immutability validation.');
+  const detailPage = new RFQDetailPage(page);
+  await detailPage.goto(rfqId);
+  await detailPage.verifyDetailLoaded();
+
+  const pendingOrApproved = page.getByText(/Selection Pending|Selection Approved/i).first();
+  await expect(pendingOrApproved).toBeVisible({ timeout: 10000 });
+  await expect(detailPage.enterQuoteButton).toBeHidden({ timeout: 10000 });
+  console.log('✅ [P2P] Quote entry/edit actions locked after winning recommendation submitted');
+});

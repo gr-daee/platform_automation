@@ -1,8 +1,8 @@
 # O2C Module - Gap Analysis
 
-**Last Updated**: 2026-03-22
+**Last Updated**: 2026-03-24
 **Module**: Order-to-Cash (O2C)
-**Overall Coverage**: Indent flow 20/20 automated (TC-001–TC-020); system E2E extended: O2C-E2E-TC-001 (full ledger path), **TC-002** (back order + inventory UI), **TC-003** (e-invoice without e-way), **TC-004** (cancel e-invoice), **TC-005** (IACS3558 IGST DB assert), **TC-006** (DB-resolved dealer, 90-day unpaid block toast at approve); additional SO/Invoice edge cases may still be backlog.
+**Overall Coverage**: Indent flow 20/20 automated (TC-001–TC-020); system E2E extended: O2C-E2E-TC-001 (full ledger path), **TC-002** (back order + inventory UI), **TC-003** (e-invoice without e-way), **TC-004** (cancel e-invoice), **TC-005** (IACS3558 IGST DB assert), **TC-006** (DB-resolved dealer, 90-day unpaid block toast at approve); O2C report regressions for DAEE-342/343/344/346 automated via `O2C-CR-TC-001`–`005`, `O2C-HPS-TC-001`–`004`, and `O2C-HSR-TC-029`.
 
 ---
 

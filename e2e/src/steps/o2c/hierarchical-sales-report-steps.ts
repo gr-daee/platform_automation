@@ -1,5 +1,7 @@
+import * as fs from 'fs';
 import { expect } from '@playwright/test';
 import { createBdd } from 'playwright-bdd';
+import ExcelJS from 'exceljs';
 import { HierarchicalSalesReportPage } from '../../pages/o2c/HierarchicalSalesReportPage';
 
 const { Given, When, Then } = createBdd();
@@ -11,6 +13,7 @@ const { Given, When, Then } = createBdd();
  */
 
 let hierarchicalSalesPage: HierarchicalSalesReportPage;
+let exportedHierarchicalSalesPath: string | null = null;
 
 Given('I am on the Hierarchical Sales Report page', async function ({ page }) {
   hierarchicalSalesPage = new HierarchicalSalesReportPage(page);
@@ -164,4 +167,33 @@ Then('I should see {string} or report loads with zero dealers', async function (
   const hasNoData = await noData.isVisible().catch(() => false);
   const hasGrandTotal = await grandTotal.isVisible().catch(() => false);
   expect(hasNoData || hasGrandTotal).toBe(true);
+});
+
+When('I export Hierarchical Sales report to Excel', async function ({ page }) {
+  const hsrPage = (this as any).hierarchicalSalesPage || new HierarchicalSalesReportPage(page);
+  const downloadPromise = page.waitForEvent('download');
+  await hsrPage.clickExportExcel();
+  const download = await downloadPromise;
+  exportedHierarchicalSalesPath = await download.path();
+});
+
+Then('the Hierarchical Sales By Dealer sheet should include City column', async function () {
+  if (!exportedHierarchicalSalesPath) {
+    throw new Error('No exported Hierarchical Sales workbook found.');
+  }
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(fs.readFileSync(exportedHierarchicalSalesPath));
+
+  const byDealerSheet = workbook.getWorksheet('By Dealer');
+  expect(byDealerSheet).toBeDefined();
+  if (!byDealerSheet) {
+    return;
+  }
+
+  const headerCandidates: string[] = [];
+  for (let rowIndex = 1; rowIndex <= 10; rowIndex++) {
+    const row = byDealerSheet.getRow(rowIndex);
+    row.eachCell((cell) => headerCandidates.push(String(cell.value || '')));
+  }
+  expect(headerCandidates.some((h) => /city/i.test(h))).toBe(true);
 });
