@@ -7,6 +7,7 @@ import {
   getCreditMemoApplications,
   getCreditMemoById,
   getInvoiceNumberForDifferentDealer,
+  getInvoiceFinancialSnapshot,
   getInvoiceOutstandingBalance,
   getLatestDealerAdvanceForCreditMemo,
   getOutstandingInvoicesForCustomer,
@@ -15,6 +16,12 @@ import {
 } from '../../support/finance-db-helpers';
 
 const { Given, When, Then } = createBdd();
+
+function logDev(message: string): void {
+  if (process.env.TEST_EXECUTION_MODE === 'development') {
+    console.log(message);
+  }
+}
 
 Given('I am on the credit memos page', async function ({ page }) {
   const creditMemosPage = new CreditMemosPage(page);
@@ -81,8 +88,16 @@ When(
     }
 
     const targetInvoice = outstandingInvoices[0];
-    const beforeBalance = await getInvoiceOutstandingBalance(targetInvoice.id);
+    const beforeSnapshot = await getInvoiceFinancialSnapshot(targetInvoice.id);
+    const beforeBalance = beforeSnapshot?.balance_amount ?? null;
     if (beforeBalance === null) throw new Error('Target invoice not found in DB');
+    const requestedApplyAmount = Number(applyAmount);
+    logDev(
+      `[CCN-APPLY] DB outstanding: ${Number(beforeBalance).toFixed(2)} (invoice=${targetInvoice.invoice_number}, id=${targetInvoice.id})`
+    );
+    logDev(
+      `[CCN-APPLY] Apply to Invoice Amt: ${requestedApplyAmount.toFixed(2)}`
+    );
 
     const detailPage = new CreditMemoDetailPage(page);
     await detailPage.verifyPageLoaded();
@@ -119,13 +134,27 @@ Then('credit memo financial totals should reconcile in database', async function
 
 Then('the target invoice outstanding should decrease by applied credit amount', async function () {
   const invoiceId = (this as any).targetInvoiceId as string | undefined;
+  const invoiceNumber = (this as any).targetInvoiceNumber as string | undefined;
   const beforeBalance = Number((this as any).targetInvoiceBalanceBefore || 0);
   const appliedAmount = Number((this as any).lastAppliedCreditAmount || 0);
 
   if (!invoiceId) throw new Error('Missing target invoice in context');
 
-  const afterBalance = await getInvoiceOutstandingBalance(invoiceId);
+  const afterSnapshot = await getInvoiceFinancialSnapshot(invoiceId);
+  const afterBalance = afterSnapshot?.balance_amount ?? null;
   expect(afterBalance).not.toBeNull();
+
+  const actualReduction = beforeBalance - Number(afterBalance);
+  logDev(
+    `[CCN-APPLY] DB outstanding post application: ${Number(afterBalance).toFixed(
+      2
+    )} (invoice=${invoiceNumber || invoiceId})`
+  );
+  logDev(
+    `[CCN-APPLY][DEBUG] actual_reduction=${actualReduction.toFixed(2)} delta=${(
+      appliedAmount - actualReduction
+    ).toFixed(2)} post_snapshot=${JSON.stringify(afterSnapshot)}`
+  );
 
   expect(beforeBalance - Number(afterBalance)).toBeCloseTo(appliedAmount, 2);
 });

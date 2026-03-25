@@ -371,6 +371,13 @@ Each entry maps:
 
 ## Finance Module
 
+### IMPL-055 — Posting profiles / fiscal periods / journal entries (`@FIN-PP-*`, `@FIN-FP-*`, `@FIN-JE-*`, `@FIN-INV-*`, `@FIN-INVC-*`, `@FIN-CR-TC-03*`, `@FIN-VAN-TC-03*`, `@FIN-ACR-*`, `@FIN-CCN-*`, `@FIN-CCNA-*`, `@FIN-CCNR-*`, `@FIN-CRR-*`, `@FIN-UDCR-*`, `@FIN-SR-*`)
+**Automation**: POMs `PostingProfilesPage.ts`, `FiscalPeriodsPage.ts`, `JournalEntriesPage.ts`; steps `posting-profiles-steps.ts`, `fiscal-periods-steps.ts`, `journal-entry-steps.ts`, `finance-je-posting-chain-steps.ts`; DB `finance-db-helpers.ts`.
+**Web app (indicative)**: `src/app/finance/posting-profiles/**`, `fiscal-periods/**`, `journal-entries/**`, `cash-receipts/**`, `credit-memos/**`, `journal-automation` / server actions posting to `journal_entry_headers`.
+**Last Verified**: 2026-03-24
+
+---
+
 ### `../web_app/src/app/finance/cash-receipts/new/page.tsx`
 **Affected Tests**:
 - `FIN-CR-TC-011`: New cash receipt validation (amount > 0)
@@ -381,8 +388,9 @@ Each entry maps:
   - **Interaction**: POM (`e2e/src/pages/finance/NewCashReceiptPage.ts`)
   - **Locators Used**: payment method select, save button, error alert text
   - **Last Verified**: 2026-03-21
+- `FIN-CR-TC-030`–`035`: JE chain manual receipt (NEFT/cash, validation, petty cash) — `finance-je-posting-chain-steps.ts`
 
-**Change Risk**: 🔴 High - 2 tests affected
+**Change Risk**: 🔴 High - multiple tests affected
 
 ---
 
@@ -392,8 +400,9 @@ Each entry maps:
   - **Interaction**: POM (`e2e/src/pages/finance/CashReceiptDetailPage.ts`)
   - **Locators Used**: Un-apply button/dialog, receipt summary values
   - **Last Verified**: 2026-03-21
+- `FIN-CRR-TC-001`–`008`: Full / blocked cash receipt reversal — reverse dialog `#reversal_reason`, **Reverse Receipt**
 
-**Change Risk**: 🟡 Medium - 1 test affected
+**Change Risk**: 🟡 Medium - several tests affected
 
 ---
 
@@ -403,14 +412,16 @@ Each entry maps:
   - **Interaction**: POM (`e2e/src/pages/finance/CashReceiptApplyPage.ts`)
   - **Locators Used**: invoice selection checkbox, Apply Payments button
   - **Last Verified**: 2026-03-21
+- `FIN-ACR-TC-001`–`007`, `FIN-CRR-TC-004`: Apply + JE / reversal guardrails
 
-**Change Risk**: 🟡 Medium - 1 test affected
+**Change Risk**: 🟡 Medium - several tests affected
 
 ---
 
 ### `../web_app/src/app/finance/credit-memos/page.tsx`
 **Affected Tests**:
 - `FIN-CM-TC-001`–`FIN-CM-TC-008`, `FIN-CM-TC-011`–`FIN-CM-TC-022`: Create credit memo flow entry; **TC-022** RBAC deny (`/restrictedUser`) via `credit-memo-steps.ts`
+- `FIN-CCN-*`, `FIN-CCNA-*`, `FIN-CCNR-*`: CCN JE / apply / reversal (`ccn-je.feature`, `finance-je-posting-chain-steps.ts`)
   - **Interaction**: POM (`e2e/src/pages/finance/CreditMemosPage.ts`), steps (`e2e/src/steps/finance/credit-memo-steps.ts`)
   - **Locators Used**: `getByRole('button', { name: /New Credit Memo/i })`, route `/finance/credit-memos`, `ProtectedPageWrapper` `finance_credit_memos`
   - **Last Verified**: 2026-03-22

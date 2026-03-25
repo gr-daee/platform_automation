@@ -407,4 +407,35 @@ export class CashReceiptDetailPage extends BasePage {
     await this.clickUnapply();
     await this.confirmUnapply(reason);
   }
+
+  /** Reverse Cash Receipt dialog (header toolbar — not application row). */
+  get reverseReceiptDialog(): Locator {
+    return this.page.getByRole('dialog', { name: /Reverse Cash Receipt/i });
+  }
+
+  async openReverseCashReceiptDialog(): Promise<void> {
+    const headerReverse = this.page
+      .locator('div')
+      .filter({ has: this.page.getByRole('link', { name: /Back/i }) })
+      .getByRole('button', { name: 'Reverse', exact: true })
+      .first();
+    await expect(headerReverse).toBeVisible({ timeout: 15000 });
+    await headerReverse.click();
+    await expect(this.reverseReceiptDialog).toBeVisible({ timeout: 10000 });
+  }
+
+  async fillCashReceiptReversalReason(text: string): Promise<void> {
+    await this.page.locator('#reversal_reason').fill(text);
+  }
+
+  async confirmReverseCashReceipt(): Promise<void> {
+    await this.reverseReceiptDialog.getByRole('button', { name: /Reverse Receipt/i }).click();
+    await expect(this.reverseReceiptDialog).toBeHidden({ timeout: 60000 });
+  }
+
+  async reverseCashReceipt(reason: string): Promise<void> {
+    await this.openReverseCashReceiptDialog();
+    await this.fillCashReceiptReversalReason(reason);
+    await this.confirmReverseCashReceipt();
+  }
 }

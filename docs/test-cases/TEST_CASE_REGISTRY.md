@@ -300,6 +300,27 @@ This registry is version-controlled with git, making it:
 
 ## Finance Module (FIN)
 
+### Posting profiles, fiscal periods, journal GL (IMPL-055)
+
+*Full scenario titles: feature files under `e2e/features/finance/posting-profiles/`, `fiscal-periods/`, `journal-entries/`.*
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| FIN-PP-TC-001–022 | FIN | PP | Posting profiles dashboard, matrix, simulation, import/export | e2e/features/finance/posting-profiles/posting-profiles.feature | @regression @iacs-md | ✅ |
+| FIN-FP-TC-001–012 | FIN | FP | Fiscal period lifecycle and posting rules | e2e/features/finance/fiscal-periods/fiscal-periods.feature | @regression @iacs-md | ✅ |
+| FIN-JE-TC-001–007 | FIN | JE | Manual journal entry posting and validation | e2e/features/finance/journal-entries/manual-je.feature | @regression @iacs-md | ✅ |
+| FIN-INV-TC-001–008 | FIN | JE | Invoice creation JE / GL lines | e2e/features/finance/journal-entries/invoice-je.feature | @regression @iacs-md | ✅ |
+| FIN-INVC-TC-001–007 | FIN | JE | Invoice cancellation JE | e2e/features/finance/journal-entries/invoice-je.feature | @regression @iacs-md | ✅ |
+| FIN-CR-TC-030–035 | FIN | JE | Manual cash receipt JE patterns | e2e/features/finance/journal-entries/cash-receipt-je.feature | @regression @iacs-md | ✅ |
+| FIN-VAN-TC-030–034 | FIN | JE | VAN cash receipt JE patterns | e2e/features/finance/journal-entries/cash-receipt-je.feature | @regression @iacs-md | ✅ |
+| FIN-ACR-TC-001–007 | FIN | JE | Cash receipt application JE | e2e/features/finance/journal-entries/cr-application-je.feature | @regression @iacs-md | ✅ |
+| FIN-CCN-TC-001–007 | FIN | JE | CCN creation JE | e2e/features/finance/journal-entries/ccn-je.feature | @regression @iacs-md | ✅ |
+| FIN-CCNA-TC-001–006 | FIN | JE | CCN application | e2e/features/finance/journal-entries/ccn-je.feature | @regression @iacs-md | ✅ |
+| FIN-CCNR-TC-001–007 | FIN | JE | CCN reversal | e2e/features/finance/journal-entries/ccn-je.feature | @regression @iacs-md | ✅ |
+| FIN-CRR-TC-001–008 | FIN | JE | Cash receipt reversal JE | e2e/features/finance/journal-entries/cr-reversal-je.feature | @regression @iacs-md | ✅ |
+| FIN-UDCR-TC-001–005 | FIN | JE | Unknown / suspense dealer cash receipt | e2e/features/finance/journal-entries/cr-reversal-je.feature | @regression @iacs-md | ✅ |
+| FIN-SR-TC-001–007 | FIN | JE | Sales return JE / CM GL | e2e/features/finance/journal-entries/sales-return-je.feature | @regression @iacs-md | ✅ |
+
 ### Cash Receipts SubModule (CR)
 
 | Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
