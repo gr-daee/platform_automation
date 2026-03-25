@@ -106,7 +106,8 @@ const testDir = defineBddConfig({
  */
 const chromeConfig = {
   ...devices['Desktop Chrome'],
-  channel: 'chrome' as const, // Use system Chrome instead of bundled Chromium
+  // Use system Chrome when available (via PLAYWRIGHT_CHANNEL=chrome env var), fallback to bundled Chromium
+  ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL as 'chrome' } : {}),
 };
 
 /**
@@ -307,6 +308,20 @@ export default defineConfig({
       testIgnore: /login\.spec\.js/,
     },
 
+    // Plant Production - IACS MD User (has plant_production permissions)
+    {
+      name: 'iacs-md-plant',
+      use: {
+        ...chromeConfig,
+        storageState: 'e2e/.auth/iacs-md.json',
+      },
+      testMatch: /plant-production[/\\].*\.spec\.js$/,
+      grep: /@iacs-md/,
+      grepInvert: /@skip-iacs-md/,
+      dependencies: ['setup'],
+      testIgnore: /login\.spec\.js/,
+    },
+
     // Super Admin - Primary for Admin tests + fallback
     {
       name: 'super-admin',
@@ -314,7 +329,7 @@ export default defineConfig({
         ...chromeConfig,
         storageState: 'e2e/.auth/admin.json',
       },
-      testMatch: /(?!login|o2c|finance|warehouse).*\.spec\.js$/,
+      testMatch: /(?!login|o2c|finance|warehouse|plant-production).*\.spec\.js$/,
       grep: /@super-admin/,
       dependencies: ['setup'],
       testIgnore: /login\.spec\.js/,

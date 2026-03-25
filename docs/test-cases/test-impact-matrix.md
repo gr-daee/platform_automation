@@ -629,5 +629,78 @@ When source files change:
 
 ---
 
+## Plant Production Module (PLANT) — Phases 1-4
+
+### Phase 1: Plant Setup
+
+| Source File | Tests Affected | Risk Level |
+|-------------|---------------|------------|
+| `web_app/src/app/plant-production/plants/components/PlantsManagerPage.tsx` | PLANT-PLT-TC-001 through TC-010 | High |
+| `web_app/src/app/plant-production/plants/components/PlantFormDialog.tsx` | PLANT-PLT-TC-001, TC-007, TC-009 | High |
+| `web_app/src/app/plant-production/plants/components/PlantLicenseFormDialog.tsx` | PLANT-LIC-TC-001 through TC-011 | High |
+| `web_app/src/app/plant-production/plants/components/PlantAssetFormDialog.tsx` | PLANT-AST-TC-001 through TC-012 | High |
+| `web_app/src/app/plant-production/actions/createPlant.ts` | PLANT-PLT-TC-001, TC-006, TC-007 | Medium |
+| `web_app/src/app/plant-production/actions/createPlantLicense.ts` | PLANT-LIC-TC-001, TC-004 | Medium |
+| `web_app/src/app/plant-production/actions/createPlantAsset.ts` | PLANT-AST-TC-001, TC-007 | Medium |
+| `web_app/src/app/plant-production/actions/managePlantAssets.ts` | PLANT-AST-TC-012 | Medium |
+
+**Test Files**:
+- `e2e/features/plant-production/01-create-plant.feature`
+- `e2e/features/plant-production/02-plant-licenses.feature`
+- `e2e/features/plant-production/03-plant-assets.feature`
+- `e2e/src/pages/plant-production/PlantsPage.ts`
+- `e2e/src/steps/plant-production/plant-steps.ts`
+
+### Phase 2: BOM Management
+
+| Source File | Tests Affected | Risk Level |
+|-------------|---------------|------------|
+| `web_app/src/app/plant-production/bom/components/BOMManagerPage.tsx` | PLANT-BOM-TC-001 through TC-019 | High |
+| `web_app/src/app/plant-production/bom/components/BOMFormDialog.tsx` | PLANT-BOM-TC-001, TC-002, TC-003, TC-019 | High |
+| `web_app/src/app/plant-production/bom/[id]/page.tsx` | PLANT-BOM-TC-006, TC-012, TC-014, TC-016 | High |
+| `web_app/src/app/plant-production/actions/bomManagement.ts` | PLANT-BOM-TC-001 through TC-019 | High |
+| `web_app/src/app/plant-production/bom/[id]/components/BOMLineItemsTab.tsx` | PLANT-BOM-TC-011 through TC-017 | High |
+
+**Test Files**:
+- `e2e/features/plant-production/04-bom-header.feature`
+- `e2e/features/plant-production/05-bom-lines.feature`
+- `e2e/src/pages/plant-production/BOMPage.ts`
+- `e2e/src/pages/plant-production/BOMDetailPage.ts`
+- `e2e/src/steps/plant-production/bom-steps.ts`
+
+### Phase 3: Work Orders
+
+| Source File | Tests Affected | Risk Level |
+|-------------|---------------|------------|
+| `web_app/src/app/plant-production/work-orders/components/WorkOrdersManagerPage.tsx` | PLANT-WO-TC-001 through TC-008 | High |
+| `web_app/src/app/plant-production/work-orders/components/WorkOrderFormDialog.tsx` | PLANT-WO-TC-002, TC-003 | High |
+| `web_app/src/app/plant-production/actions/createWorkOrder.ts` | PLANT-WO-TC-002 | Medium |
+| `web_app/src/app/plant-production/actions/deleteWorkOrder.ts` | PLANT-WO-TC-006 | Medium |
+| `web_app/src/app/plant-production/actions/approveWorkOrder.ts` | PLANT-WO-TC-007 | Medium |
+
+**Test Files**:
+- `e2e/features/plant-production/06-work-orders.feature`
+- `e2e/src/pages/plant-production/WorkOrdersPage.ts`
+- `e2e/src/steps/plant-production/work-order-steps.ts`
+
+### Phase 4: Material Requests & Quality Control
+
+| Source File | Tests Affected | Risk Level |
+|-------------|---------------|------------|
+| `web_app/src/app/plant-production/material-requests/components/MaterialRequestsManager.tsx` | PLANT-MRN-TC-001 through TC-003 | Medium |
+| `web_app/src/app/plant-production/quality-control/components/QualityControlManagerPage.tsx` | PLANT-QC-TC-001 through TC-007 | High |
+| `web_app/src/app/plant-production/quality-control/components/AnomalyFormDialog.tsx` | PLANT-QC-TC-002, TC-003, TC-007 | High |
+| `web_app/src/app/plant-production/actions/productionAnomalies.ts` | PLANT-QC-TC-002, TC-004, TC-005 | Medium |
+
+**Test Files**:
+- `e2e/features/plant-production/07-material-requests.feature`
+- `e2e/features/plant-production/08-quality-control.feature`
+- `e2e/src/pages/plant-production/MaterialRequestsPage.ts`
+- `e2e/src/pages/plant-production/QualityControlPage.ts`
+- `e2e/src/steps/plant-production/material-request-steps.ts`
+- `e2e/src/steps/plant-production/quality-control-steps.ts`
+
+---
+
 **Document Owner**: QA Lead
 **Contributors**: All automation engineers MUST update this when creating tests

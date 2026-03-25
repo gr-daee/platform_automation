@@ -353,3 +353,111 @@ This registry is version-controlled with git, making it:
 | FIN-DO-TC-030 | FIN | DO | First dealer net outstanding matches UI formula on screen | e2e/features/finance/dealer-outstanding/dealer-outstanding.feature | @regression @p3 @iacs-md | ✅ |
 | FIN-DO-TC-031 | FIN | DO | Unapplied Credits column header visible when dealer grid is shown | e2e/features/finance/dealer-outstanding/dealer-outstanding.feature | @regression @p3 @iacs-md | ✅ |
 | FIN-DO-TC-040 | FIN | DO | User without invoice report access is denied dealer outstanding URL | e2e/features/finance/dealer-outstanding/dealer-outstanding.feature | @negative @p2 @iacs-ed | ✅ |
+
+## Plant Production Module (PLANT)
+
+### Plants SubModule (PLT) — DAEE-161
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| PLANT-PLT-TC-001 | PLANT | PLT | Create plant with required fields | e2e/features/plant-production/01-create-plant.feature | @smoke @p1 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-PLT-TC-002 | PLANT | PLT | Plant code uniqueness validation | e2e/features/plant-production/01-create-plant.feature | @regression @p1 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-PLT-TC-003 | PLANT | PLT | Required field validation shows inline errors | e2e/features/plant-production/01-create-plant.feature | @regression @p1 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-PLT-TC-004 | PLANT | PLT | Inactive plant status reflected in list | e2e/features/plant-production/01-create-plant.feature | @regression @p1 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-PLT-TC-005 | PLANT | PLT | Capacity and operational fields saved | e2e/features/plant-production/01-create-plant.feature | @regression @p2 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-PLT-TC-006 | PLANT | PLT | Maintenance date validation rejects next before last | e2e/features/plant-production/01-create-plant.feature | @regression @p1 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-PLT-TC-007 | PLANT | PLT | Plant record persists after page refresh | e2e/features/plant-production/01-create-plant.feature | @regression @p2 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-PLT-TC-008 | PLANT | PLT | Cancel closes form without saving plant | e2e/features/plant-production/01-create-plant.feature | @regression @p2 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-PLT-TC-009 | PLANT | PLT | Edit existing plant persists changes | e2e/features/plant-production/01-create-plant.feature | @regression @p1 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-PLT-TC-010 | PLANT | PLT | Plant list search by name and code | e2e/features/plant-production/01-create-plant.feature | @regression @p2 @iacs-md @PLANT-P1 | ✅ |
+
+### Licenses SubModule (LIC) — DAEE-162
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| PLANT-LIC-TC-001 | PLANT | LIC | Create license with required fields | e2e/features/plant-production/02-plant-licenses.feature | @smoke @p1 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-LIC-TC-002 | PLANT | LIC | License mandatory field validation | e2e/features/plant-production/02-plant-licenses.feature | @regression @p1 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-LIC-TC-003 | PLANT | LIC | Date validation (expiry before issue rejected) | e2e/features/plant-production/02-plant-licenses.feature | @regression @p1 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-LIC-TC-004 | PLANT | LIC | License number uniqueness per plant | e2e/features/plant-production/02-plant-licenses.feature | @regression @p1 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-LIC-TC-005 | PLANT | LIC | WO blocked when plant has no valid license (known-defect) | e2e/features/plant-production/02-plant-licenses.feature | @regression @p1 @iacs-md @PLANT-P1 @known-defect | ✅ |
+| PLANT-LIC-TC-006 | PLANT | LIC | Expired license visually identified | e2e/features/plant-production/02-plant-licenses.feature | @regression @p2 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-LIC-TC-007 | PLANT | LIC | License renewal — expiry date update | e2e/features/plant-production/02-plant-licenses.feature | @regression @p2 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-LIC-TC-008 | PLANT | LIC | Plant with valid license available for WO | e2e/features/plant-production/02-plant-licenses.feature | @regression @p1 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-LIC-TC-009 | PLANT | LIC | License deletion available in UI (known-defect) | e2e/features/plant-production/02-plant-licenses.feature | @regression @p2 @iacs-md @PLANT-P1 @known-defect | ✅ |
+| PLANT-LIC-TC-011 | PLANT | LIC | Edit license — expiry date update saves | e2e/features/plant-production/02-plant-licenses.feature | @regression @p2 @iacs-md @PLANT-P1 | ✅ |
+
+### Assets SubModule (AST) — DAEE-163
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| PLANT-AST-TC-001 | PLANT | AST | Create asset with required fields | e2e/features/plant-production/03-plant-assets.feature | @smoke @p1 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-AST-TC-002 | PLANT | AST | Asset category restricted to predefined values | e2e/features/plant-production/03-plant-assets.feature | @regression @p1 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-AST-TC-003 | PLANT | AST | Maintenance asset blocked from WO assignment | e2e/features/plant-production/03-plant-assets.feature | @regression @p1 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-AST-TC-004 | PLANT | AST | Plant without active assets blocked from WO | e2e/features/plant-production/03-plant-assets.feature | @regression @p1 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-AST-TC-005 | PLANT | AST | Active asset assigned to work order | e2e/features/plant-production/03-plant-assets.feature | @regression @p1 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-AST-TC-007 | PLANT | AST | Asset code uniqueness validation | e2e/features/plant-production/03-plant-assets.feature | @regression @p1 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-AST-TC-008 | PLANT | AST | Asset edit persists after page refresh | e2e/features/plant-production/03-plant-assets.feature | @regression @p2 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-AST-TC-009 | PLANT | AST | Asset under maintenance blocked from WO | e2e/features/plant-production/03-plant-assets.feature | @regression @p1 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-AST-TC-011 | PLANT | AST | Edit asset name and status | e2e/features/plant-production/03-plant-assets.feature | @regression @p2 @iacs-md @PLANT-P1 | ✅ |
+| PLANT-AST-TC-012 | PLANT | AST | Delete asset soft-deletes to retired status (known-defect) | e2e/features/plant-production/03-plant-assets.feature | @regression @p2 @iacs-md @PLANT-P1 @known-defect | ✅ |
+
+### BOM Header SubModule (BOM) — DAEE-164
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| PLANT-BOM-TC-001 | PLANT | BOM | Create BOM with name, version, product and component | e2e/features/plant-production/04-bom-header.feature | @smoke @p1 @iacs-md @PLANT-P2 | ✅ |
+| PLANT-BOM-TC-002 | PLANT | BOM | BOM name is required — validation blocks submission | e2e/features/plant-production/04-bom-header.feature | @regression @p1 @iacs-md @PLANT-P2 | ✅ |
+| PLANT-BOM-TC-003 | PLANT | BOM | Product selection is required — validation blocks submission | e2e/features/plant-production/04-bom-header.feature | @regression @p1 @iacs-md @PLANT-P2 | ✅ |
+| PLANT-BOM-TC-006 | PLANT | BOM | BOM lifecycle — Draft to Active via Submit/Approve | e2e/features/plant-production/04-bom-header.feature | @smoke @p1 @iacs-md @PLANT-P2 | ✅ |
+| PLANT-BOM-TC-008 | PLANT | BOM | BOM number is auto-generated and immutable | e2e/features/plant-production/04-bom-header.feature | @regression @p2 @iacs-md @PLANT-P2 | ✅ |
+| PLANT-BOM-TC-010 | PLANT | BOM | BOM search by name works | e2e/features/plant-production/04-bom-header.feature | @regression @p2 @iacs-md @PLANT-P2 | ✅ |
+| PLANT-BOM-TC-012 | PLANT | BOM | Deactivate active BOM clears active version flag | e2e/features/plant-production/04-bom-header.feature | @regression @p1 @iacs-md @PLANT-P2 | ✅ |
+| PLANT-BOM-TC-014 | PLANT | BOM | BOM delete only available in draft status | e2e/features/plant-production/04-bom-header.feature | @regression @p2 @iacs-md @PLANT-P2 | ✅ |
+| PLANT-BOM-TC-016 | PLANT | BOM | Only one active BOM allowed per product | e2e/features/plant-production/04-bom-header.feature | @regression @p1 @iacs-md @PLANT-P2 | ✅ |
+| PLANT-BOM-TC-018 | PLANT | BOM | BOM status filter on list page | e2e/features/plant-production/04-bom-header.feature | @regression @p2 @iacs-md @PLANT-P2 | ✅ |
+| PLANT-BOM-TC-019 | PLANT | BOM | BOM without lines cannot be submitted for review | e2e/features/plant-production/04-bom-header.feature | @regression @p2 @iacs-md @PLANT-P2 | ✅ |
+
+### BOM Lines SubModule (BOM-LINES) — DAEE-165
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| PLANT-BOM-TC-011 | PLANT | BOM-LINES | BOM line shows component name quantity and UOM in detail view | e2e/features/plant-production/05-bom-lines.feature | @smoke @p1 @iacs-md @PLANT-P2 | ✅ |
+| PLANT-BOM-LINES-TC-012 | PLANT | BOM-LINES | Add component line quantity validation | e2e/features/plant-production/05-bom-lines.feature | @regression @p1 @iacs-md @PLANT-P2 | ✅ |
+| PLANT-BOM-LINES-TC-013 | PLANT | BOM-LINES | Component selection is required | e2e/features/plant-production/05-bom-lines.feature | @regression @p1 @iacs-md @PLANT-P2 | ✅ |
+| PLANT-BOM-LINES-TC-014 | PLANT | BOM-LINES | Critical component shows critical badge in detail view | e2e/features/plant-production/05-bom-lines.feature | @regression @p1 @iacs-md @PLANT-P2 | ✅ |
+| PLANT-BOM-LINES-TC-015 | PLANT | BOM-LINES | Multiple component lines can be added to one BOM | e2e/features/plant-production/05-bom-lines.feature | @regression @p2 @iacs-md @PLANT-P2 | ✅ |
+| PLANT-BOM-LINES-TC-016 | PLANT | BOM-LINES | Add component button not visible in active BOM | e2e/features/plant-production/05-bom-lines.feature | @regression @p1 @iacs-md @PLANT-P2 | ✅ |
+| PLANT-BOM-LINES-TC-017 | PLANT | BOM-LINES | BOM status filter on list page | e2e/features/plant-production/05-bom-lines.feature | @regression @p2 @iacs-md @PLANT-P2 | ✅ |
+
+### Work Orders SubModule (WO) — DAEE-166
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| PLANT-WO-TC-001 | PLANT | WO | Work Orders page loads with statistics | e2e/features/plant-production/06-work-orders.feature | @smoke @p1 @iacs-md @PLANT-P3 | ✅ |
+| PLANT-WO-TC-002 | PLANT | WO | Create a work order in manual mode | e2e/features/plant-production/06-work-orders.feature | @smoke @p1 @iacs-md @PLANT-P3 | ✅ |
+| PLANT-WO-TC-003 | PLANT | WO | Work order quantity validation | e2e/features/plant-production/06-work-orders.feature | @regression @p1 @iacs-md @PLANT-P3 | ✅ |
+| PLANT-WO-TC-004 | PLANT | WO | Filter work orders by status | e2e/features/plant-production/06-work-orders.feature | @regression @p1 @iacs-md @PLANT-P3 | ✅ |
+| PLANT-WO-TC-005 | PLANT | WO | Search work orders by keyword | e2e/features/plant-production/06-work-orders.feature | @regression @p1 @iacs-md @PLANT-P3 | ✅ |
+| PLANT-WO-TC-006 | PLANT | WO | Delete a work order | e2e/features/plant-production/06-work-orders.feature | @regression @p2 @iacs-md @PLANT-P3 | ✅ |
+| PLANT-WO-TC-007 | PLANT | WO | Approve a pending work order | e2e/features/plant-production/06-work-orders.feature | @regression @p1 @iacs-md @PLANT-P3 | ✅ |
+| PLANT-WO-TC-008 | PLANT | WO | Work Orders page shows no results after strict filter | e2e/features/plant-production/06-work-orders.feature | @regression @p2 @iacs-md @PLANT-P3 | ✅ |
+
+### Material Requests SubModule (MRN) — DAEE-167
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| PLANT-MRN-TC-001 | PLANT | MRN | Material Requests page loads successfully | e2e/features/plant-production/07-material-requests.feature | @smoke @p1 @iacs-md @PLANT-P4 | ✅ |
+| PLANT-MRN-TC-002 | PLANT | MRN | MRN list shows pending and partial issued by default | e2e/features/plant-production/07-material-requests.feature | @regression @p2 @iacs-md @PLANT-P4 | ✅ |
+| PLANT-MRN-TC-003 | PLANT | MRN | Issue action available for pending MRNs | e2e/features/plant-production/07-material-requests.feature | @regression @p2 @iacs-md @PLANT-P4 | ✅ |
+
+### Quality Control SubModule (QC) — DAEE-168
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| PLANT-QC-TC-001 | PLANT | QC | Quality Control page loads with anomaly list | e2e/features/plant-production/08-quality-control.feature | @smoke @p1 @iacs-md @PLANT-P4 | ✅ |
+| PLANT-QC-TC-002 | PLANT | QC | Report a production anomaly | e2e/features/plant-production/08-quality-control.feature | @smoke @p1 @iacs-md @PLANT-P4 | ✅ |
+| PLANT-QC-TC-003 | PLANT | QC | Anomaly severity defaults to medium on create | e2e/features/plant-production/08-quality-control.feature | @regression @p1 @iacs-md @PLANT-P4 | ✅ |
+| PLANT-QC-TC-004 | PLANT | QC | Acknowledge a production anomaly | e2e/features/plant-production/08-quality-control.feature | @regression @p1 @iacs-md @PLANT-P4 | ✅ |
+| PLANT-QC-TC-005 | PLANT | QC | Delete a production anomaly | e2e/features/plant-production/08-quality-control.feature | @regression @p2 @iacs-md @PLANT-P4 | ✅ |
+| PLANT-QC-TC-006 | PLANT | QC | Filter anomalies by severity | e2e/features/plant-production/08-quality-control.feature | @regression @p2 @iacs-md @PLANT-P4 | ✅ |
+| PLANT-QC-TC-007 | PLANT | QC | Anomaly type options include all expected types | e2e/features/plant-production/08-quality-control.feature | @regression @p2 @iacs-md @PLANT-P4 | ✅ |
