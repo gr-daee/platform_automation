@@ -36,8 +36,17 @@ export class JournalEntriesPage extends BasePage {
   }
 
   async gotoNew(): Promise<void> {
-    await this.navigateTo('/finance/journal-entries/new');
-    await expect(this.formHeading).toBeVisible({ timeout: 20000 });
+    const openedDirect = await this.page
+      .goto('/finance/journal-entries/new', { waitUntil: 'domcontentloaded', timeout: 60000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!openedDirect) {
+      // Fallback when direct route load is slow: open list first, then click New.
+      await this.gotoList();
+      await this.newEntryButton.click();
+    }
+    await expect(this.page).toHaveURL(/\/finance\/journal-entries\/new/, { timeout: 30000 });
+    await expect(this.formHeading).toBeVisible({ timeout: 30000 });
   }
 
   /**
@@ -51,8 +60,45 @@ export class JournalEntriesPage extends BasePage {
     const row = this.lineRow(rowIndex);
     const trigger = row.locator('[role="combobox"]').first();
     await trigger.click();
-    await this.page.waitForSelector('[role="listbox"]', { timeout: 5000 });
-    await this.page.getByRole('option', { name: optionText }).first().click();
+    const listbox = this.page.locator('[role="listbox"]').last();
+    await expect(listbox).toBeVisible({ timeout: 10000 });
+
+    // Accounts can load asynchronously in JE form; wait briefly for options.
+    await expect
+      .poll(async () => listbox.getByRole('option').count(), {
+        timeout: 20000,
+        intervals: [300, 600, 1000],
+        message: `No account options loaded for row ${rowIndex + 1}`,
+      })
+      .toBeGreaterThan(0);
+
+    const matching = listbox.getByRole('option', { name: optionText }).first();
+    const found = await matching.isVisible().catch(() => false);
+    if (!found) {
+      const preview: string[] = [];
+      const options = listbox.getByRole('option');
+      const cnt = await options.count();
+      for (let i = 0; i < Math.min(cnt, 8); i++) {
+        preview.push((await options.nth(i).innerText().catch(() => '')).trim());
+      }
+      throw new Error(
+        `Account option ${String(optionText)} not found in JE row ${rowIndex + 1}. First options: ${preview.join(' | ')}`
+      );
+    }
+    await matching.click();
+  }
+
+  async selectAccountByOptionIndex(rowIndex: number, optionIndex: number): Promise<void> {
+    const row = this.lineRow(rowIndex);
+    const trigger = row.locator('[role="combobox"]').first();
+    await trigger.click();
+    const listbox = this.page.locator('[role="listbox"]').last();
+    await expect(listbox).toBeVisible({ timeout: 10000 });
+    const options = listbox.getByRole('option');
+    await expect
+      .poll(async () => options.count(), { timeout: 20000, intervals: [300, 600, 1000] })
+      .toBeGreaterThan(optionIndex);
+    await options.nth(optionIndex).click();
   }
 
   async fillLineDescription(rowIndex: number, text: string): Promise<void> {

@@ -7,11 +7,11 @@ test.describe("Cash receipt application journal entries", () => {
     await Given("I am logged in to the Application", null, { page });
   });
 
-  test("Apply cash receipt posts AR debit and unapplied cash credit", { tag: ["@finance", "@journal-entries", "@cr-application-je", "@iacs-md", "@FIN-ACR-TC-001", "@critical", "@p0"] }, async ({ Given, page, And, When, Then }) => {
+  test("Apply cash receipt posts AR credit and unapplied cash debit", { tag: ["@finance", "@journal-entries", "@cr-application-je", "@iacs-md", "@FIN-ACR-TC-001", "@critical", "@p0"] }, async ({ Given, page, And, When, Then }) => {
     await Given("I have created a cash receipt with amount \"500\" for testing", null, { page });
     await And("I am on the apply page for the current cash receipt", null, { page });
     await When("I apply cash receipt \"<receiptId>\" to invoice \"first\" with amount \"100\"", null, { page });
-    await Then("latest cash receipt journal for current receipt shows AR debit and unapplied cash credit on apply");
+    await Then("latest cash receipt journal for current receipt shows AR credit and unapplied cash debit on apply");
   });
 
   test("Apply with EPD may include early payment discount debit", { tag: ["@finance", "@journal-entries", "@cr-application-je", "@iacs-md", "@FIN-ACR-TC-002", "@critical", "@p0"] }, async ({ Given, page, And, When, Then }) => {
@@ -72,7 +72,7 @@ test.use({
 });
 
 const bddFileMeta = {
-  "Apply cash receipt posts AR debit and unapplied cash credit": {"pickleLocation":"10:3","tags":["@finance","@journal-entries","@cr-application-je","@iacs-md","@FIN-ACR-TC-001","@critical","@p0"],"ownTags":["@iacs-md","@p0","@critical","@FIN-ACR-TC-001"]},
+  "Apply cash receipt posts AR credit and unapplied cash debit": {"pickleLocation":"10:3","tags":["@finance","@journal-entries","@cr-application-je","@iacs-md","@FIN-ACR-TC-001","@critical","@p0"],"ownTags":["@iacs-md","@p0","@critical","@FIN-ACR-TC-001"]},
   "Apply with EPD may include early payment discount debit": {"pickleLocation":"17:3","tags":["@finance","@journal-entries","@cr-application-je","@iacs-md","@FIN-ACR-TC-002","@critical","@p0"],"ownTags":["@iacs-md","@p0","@critical","@FIN-ACR-TC-002"]},
   "Full apply drives invoice toward paid status": {"pickleLocation":"25:3","tags":["@finance","@journal-entries","@cr-application-je","@iacs-md","@FIN-ACR-TC-003","@regression","@p1"],"ownTags":["@iacs-md","@p1","@regression","@FIN-ACR-TC-003"]},
   "Cash receipt applied amount matches applications in database": {"pickleLocation":"33:3","tags":["@finance","@journal-entries","@cr-application-je","@iacs-md","@FIN-ACR-TC-004","@regression","@p1"],"ownTags":["@iacs-md","@p1","@regression","@FIN-ACR-TC-004"]},

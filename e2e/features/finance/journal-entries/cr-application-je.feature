@@ -7,11 +7,11 @@ Feature: Cash receipt application journal entries
     Given I am logged in to the Application
 
   @FIN-ACR-TC-001 @critical @p0 @iacs-md
-  Scenario: Apply cash receipt posts AR debit and unapplied cash credit
+  Scenario: Apply cash receipt posts AR credit and unapplied cash debit
     Given I have created a cash receipt with amount "500" for testing
     And I am on the apply page for the current cash receipt
     When I apply cash receipt "<receiptId>" to invoice "first" with amount "100"
-    Then latest cash receipt journal for current receipt shows AR debit and unapplied cash credit on apply
+    Then latest cash receipt journal for current receipt shows AR credit and unapplied cash debit on apply
 
   @FIN-ACR-TC-002 @critical @p0 @iacs-md
   Scenario: Apply with EPD may include early payment discount debit

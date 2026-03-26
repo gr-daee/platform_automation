@@ -5,6 +5,7 @@ Feature: Manual journal entries and GL verification
     Given I am logged in to the Application
 
   @FIN-JE-TC-001 @p0 @iacs-md
+# Defect DAEE-421: "Post Immediately" keeps JE in draft status; GL report excludes draft entries.
   Scenario: Create balanced manual JE and verify posted status in DB
     When I create and post a balanced manual journal entry via UI
     Then the manual journal entry should be posted in the database
@@ -38,3 +39,8 @@ Feature: Manual journal entries and GL verification
   Scenario: Manual JE audit source module
     When I create and post a balanced manual journal entry via UI
     Then the journal header may be manual or automated per product implementation
+
+  @FIN-JE-TC-008 @p0 @iacs-md
+  Scenario: Manual JE should reflect in General Ledger report balances
+    When I create and post a balanced manual journal entry via UI
+    Then manual JE should reflect in General Ledger report balances when posted

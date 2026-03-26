@@ -7,12 +7,12 @@ test.describe("Credit contra note journal entries and applications", () => {
     await Given("I am logged in to the Application", null, { page });
   });
 
-  test("Finance UI credit memo posts with dealer credit_note debit and AR credit", { tag: ["@finance", "@journal-entries", "@ccn-je", "@iacs-md", "@FIN-CCN-TC-001", "@critical", "@p0"] }, async ({ Given, page, When, And, Then }) => {
+  test("Finance UI credit memo posts with AR debit and freight allowance credit", { tag: ["@finance", "@journal-entries", "@ccn-je", "@iacs-md", "@FIN-CCN-TC-001", "@critical", "@p0"] }, async ({ Given, page, When, And, Then }) => {
     await Given("I am on the credit memos page", null, { page });
     await When("I create a credit memo for customer \"Ramesh ningappa diggai\" with amount \"88\" and reason \"transport_allowance\"", null, { page });
     await And("I post current credit memo to general ledger", null, { page });
     await Then("I should see credit memo post to GL success toast", null, { page });
-    await Then("credit memo posted to GL has debit on dealer credit_note and credit on AR");
+    await Then("credit memo posted to GL has AR debit and freight allowance credit for transport allowance");
   });
 
   test("Sales return credit memo uses non-legacy posting profile GL", { tag: ["@finance", "@journal-entries", "@ccn-je", "@iacs-md", "@FIN-CCN-TC-002", "@critical", "@p0"] }, async ({ Given, And, page, When, Then }) => {
@@ -122,10 +122,11 @@ test.describe("Credit contra note journal entries and applications", () => {
 
   test("Reverse CM application restores outstanding", { tag: ["@finance", "@journal-entries", "@ccn-je", "@iacs-md", "@FIN-CCNR-TC-002", "@critical", "@p0"] }, async ({ Given, page, When, And, Then }) => {
     await Given("I am on the credit memos page", null, { page });
-    await When("I create a credit memo for customer \"Ramesh ningappa diggai\" with amount \"175\" and reason \"transport_allowance\"", null, { page });
+    await When("I create a credit memo for customer \"SRI SAIRAM AGENCIES\" with amount \"175\" and reason \"transport_allowance\"", null, { page });
     await And("I apply \"48\" from current credit memo to the oldest outstanding invoice of the same customer", null, { page });
     await And("I reverse the application for current target invoice with reason \"AUTO_QA_FIN_CCNR_002\"", null, { page });
     await Then("I should see credit memo reversal success toast", null, { page });
+    await And("target invoice outstanding should be restored after reversal");
     await Then("credit memo available credit should equal total amount after reversal");
   });
 
@@ -170,6 +171,12 @@ test.describe("Credit contra note journal entries and applications", () => {
     await Then("audit may contain CREDIT_MEMO_REVERSED for reversed applications");
   });
 
+  test("Credit memo detail provides full CCN reversal action", { tag: ["@finance", "@journal-entries", "@ccn-je", "@iacs-md", "@FIN-CCNR-TC-008", "@critical", "@p0"] }, async ({ Given, page, When, Then }) => {
+    await Given("I am on the credit memos page", null, { page });
+    await When("I create a credit memo for customer \"Ramesh ningappa diggai\" with amount \"145\" and reason \"transport_allowance\"", null, { page });
+    await Then("credit memo detail should provide full CCN reversal action", null, { page });
+  });
+
 });
 
 // == technical section ==
@@ -181,7 +188,7 @@ test.use({
 });
 
 const bddFileMeta = {
-  "Finance UI credit memo posts with dealer credit_note debit and AR credit": {"pickleLocation":"13:3","tags":["@finance","@journal-entries","@ccn-je","@iacs-md","@FIN-CCN-TC-001","@critical","@p0"],"ownTags":["@iacs-md","@p0","@critical","@FIN-CCN-TC-001"]},
+  "Finance UI credit memo posts with AR debit and freight allowance credit": {"pickleLocation":"13:3","tags":["@finance","@journal-entries","@ccn-je","@iacs-md","@FIN-CCN-TC-001","@critical","@p0"],"ownTags":["@iacs-md","@p0","@critical","@FIN-CCN-TC-001"]},
   "Sales return credit memo uses non-legacy posting profile GL": {"pickleLocation":"21:3","tags":["@finance","@journal-entries","@ccn-je","@iacs-md","@FIN-CCN-TC-002","@critical","@p0"],"ownTags":["@iacs-md","@p0","@critical","@FIN-CCN-TC-002"]},
   "Credit memo GL journal is balanced": {"pickleLocation":"40:3","tags":["@finance","@journal-entries","@ccn-je","@iacs-md","@FIN-CCN-TC-003","@regression","@p1"],"ownTags":["@iacs-md","@p1","@regression","@FIN-CCN-TC-003"]},
   "Transport allowance CM may auto-apply toward source invoice": {"pickleLocation":"47:3","tags":["@finance","@journal-entries","@ccn-je","@iacs-md","@FIN-CCN-TC-004","@regression","@p1"],"ownTags":["@iacs-md","@p1","@regression","@FIN-CCN-TC-004"]},
@@ -195,10 +202,11 @@ const bddFileMeta = {
   "Partial CM apply keeps reconciliation": {"pickleLocation":"105:3","tags":["@finance","@journal-entries","@ccn-je","@iacs-md","@FIN-CCNA-TC-005","@regression","@p2"],"ownTags":["@iacs-md","@p2","@regression","@FIN-CCNA-TC-005"]},
   "Transport allowance over-balance may create dealer advance": {"pickleLocation":"112:3","tags":["@finance","@journal-entries","@ccn-je","@iacs-md","@FIN-CCNA-TC-006","@regression","@p2"],"ownTags":["@iacs-md","@p2","@regression","@FIN-CCNA-TC-006"]},
   "Reverse CM application posts reversal JE balanced": {"pickleLocation":"119:3","tags":["@finance","@journal-entries","@ccn-je","@iacs-md","@FIN-CCNR-TC-001","@critical","@p0"],"ownTags":["@iacs-md","@p0","@critical","@FIN-CCNR-TC-001"]},
-  "Reverse CM application restores outstanding": {"pickleLocation":"128:3","tags":["@finance","@journal-entries","@ccn-je","@iacs-md","@FIN-CCNR-TC-002","@critical","@p0"],"ownTags":["@iacs-md","@p0","@critical","@FIN-CCNR-TC-002"]},
-  "Reverse dialog requires reason before confirm": {"pickleLocation":"137:3","tags":["@finance","@journal-entries","@ccn-je","@iacs-md","@FIN-CCNR-TC-003","@regression","@p1"],"ownTags":["@iacs-md","@p1","@regression","@FIN-CCNR-TC-003"]},
-  "After reversal history shows Reversed": {"pickleLocation":"145:3","tags":["@finance","@journal-entries","@ccn-je","@iacs-md","@FIN-CCNR-TC-004","@regression","@p1"],"ownTags":["@iacs-md","@p1","@regression","@FIN-CCNR-TC-004"]},
-  "Reversal restores CM available credit": {"pickleLocation":"154:3","tags":["@finance","@journal-entries","@ccn-je","@iacs-md","@FIN-CCNR-TC-005","@regression","@p1"],"ownTags":["@iacs-md","@p1","@regression","@FIN-CCNR-TC-005"]},
-  "Double reversal blocked after first reversal": {"pickleLocation":"162:3","tags":["@finance","@journal-entries","@ccn-je","@iacs-md","@FIN-CCNR-TC-006","@regression","@p2"],"ownTags":["@iacs-md","@p2","@regression","@FIN-CCNR-TC-006"]},
-  "Audit may record credit memo reversal event": {"pickleLocation":"170:3","tags":["@finance","@journal-entries","@ccn-je","@iacs-md","@FIN-CCNR-TC-007","@regression","@p2"],"ownTags":["@iacs-md","@p2","@regression","@FIN-CCNR-TC-007"]},
+  "Reverse CM application restores outstanding": {"pickleLocation":"129:3","tags":["@finance","@journal-entries","@ccn-je","@iacs-md","@FIN-CCNR-TC-002","@critical","@p0"],"ownTags":["@iacs-md","@p0","@critical","@FIN-CCNR-TC-002"]},
+  "Reverse dialog requires reason before confirm": {"pickleLocation":"139:3","tags":["@finance","@journal-entries","@ccn-je","@iacs-md","@FIN-CCNR-TC-003","@regression","@p1"],"ownTags":["@iacs-md","@p1","@regression","@FIN-CCNR-TC-003"]},
+  "After reversal history shows Reversed": {"pickleLocation":"147:3","tags":["@finance","@journal-entries","@ccn-je","@iacs-md","@FIN-CCNR-TC-004","@regression","@p1"],"ownTags":["@iacs-md","@p1","@regression","@FIN-CCNR-TC-004"]},
+  "Reversal restores CM available credit": {"pickleLocation":"156:3","tags":["@finance","@journal-entries","@ccn-je","@iacs-md","@FIN-CCNR-TC-005","@regression","@p1"],"ownTags":["@iacs-md","@p1","@regression","@FIN-CCNR-TC-005"]},
+  "Double reversal blocked after first reversal": {"pickleLocation":"164:3","tags":["@finance","@journal-entries","@ccn-je","@iacs-md","@FIN-CCNR-TC-006","@regression","@p2"],"ownTags":["@iacs-md","@p2","@regression","@FIN-CCNR-TC-006"]},
+  "Audit may record credit memo reversal event": {"pickleLocation":"172:3","tags":["@finance","@journal-entries","@ccn-je","@iacs-md","@FIN-CCNR-TC-007","@regression","@p2"],"ownTags":["@iacs-md","@p2","@regression","@FIN-CCNR-TC-007"]},
+  "Credit memo detail provides full CCN reversal action": {"pickleLocation":"181:3","tags":["@finance","@journal-entries","@ccn-je","@iacs-md","@FIN-CCNR-TC-008","@critical","@p0"],"ownTags":["@iacs-md","@p0","@critical","@FIN-CCNR-TC-008"]},
 };

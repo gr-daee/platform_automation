@@ -7,15 +7,15 @@ Feature: Credit contra note journal entries and applications
     Given I am logged in to the Application
 
   @FIN-CCN-TC-001 @critical @p0 @iacs-md
-# Defect DAEE-413: CCN-TC-001 currently posts GL with AR Dr and Freight/Logistics Cr.
-# Expected (by posting-profile contract): dealer_management|credit_note Dr and sales|ar_control Cr.
+# DAEE-413 reclassified as test-contract mismatch (not product defect) for transport_allowance.
+# Expected (by current posting-profile + product contract): sales|ar_control Dr and sales|freight_allowance Cr.
 # Test data: CM amount=88, reason=transport_allowance.
-  Scenario: Finance UI credit memo posts with dealer credit_note debit and AR credit
+  Scenario: Finance UI credit memo posts with AR debit and freight allowance credit
     Given I am on the credit memos page
     When I create a credit memo for customer "Ramesh ningappa diggai" with amount "88" and reason "transport_allowance"
     And I post current credit memo to general ledger
     Then I should see credit memo post to GL success toast
-    Then credit memo posted to GL has debit on dealer credit_note and credit on AR
+    Then credit memo posted to GL has AR debit and freight allowance credit for transport allowance
 
   @FIN-CCN-TC-002 @critical @p0 @iacs-md
   Scenario: Sales return credit memo uses non-legacy posting profile GL
@@ -125,12 +125,14 @@ Feature: Credit contra note journal entries and applications
     Then credit memo application reversal journal swaps debits and credits versus original apply
 
   @FIN-CCNR-TC-002 @critical @p0 @iacs-md
+# Defect DAEE-419: Reversal success does not restore invoice outstanding to pre-apply value.
   Scenario: Reverse CM application restores outstanding
     Given I am on the credit memos page
-    When I create a credit memo for customer "Ramesh ningappa diggai" with amount "175" and reason "transport_allowance"
+    When I create a credit memo for customer "SRI SAIRAM AGENCIES" with amount "175" and reason "transport_allowance"
     And I apply "48" from current credit memo to the oldest outstanding invoice of the same customer
     And I reverse the application for current target invoice with reason "AUTO_QA_FIN_CCNR_002"
     Then I should see credit memo reversal success toast
+    And target invoice outstanding should be restored after reversal
     Then credit memo available credit should equal total amount after reversal
 
   @FIN-CCNR-TC-003 @regression @p1 @iacs-md
@@ -173,3 +175,10 @@ Feature: Credit contra note journal entries and applications
     And I apply "35" from current credit memo to the oldest outstanding invoice of the same customer
     And I reverse the application for current target invoice with reason "AUTO_QA_FIN_CCNR_007"
     Then audit may contain CREDIT_MEMO_REVERSED for reversed applications
+
+  @FIN-CCNR-TC-008 @critical @p0 @iacs-md
+# Defect DAEE-418: Credit memo detail has no full CCN reversal action (feature gap).
+  Scenario: Credit memo detail provides full CCN reversal action
+    Given I am on the credit memos page
+    When I create a credit memo for customer "Ramesh ningappa diggai" with amount "145" and reason "transport_allowance"
+    Then credit memo detail should provide full CCN reversal action

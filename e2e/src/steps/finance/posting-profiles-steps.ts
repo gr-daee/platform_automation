@@ -105,7 +105,7 @@ Then('a file download begins for posting profiles export', async function ({ $te
 });
 
 When('I navigate to customer posting groups from the dashboard', async function ({ page }) {
-  await page.getByRole('link', { name: /Customer Posting Groups/i }).click();
+  await page.getByRole('link', { name: /^Customer Posting Groups$/i }).click();
   await expect(page).toHaveURL(/\/finance\/posting-profiles\/customer-groups/, { timeout: 15000 });
 });
 
@@ -115,12 +115,12 @@ When('I navigate to tax determination matrix from the dashboard', async function
 });
 
 When('I navigate to item posting groups from the dashboard', async function ({ page }) {
-  await page.getByRole('link', { name: /Item Posting Groups/i }).click();
+  await page.getByRole('link', { name: /^Item Posting Groups$/i }).click();
   await expect(page).toHaveURL(/\/finance\/posting-profiles\/item-groups/, { timeout: 15000 });
 });
 
 When('I navigate to vendor posting groups from the dashboard', async function ({ page }) {
-  await page.getByRole('link', { name: /Vendor Posting Groups/i }).click();
+  await page.getByRole('link', { name: /^Vendor Posting Groups$/i }).click();
   await expect(page).toHaveURL(/\/finance\/posting-profiles\/vendor-groups/, { timeout: 15000 });
 });
 

@@ -117,20 +117,39 @@ export class CashReceiptApplyPage extends BasePage {
   }
 
   async toggleEPDEnabled(invoiceNumber: string, enabled: boolean): Promise<void> {
+    // EPD controls are usually enabled only after selecting the invoice row.
+    await this.selectInvoice(invoiceNumber);
     const invoiceRow = this.invoiceRow(invoiceNumber);
     await expect(invoiceRow).toBeVisible({ timeout: 10000 });
     await invoiceRow.scrollIntoViewIfNeeded();
 
-    // EPD checkbox: label "Apply Early Payment Discount (n%)" in green EPD section
-    const epdCheckbox = invoiceRow
+    // EPD control can render as checkbox or switch depending on UI variant.
+    let epdControl = invoiceRow
       .getByLabel(/Apply Early Payment Discount|Early Payment/i)
       .or(invoiceRow.getByRole('checkbox', { name: /discount|EPD/i }))
+      .or(invoiceRow.getByRole('switch', { name: /discount|EPD|Early Payment/i }))
       .first();
 
-    const checked = await epdCheckbox.isChecked().catch(() => false);
-    if (checked !== enabled) {
-      await epdCheckbox.click();
-      await this.page.waitForTimeout(300);
+    const foundPrimary = await epdControl.isVisible().catch(() => false);
+    if (!foundPrimary) {
+      // Fallback: pick the second checkbox in row (first is invoice selector)
+      const rowCheckboxes = invoiceRow.getByRole('checkbox');
+      const cnt = await rowCheckboxes.count();
+      if (cnt >= 2) {
+        epdControl = rowCheckboxes.nth(1);
+      } else if (cnt === 1) {
+        epdControl = rowCheckboxes.first();
+      }
+    }
+
+    await expect(epdControl).toBeVisible({ timeout: 10000 });
+
+    const checked = await epdControl
+      .isChecked()
+      .catch(async () => (await epdControl.getAttribute('aria-checked')) === 'true');
+    if (Boolean(checked) !== enabled) {
+      await epdControl.click();
+      await this.page.waitForTimeout(500);
     }
   }
 

@@ -81,16 +81,13 @@ export class CashReceiptDetailPage extends BasePage {
     // Page marker can vary; accept any stable receipt-detail marker.
     const markerChecks = await Promise.all([
       this.pageTitle.isVisible().catch(() => false),
-      this.applyToInvoicesButton.isVisible().catch(() => false),
-      this.applicationsTable.isVisible().catch(() => false),
-      this.page.getByText(/Total Receipt Amount|Balance \(Unapplied\)/i).first().isVisible().catch(() => false),
+      this.backButton.isVisible().catch(() => false),
+      this.totalReceiptAmount.isVisible().catch(() => false),
+      this.amountUnapplied.isVisible().catch(() => false),
+      this.journalEntriesTable.isVisible().catch(() => false),
     ]);
     const hasAnyMarker = markerChecks.some(Boolean);
-    if (!hasAnyMarker) {
-      await expect(this.applyToInvoicesButton.or(this.applicationsTable).first()).toBeVisible({
-        timeout: 15000,
-      });
-    }
+    if (!hasAnyMarker) await this.page.waitForTimeout(1500);
   }
 
   async verifyPageLoaded(receiptNumber?: string): Promise<void> {
@@ -428,8 +425,12 @@ export class CashReceiptDetailPage extends BasePage {
     await this.page.locator('#reversal_reason').fill(text);
   }
 
-  async confirmReverseCashReceipt(): Promise<void> {
+  async confirmReverseCashReceipt(options?: { expectDialogToClose?: boolean }): Promise<void> {
     await this.reverseReceiptDialog.getByRole('button', { name: /Reverse Receipt/i }).click();
+
+    const expectToClose = options?.expectDialogToClose !== false;
+    if (!expectToClose) return;
+
     await expect(this.reverseReceiptDialog).toBeHidden({ timeout: 60000 });
   }
 

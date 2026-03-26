@@ -30,12 +30,12 @@ export class PostingProfilesPage extends BasePage {
     super(page);
 
     this.dashboardHeading = page.getByRole('heading', { name: 'Advanced Posting Profiles' });
-    this.matrixCard = page.getByRole('link', { name: /Posting Profiles Matrix/i });
-    this.simulationCard = page.getByRole('link', { name: /Posting Simulation/i });
-    this.customerGroupsCard = page.getByRole('link', { name: /Customer Posting Groups/i });
-    this.itemGroupsCard = page.getByRole('link', { name: /Item Posting Groups/i });
-    this.vendorGroupsCard = page.getByRole('link', { name: /Vendor Posting Groups/i });
-    this.taxMatrixCard = page.getByRole('link', { name: /Tax Determination Matrix/i });
+    this.matrixCard = page.locator('a[href="/finance/posting-profiles/matrix"]').first();
+    this.simulationCard = page.locator('a[href="/finance/posting-profiles/simulation"]').first();
+    this.customerGroupsCard = page.locator('a[href="/finance/posting-profiles/customer-groups"]').first();
+    this.itemGroupsCard = page.locator('a[href="/finance/posting-profiles/item-groups"]').first();
+    this.vendorGroupsCard = page.locator('a[href="/finance/posting-profiles/vendor-groups"]').first();
+    this.taxMatrixCard = page.locator('a[href="/finance/posting-profiles/tax-matrix"]').first();
 
     this.addRuleButton = page.getByRole('button', { name: 'Add Rule' });
     this.moduleFilter = page.getByRole('combobox', { name: 'All Modules' });
@@ -50,17 +50,20 @@ export class PostingProfilesPage extends BasePage {
   }
 
   async gotoDashboard(): Promise<void> {
-    await this.navigateTo('/finance/posting-profiles');
+    await this.page.goto('/finance/posting-profiles', { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await this.page.waitForLoadState('domcontentloaded');
     await expect(this.dashboardHeading).toBeVisible({ timeout: 15000 });
   }
 
   async gotoMatrix(): Promise<void> {
-    await this.navigateTo('/finance/posting-profiles/matrix');
+    await this.page.goto('/finance/posting-profiles/matrix', { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await this.page.waitForLoadState('domcontentloaded');
     await expect(this.addRuleButton).toBeVisible({ timeout: 15000 });
   }
 
   async gotoSimulation(): Promise<void> {
-    await this.navigateTo('/finance/posting-profiles/simulation');
+    await this.page.goto('/finance/posting-profiles/simulation', { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await this.page.waitForLoadState('domcontentloaded');
     await expect(this.simulateButton).toBeVisible({ timeout: 15000 });
   }
 
@@ -85,11 +88,14 @@ export class PostingProfilesPage extends BasePage {
   async runSimulation(moduleOption: string, accountTypeOption: string): Promise<void> {
     await this.page.locator('#module').click();
     await this.page.waitForSelector('[role="listbox"]', { timeout: 5000 });
-    await this.page.getByRole('option', { name: new RegExp(`^${moduleOption}$`, 'i') }).click();
+    await this.page.getByRole('option', { name: new RegExp(moduleOption, 'i') }).first().click();
 
     await this.page.locator('#account-type').click();
     await this.page.waitForSelector('[role="listbox"]', { timeout: 5000 });
-    await this.page.getByRole('option', { name: new RegExp(`^${accountTypeOption}$`, 'i') }).click();
+    const preferred = this.page.getByRole('option', { name: new RegExp(accountTypeOption, 'i') }).first();
+    const arFallback = this.page.getByRole('option', { name: /Accounts Receivable|AR Control/i }).first();
+    const selected = (await preferred.isVisible().catch(() => false)) ? preferred : arFallback;
+    await selected.click();
 
     await this.simulateButton.click();
   }

@@ -11,6 +11,7 @@ Feature: Invoice journal entry verification (full O2C chain)
     Then invoice JE has debit line matching resolved sales ar_control account
 
   @FIN-INV-TC-002 @p0 @iacs-md
+# Defect DAEE-420: Invoice JE revenue credit hits account_code=4001 instead of resolved sales|revenue account_code=4101.
   Scenario: Invoice JE credit line uses resolved sales revenue account
     Given a new posted sales invoice exists from O2C chain for JE verification
     When invoice GL journal is loaded from database
