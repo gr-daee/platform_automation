@@ -15,7 +15,8 @@
     "prebdd:generate": "echo 'Generating BDD step files...'",
     "pretest": "npm run bdd:generate",
     "verify:db": "node scripts/verify-db-connection.js",
-
+    "test:vapt:van": "node scripts/vapt/run-van-vapt.js",
+    "test:vapt:van:prod": "node scripts/vapt/run-van-vapt.js --mode=prod",
     "comment:execution": "Run by tag: npm run test:dev -- --grep '@O2C-E2E-TC-001' | Run by project: npm run test:dev -- --project=iacs-md | Run by path: npm run test:regression -- e2e/features/o2c/",
     "test:regression": "TEST_EXECUTION_MODE=production playwright test",
     "test:smoke": "TEST_EXECUTION_MODE=production playwright test --grep '@smoke'",
@@ -24,10 +25,8 @@
     "test:debug": "TEST_EXECUTION_MODE=debug TEST_WORKERS=1 playwright test",
     "test:debug:headed": "TEST_EXECUTION_MODE=debug TEST_WORKERS=1 TEST_HEADED=true playwright test",
     "test:dev": "TEST_EXECUTION_MODE=development TEST_WORKERS=1 TEST_HEADED=true playwright test",
-
     "comment:run-by-tag": "Pass tag/project/path after -- e.g. npm run test:tc -- '@O2C-E2E-TC-001' or npm run test:dev -- --grep '@p0' --project=iacs-md",
     "test:tc": "playwright test --grep",
-
     "test:headed": "TEST_HEADED=true playwright test",
     "test:ui": "playwright test --ui",
     "test:login": "playwright test login"
@@ -42,6 +41,7 @@
   "author": "DAEE QA Team",
   "license": "ISC",
   "dependencies": {
+    "@cucumber/cucumber": "^12.7.0",
     "@playwright/test": "^1.48.0",
     "dotenv": "^16.4.7",
     "otpauth": "^9.3.4",
@@ -49,11 +49,12 @@
     "playwright-bdd": "^7.5.0"
   },
   "devDependencies": {
+    "@playwright/mcp": "^0.0.68",
     "@types/node": "^22.10.2",
     "@types/pg": "^8.11.10",
-    "exceljs": "^4.4.0",
     "allure": "^3.1.0",
     "allure-playwright": "^3.4.5",
+    "exceljs": "^4.4.0",
     "monocart-reporter": "^2.10.0",
     "typescript": "^5.8.0"
   }

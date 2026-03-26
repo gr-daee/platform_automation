@@ -195,6 +195,14 @@ Before writing ANY code, you MUST read:
 
 #### Step 2: Generate Test Artifacts
 
+**2.0 Test Independence Standard (MANDATORY)**
+
+- Every test MUST be executable independently within its module (no hidden dependency on previously executed tests).
+- If prerequisites are required (for example: PR approved, RFQ issued, quote selected), the test MUST create or deterministically prepare them inside the same scenario flow.
+- Prefer full-chain scenarios when module state transitions are part of the business outcome; do not rely on ad-hoc existing records unless the scenario explicitly tests reuse behavior.
+- If deterministic setup is not currently possible due to product/configuration gaps, mark the scenario as a documented implementation gap with a tracked defect link and clear skip reason.
+- Build reusable setup helpers/steps so future tests can compose the same independent chain without duplicating logic.
+
 **2.1 Determine Test Type (70/30 Decision)**
 
 Before writing code, determine:

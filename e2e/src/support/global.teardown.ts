@@ -57,8 +57,9 @@ async function globalTeardown(_config: FullConfig) {
     console.log(`📈 Found ${resultFiles.length} test result(s)`);
     console.log('🔄 Generating Allure report...');
 
+    // Allure 3: use relative paths from projectRoot; pattern defaults to ./**/allure-results
     execSync(
-      `npx allure generate "${allureResultsDir}" -o "${allureReportDir}" --clean`,
+      `npx allure generate allure-results --output allure-report --clean`,
       {
         cwd: projectRoot,
         stdio: 'inherit',

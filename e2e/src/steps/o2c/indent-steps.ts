@@ -376,6 +376,26 @@ When('I fill approval comments {string} and submit the approval dialog', async f
   console.log('✅ Filled approval comments and submitted');
 });
 
+/**
+ * When `processApproval` returns `requiresConfirmation` (partial / insufficient stock), the app closes the
+ * Approve Indent dialog and opens **Stock Availability Warning**; user must click **Approve Anyway**
+ * (`handleApprovalSubmit(true)`). No-op if that dialog is not shown (all-sufficient indents).
+ */
+When('I confirm the stock availability warning with Approve Anyway if it appears', async function({ page }) {
+  const stockDlg = page.getByRole('dialog', { name: /stock availability warning/i });
+  try {
+    await expect(stockDlg).toBeVisible({ timeout: 12000 });
+  } catch {
+    console.log('ℹ️ Stock Availability Warning dialog not shown; continuing.');
+    return;
+  }
+  const approveAnyway = stockDlg.getByRole('button', { name: /approve anyway/i });
+  await expect(approveAnyway).toBeVisible({ timeout: 10000 });
+  await approveAnyway.click();
+  await expect(stockDlg).toBeHidden({ timeout: 120000 });
+  console.log('✅ Confirmed stock warning with Approve Anyway');
+});
+
 Then('the indent should be approved successfully', async function({ page }) {
   const detailPage = getIndentDetailPage(page);
   await detailPage.waitForApprovalSuccess();

@@ -1,0 +1,933 @@
+{
+  "executedAt": "2026-03-21T14:56:40.901Z",
+  "mode": "full (staging)",
+  "environment": "https://api-staging.daee.in",
+  "prefix": "VAPT_1774104979",
+  "totals": {
+    "total": 47,
+    "passed": 37,
+    "failed": 10
+  },
+  "securitySummary": {
+    "critical": 2,
+    "high": 8,
+    "medium": 0,
+    "observations": 17
+  },
+  "rateLimitProbe": {
+    "burstRequests": 30,
+    "responses429": 0
+  },
+  "dbSideEffectDelta": 14,
+  "findings": [
+    {
+      "severity": "HIGH",
+      "category": "D",
+      "caseName": "D2 Validation wrong content-type (text/plain)",
+      "issue": "Attack case was accepted unexpectedly — security control missing or bypassed",
+      "status": 200,
+      "response": {
+        "Stts_flg": "S",
+        "Err_cd": "000",
+        "message": "Success"
+      }
+    },
+    {
+      "severity": "HIGH",
+      "category": "D",
+      "caseName": "D3 Validation form-urlencoded content-type",
+      "issue": "Attack case was accepted unexpectedly — security control missing or bypassed",
+      "status": 200,
+      "response": {
+        "Stts_flg": "S",
+        "Err_cd": "000",
+        "message": "Success"
+      }
+    },
+    {
+      "severity": "HIGH",
+      "category": "E",
+      "caseName": "E1 Validation SQL injection in UTR",
+      "issue": "Attack case was accepted unexpectedly — security control missing or bypassed",
+      "status": 200,
+      "response": {
+        "Stts_flg": "S",
+        "Err_cd": "000",
+        "message": "Success"
+      }
+    },
+    {
+      "severity": "HIGH",
+      "category": "E",
+      "caseName": "E2 Validation NoSQL/JSON injection in Sndr_nm",
+      "issue": "Attack case was accepted unexpectedly — security control missing or bypassed",
+      "status": 200,
+      "response": {
+        "Stts_flg": "S",
+        "Err_cd": "000",
+        "message": "Success"
+      }
+    },
+    {
+      "severity": "HIGH",
+      "category": "E",
+      "caseName": "E3 Validation XSS payload in Sndr_nm",
+      "issue": "Attack case was accepted unexpectedly — security control missing or bypassed",
+      "status": 200,
+      "response": {
+        "Stts_flg": "S",
+        "Err_cd": "000",
+        "message": "Success"
+      }
+    },
+    {
+      "severity": "HIGH",
+      "category": "E",
+      "caseName": "E8 Validation type confusion - UTR as array",
+      "issue": "Attack case was accepted unexpectedly — security control missing or bypassed",
+      "status": 200,
+      "response": {
+        "Stts_flg": "S",
+        "Err_cd": "000",
+        "message": "Success"
+      }
+    },
+    {
+      "severity": "HIGH",
+      "category": "E",
+      "caseName": "E9 Validation null byte injection in UTR",
+      "issue": "Attack case was accepted unexpectedly — security control missing or bypassed",
+      "status": 200,
+      "response": {
+        "Stts_flg": "S",
+        "Err_cd": "000",
+        "message": "Success"
+      }
+    },
+    {
+      "severity": "HIGH",
+      "category": "E",
+      "caseName": "E10 Validation oversized payload (10KB body)",
+      "issue": "Attack case was accepted unexpectedly — security control missing or bypassed",
+      "status": 200,
+      "response": {
+        "Stts_flg": "S",
+        "Err_cd": "000",
+        "message": "Success"
+      }
+    },
+    {
+      "severity": "CRITICAL",
+      "category": "F",
+      "caseName": "F6 Validation with past Req_date (30 days old)",
+      "issue": "Attack case was accepted unexpectedly — security control missing or bypassed",
+      "status": 200,
+      "response": {
+        "Stts_flg": "S",
+        "Err_cd": "000",
+        "message": "Success"
+      }
+    },
+    {
+      "severity": "CRITICAL",
+      "category": "F",
+      "caseName": "DB side-effect verification",
+      "issue": "Attack traffic created 14 unexpected DB rows (expected <= 3). Possible data pollution.",
+      "status": "DB check",
+      "response": {
+        "dbDelta": 14
+      }
+    }
+  ],
+  "observations": [
+    {
+      "severity": "OBSERVATION",
+      "category": "A",
+      "caseName": "A1 Validation positive control",
+      "note": "Missing security response headers: X-Content-Type-Options, X-Frame-Options / CSP",
+      "status": 200,
+      "response": {
+        "Stts_flg": "S",
+        "Err_cd": "000",
+        "message": "Success"
+      }
+    },
+    {
+      "severity": "OBSERVATION",
+      "category": "A",
+      "caseName": "A2 Validation missing API key",
+      "note": "Possible sensitive data leakage in response: key",
+      "status": 401,
+      "response": {
+        "status": "failure",
+        "error_code": "UNAUTHORIZED",
+        "message": "Invalid or missing API key",
+        "timestamp": "2026-03-21T14:56:21.491Z"
+      }
+    },
+    {
+      "severity": "OBSERVATION",
+      "category": "A",
+      "caseName": "A3 Validation invalid API key",
+      "note": "Possible sensitive data leakage in response: key",
+      "status": 401,
+      "response": {
+        "status": "failure",
+        "error_code": "UNAUTHORIZED",
+        "message": "Invalid or missing API key",
+        "timestamp": "2026-03-21T14:56:21.905Z"
+      }
+    },
+    {
+      "severity": "OBSERVATION",
+      "category": "A",
+      "caseName": "A4 Validation empty API key string",
+      "note": "Possible sensitive data leakage in response: key",
+      "status": 401,
+      "response": {
+        "status": "failure",
+        "error_code": "UNAUTHORIZED",
+        "message": "Invalid or missing API key",
+        "timestamp": "2026-03-21T14:56:22.325Z"
+      }
+    },
+    {
+      "severity": "OBSERVATION",
+      "category": "A",
+      "caseName": "A5 Posting missing API key",
+      "note": "Possible sensitive data leakage in response: key",
+      "status": 401,
+      "response": {
+        "status": "failure",
+        "error_code": "UNAUTHORIZED",
+        "message": "Invalid or missing API key",
+        "timestamp": "2026-03-21T14:56:22.595Z"
+      }
+    },
+    {
+      "severity": "OBSERVATION",
+      "category": "A",
+      "caseName": "A6 Validation API key in URL (should reject)",
+      "note": "Possible sensitive data leakage in response: key",
+      "status": 401,
+      "response": {
+        "status": "failure",
+        "error_code": "UNAUTHORIZED",
+        "message": "Invalid or missing API key",
+        "timestamp": "2026-03-21T14:56:22.862Z"
+      }
+    },
+    {
+      "severity": "OBSERVATION",
+      "category": "B",
+      "caseName": "B2 Validation invalid signature (gibberish)",
+      "note": "Possible sensitive data leakage in response: secret",
+      "status": 401,
+      "response": {
+        "status": "failure",
+        "error_code": "INVALID_SIGNATURE",
+        "message": "Invalid signature",
+        "timestamp": "2026-03-21T14:56:23.417Z",
+        "debug": {
+          "message": "Invalid signature - HMAC-SHA256 verification failed",
+          "expected_payload_format": "{METHOD}{PATH}{JSON_BODY}{TIMESTAMP}",
+          "your_request": {
+            "method": "POST",
+            "path": "/axis-bank-validation",
+            "body_length": 266,
+            "timestamp_used": "1774104983",
+            "payload_length": 301
+          },
+          "signature_comparison": {
+            "received_prefix": "deadbeefdeadbeef...",
+            "expected_prefix": "0bcfc0c58778cd34..."
+          },
+          "troubleshooting": [
+            "1. Ensure path is exactly: /axis-bank-validation",
+            "2. Ensure JSON body is minified (no extra spaces/newlines)",
+            "3. Ensure X-Timestamp header value matches timestamp in payload",
+            "4. Ensure HMAC-SHA256 with shared secret, output as lowercase hex",
+            "5. Payload format: METHOD + PATH + JSON_BODY + TIMESTAMP (no separators)"
+          ]
+        }
+      }
+    },
+    {
+      "severity": "OBSERVATION",
+      "category": "B",
+      "caseName": "B4 Validation wrong path in signature (path swap attack)",
+      "note": "Possible sensitive data leakage in response: secret",
+      "status": 401,
+      "response": {
+        "status": "failure",
+        "error_code": "INVALID_SIGNATURE",
+        "message": "Invalid signature",
+        "timestamp": "2026-03-21T14:56:24.078Z",
+        "debug": {
+          "message": "Invalid signature - HMAC-SHA256 verification failed",
+          "expected_payload_format": "{METHOD}{PATH}{JSON_BODY}{TIMESTAMP}",
+          "your_request": {
+            "method": "POST",
+            "path": "/axis-bank-validation",
+            "body_length": 266,
+            "timestamp_used": "1774104983",
+            "payload_length": 301
+          },
+          "signature_comparison": {
+            "received_prefix": "c856507aff89a1de...",
+            "expected_prefix": "f906bf42dd539fc8..."
+          },
+          "troubleshooting": [
+            "1. Ensure path is exactly: /axis-bank-validation",
+            "2. Ensure JSON body is minified (no extra spaces/newlines)",
+            "3. Ensure X-Timestamp header value matches timestamp in payload",
+            "4. Ensure HMAC-SHA256 with shared secret, output as lowercase hex",
+            "5. Payload format: METHOD + PATH + JSON_BODY + TIMESTAMP (no separators)"
+          ]
+        }
+      }
+    },
+    {
+      "severity": "OBSERVATION",
+      "category": "B",
+      "caseName": "B5 Validation body tamper after signing (amount inflation)",
+      "note": "Possible sensitive data leakage in response: secret",
+      "status": 401,
+      "response": {
+        "status": "failure",
+        "error_code": "INVALID_SIGNATURE",
+        "message": "Invalid signature",
+        "timestamp": "2026-03-21T14:56:24.332Z",
+        "debug": {
+          "message": "Invalid signature - HMAC-SHA256 verification failed",
+          "expected_payload_format": "{METHOD}{PATH}{JSON_BODY}{TIMESTAMP}",
+          "your_request": {
+            "method": "POST",
+            "path": "/axis-bank-validation",
+            "body_length": 271,
+            "timestamp_used": "1774104984",
+            "payload_length": 306
+          },
+          "signature_comparison": {
+            "received_prefix": "6098af6b790cbf1b...",
+            "expected_prefix": "a33201ae890012c6..."
+          },
+          "troubleshooting": [
+            "1. Ensure path is exactly: /axis-bank-validation",
+            "2. Ensure JSON body is minified (no extra spaces/newlines)",
+            "3. Ensure X-Timestamp header value matches timestamp in payload",
+            "4. Ensure HMAC-SHA256 with shared secret, output as lowercase hex",
+            "5. Payload format: METHOD + PATH + JSON_BODY + TIMESTAMP (no separators)"
+          ]
+        }
+      }
+    },
+    {
+      "severity": "OBSERVATION",
+      "category": "B",
+      "caseName": "B6 Validation VAN tamper after signing (cross-tenant VAN swap)",
+      "note": "Possible sensitive data leakage in response: secret",
+      "status": 401,
+      "response": {
+        "status": "failure",
+        "error_code": "INVALID_SIGNATURE",
+        "message": "Invalid signature",
+        "timestamp": "2026-03-21T14:56:24.467Z",
+        "debug": {
+          "message": "Invalid signature - HMAC-SHA256 verification failed",
+          "expected_payload_format": "{METHOD}{PATH}{JSON_BODY}{TIMESTAMP}",
+          "your_request": {
+            "method": "POST",
+            "path": "/axis-bank-validation",
+            "body_length": 272,
+            "timestamp_used": "1774104984",
+            "payload_length": 307
+          },
+          "signature_comparison": {
+            "received_prefix": "8beb1af37870b93e...",
+            "expected_prefix": "8515643d26d89c88..."
+          },
+          "troubleshooting": [
+            "1. Ensure path is exactly: /axis-bank-validation",
+            "2. Ensure JSON body is minified (no extra spaces/newlines)",
+            "3. Ensure X-Timestamp header value matches timestamp in payload",
+            "4. Ensure HMAC-SHA256 with shared secret, output as lowercase hex",
+            "5. Payload format: METHOD + PATH + JSON_BODY + TIMESTAMP (no separators)"
+          ]
+        }
+      }
+    },
+    {
+      "severity": "OBSERVATION",
+      "category": "B",
+      "caseName": "B8 Validation wrong HMAC algorithm (MD5 signature)",
+      "note": "Possible sensitive data leakage in response: secret",
+      "status": 401,
+      "response": {
+        "status": "failure",
+        "error_code": "INVALID_SIGNATURE",
+        "message": "Invalid signature",
+        "timestamp": "2026-03-21T14:56:24.947Z",
+        "debug": {
+          "message": "Invalid signature - HMAC-SHA256 verification failed",
+          "expected_payload_format": "{METHOD}{PATH}{JSON_BODY}{TIMESTAMP}",
+          "your_request": {
+            "method": "POST",
+            "path": "/axis-bank-validation",
+            "body_length": 266,
+            "timestamp_used": "1774104984",
+            "payload_length": 301
+          },
+          "signature_comparison": {
+            "received_prefix": "592542d658d3cdae...",
+            "expected_prefix": "4ef5f8d37fedeb8f..."
+          },
+          "troubleshooting": [
+            "1. Ensure path is exactly: /axis-bank-validation",
+            "2. Ensure JSON body is minified (no extra spaces/newlines)",
+            "3. Ensure X-Timestamp header value matches timestamp in payload",
+            "4. Ensure HMAC-SHA256 with shared secret, output as lowercase hex",
+            "5. Payload format: METHOD + PATH + JSON_BODY + TIMESTAMP (no separators)"
+          ]
+        }
+      }
+    },
+    {
+      "severity": "OBSERVATION",
+      "category": "D",
+      "caseName": "D4 Validation empty body",
+      "note": "Server returned 500 instead of a clean 4xx — review error handling",
+      "status": 500,
+      "response": {
+        "Stts_flg": "F",
+        "Err_cd": "002",
+        "message": "System error during validation"
+      }
+    },
+    {
+      "severity": "OBSERVATION",
+      "category": "D",
+      "caseName": "D5 Validation non-JSON body",
+      "note": "Server returned 500 instead of a clean 4xx — review error handling",
+      "status": 500,
+      "response": {
+        "Stts_flg": "F",
+        "Err_cd": "002",
+        "message": "System error during validation"
+      }
+    },
+    {
+      "severity": "OBSERVATION",
+      "category": "E",
+      "caseName": "E7 Validation type confusion - amount as object",
+      "note": "Server returned 500 instead of a clean 4xx — review error handling",
+      "status": 500,
+      "response": {
+        "Stts_flg": "F",
+        "Err_cd": "002",
+        "message": "System error during validation"
+      }
+    },
+    {
+      "severity": "OBSERVATION",
+      "category": "G",
+      "caseName": "G1 OPTIONS preflight (CORS headers check)",
+      "note": "Missing security response headers: X-Content-Type-Options, X-Frame-Options / CSP",
+      "status": 200,
+      "response": {
+        "message": "non-json-response"
+      }
+    },
+    {
+      "severity": "OBSERVATION",
+      "category": "G",
+      "caseName": "G3 Malformed JSON triggers 500 (should be 400)",
+      "note": "Server returned 500 instead of a clean 4xx — review error handling",
+      "status": 500,
+      "response": {
+        "Stts_flg": "F",
+        "Err_cd": "002",
+        "message": "System error during validation"
+      }
+    },
+    {
+      "severity": "OBSERVATION",
+      "category": "H",
+      "caseName": "H1 Rate limiting",
+      "note": "No 429 response in 30-request burst. Consider enabling rate limiting / DDoS protection for production.",
+      "status": "0/30 got 429"
+    }
+  ],
+  "results": [
+    {
+      "name": "A1 Validation positive control",
+      "category": "A",
+      "expectedAccept": true,
+      "accepted": true,
+      "passed": true,
+      "status": 200,
+      "durationMs": 1556,
+      "message": "Success"
+    },
+    {
+      "name": "A2 Validation missing API key",
+      "category": "A",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 401,
+      "durationMs": 233,
+      "message": "Invalid or missing API key"
+    },
+    {
+      "name": "A3 Validation invalid API key",
+      "category": "A",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 401,
+      "durationMs": 414,
+      "message": "Invalid or missing API key"
+    },
+    {
+      "name": "A4 Validation empty API key string",
+      "category": "A",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 401,
+      "durationMs": 418,
+      "message": "Invalid or missing API key"
+    },
+    {
+      "name": "A5 Posting missing API key",
+      "category": "A",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 401,
+      "durationMs": 269,
+      "message": "Invalid or missing API key"
+    },
+    {
+      "name": "A6 Validation API key in URL (should reject)",
+      "category": "A",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 401,
+      "durationMs": 273,
+      "message": "Invalid or missing API key"
+    },
+    {
+      "name": "B1 Validation missing signature header",
+      "category": "B",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 401,
+      "durationMs": 265,
+      "message": "Missing X-Signature or X-Timestamp header (required)"
+    },
+    {
+      "name": "B2 Validation invalid signature (gibberish)",
+      "category": "B",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 401,
+      "durationMs": 284,
+      "message": "Invalid signature"
+    },
+    {
+      "name": "B3 Validation empty signature string",
+      "category": "B",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 401,
+      "durationMs": 254,
+      "message": "Missing X-Signature or X-Timestamp header (required)"
+    },
+    {
+      "name": "B4 Validation wrong path in signature (path swap attack)",
+      "category": "B",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 401,
+      "durationMs": 408,
+      "message": "Invalid signature"
+    },
+    {
+      "name": "B5 Validation body tamper after signing (amount inflation)",
+      "category": "B",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 401,
+      "durationMs": 252,
+      "message": "Invalid signature"
+    },
+    {
+      "name": "B6 Validation VAN tamper after signing (cross-tenant VAN swap)",
+      "category": "B",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 401,
+      "durationMs": 134,
+      "message": "Invalid signature"
+    },
+    {
+      "name": "B7 Posting body tamper after signing",
+      "category": "B",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 401,
+      "durationMs": 261,
+      "message": "Request signature validation failed"
+    },
+    {
+      "name": "B8 Validation wrong HMAC algorithm (MD5 signature)",
+      "category": "B",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 401,
+      "durationMs": 218,
+      "message": "Invalid signature"
+    },
+    {
+      "name": "C1 Validation stale timestamp (10 min old)",
+      "category": "C",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 401,
+      "durationMs": 217,
+      "message": "Request timestamp expired (601s old, max 300s)"
+    },
+    {
+      "name": "C2 Validation very old timestamp (1 day old)",
+      "category": "C",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 401,
+      "durationMs": 221,
+      "message": "Request timestamp expired (86400s old, max 300s)"
+    },
+    {
+      "name": "C3 Validation future timestamp (1 hour ahead)",
+      "category": "C",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 401,
+      "durationMs": 264,
+      "message": "Request timestamp expired (3600s old, max 300s)"
+    },
+    {
+      "name": "C4 Validation missing timestamp header",
+      "category": "C",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 401,
+      "durationMs": 263,
+      "message": "Missing X-Signature or X-Timestamp header (required)"
+    },
+    {
+      "name": "C5 Posting duplicate UTR replay (idempotency)",
+      "category": "C",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 400,
+      "durationMs": 364,
+      "message": "Duplicate entry"
+    },
+    {
+      "name": "C6 Posting exact request replay (same signed packet)",
+      "category": "C",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 400,
+      "durationMs": 447,
+      "message": "Duplicate entry"
+    },
+    {
+      "name": "D1 Validation GET request (method not allowed)",
+      "category": "D",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 0,
+      "durationMs": 0,
+      "message": "Request with GET/HEAD method cannot have body."
+    },
+    {
+      "name": "D2 Validation wrong content-type (text/plain)",
+      "category": "D",
+      "expectedAccept": false,
+      "accepted": true,
+      "passed": false,
+      "status": 200,
+      "durationMs": 684,
+      "message": "Success"
+    },
+    {
+      "name": "D3 Validation form-urlencoded content-type",
+      "category": "D",
+      "expectedAccept": false,
+      "accepted": true,
+      "passed": false,
+      "status": 200,
+      "durationMs": 426,
+      "message": "Success"
+    },
+    {
+      "name": "D4 Validation empty body",
+      "category": "D",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 500,
+      "durationMs": 274,
+      "message": "System error during validation"
+    },
+    {
+      "name": "D5 Validation non-JSON body",
+      "category": "D",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 500,
+      "durationMs": 251,
+      "message": "System error during validation"
+    },
+    {
+      "name": "E1 Validation SQL injection in UTR",
+      "category": "E",
+      "expectedAccept": false,
+      "accepted": true,
+      "passed": false,
+      "status": 200,
+      "durationMs": 408,
+      "message": "Success"
+    },
+    {
+      "name": "E2 Validation NoSQL/JSON injection in Sndr_nm",
+      "category": "E",
+      "expectedAccept": false,
+      "accepted": true,
+      "passed": false,
+      "status": 200,
+      "durationMs": 498,
+      "message": "Success"
+    },
+    {
+      "name": "E3 Validation XSS payload in Sndr_nm",
+      "category": "E",
+      "expectedAccept": false,
+      "accepted": true,
+      "passed": false,
+      "status": 200,
+      "durationMs": 456,
+      "message": "Success"
+    },
+    {
+      "name": "E4 Validation zero amount",
+      "category": "E",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 400,
+      "durationMs": 214,
+      "message": "Amount must be at least 0.01"
+    },
+    {
+      "name": "E5 Validation negative amount",
+      "category": "E",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 400,
+      "durationMs": 225,
+      "message": "Amount must be at least 0.01"
+    },
+    {
+      "name": "E6 Validation extremely large amount (overflow probe)",
+      "category": "E",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 400,
+      "durationMs": 210,
+      "message": "Amount exceeds maximum limit of 1000000000"
+    },
+    {
+      "name": "E7 Validation type confusion - amount as object",
+      "category": "E",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 500,
+      "durationMs": 230,
+      "message": "System error during validation"
+    },
+    {
+      "name": "E8 Validation type confusion - UTR as array",
+      "category": "E",
+      "expectedAccept": false,
+      "accepted": true,
+      "passed": false,
+      "status": 200,
+      "durationMs": 467,
+      "message": "Success"
+    },
+    {
+      "name": "E9 Validation null byte injection in UTR",
+      "category": "E",
+      "expectedAccept": false,
+      "accepted": true,
+      "passed": false,
+      "status": 200,
+      "durationMs": 445,
+      "message": "Success"
+    },
+    {
+      "name": "E10 Validation oversized payload (10KB body)",
+      "category": "E",
+      "expectedAccept": false,
+      "accepted": true,
+      "passed": false,
+      "status": 200,
+      "durationMs": 494,
+      "message": "Success"
+    },
+    {
+      "name": "E11 Validation missing required field (UTR omitted)",
+      "category": "E",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 400,
+      "durationMs": 214,
+      "message": "UTR is required"
+    },
+    {
+      "name": "E12 Validation missing required field (Txn_amnt omitted)",
+      "category": "E",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 400,
+      "durationMs": 252,
+      "message": "Transaction amount (Txn_amnt) is required"
+    },
+    {
+      "name": "F1 Posting without prior validation",
+      "category": "F",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 400,
+      "durationMs": 320,
+      "message": "Payment must be validated before posting"
+    },
+    {
+      "name": "F2 Posting with wrong Req_type (validation instead of notification)",
+      "category": "F",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 400,
+      "durationMs": 268,
+      "message": "Req_type must be \"notification\" for posting"
+    },
+    {
+      "name": "F3 Cross-tenant VAN (Corp_code mismatch)",
+      "category": "F",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 400,
+      "durationMs": 183,
+      "message": "Corporate code OTHERCORP not found or inactive"
+    },
+    {
+      "name": "F4 Unknown VAN (non-existent Bene_acc_no)",
+      "category": "F",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 400,
+      "durationMs": 159,
+      "message": "Virtual Account Number must be between 6 and 16 characters"
+    },
+    {
+      "name": "F5 Posting with mismatched UTR/Tran_id vs validated",
+      "category": "F",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 400,
+      "durationMs": 279,
+      "message": "UTR mismatch between validation and posting"
+    },
+    {
+      "name": "F6 Validation with past Req_date (30 days old)",
+      "category": "F",
+      "expectedAccept": false,
+      "accepted": true,
+      "passed": false,
+      "status": 200,
+      "durationMs": 424,
+      "message": "Success"
+    },
+    {
+      "name": "G1 OPTIONS preflight (CORS headers check)",
+      "category": "G",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 200,
+      "durationMs": 138,
+      "message": "non-json-response"
+    },
+    {
+      "name": "G2 HEAD request (method not allowed)",
+      "category": "G",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 0,
+      "durationMs": 0,
+      "message": "Request with GET/HEAD method cannot have body."
+    },
+    {
+      "name": "G3 Malformed JSON triggers 500 (should be 400)",
+      "category": "G",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": true,
+      "status": 500,
+      "durationMs": 174,
+      "message": "System error during validation"
+    },
+    {
+      "name": "H1 Rate limiting: 30-request burst (invalid sigs)",
+      "category": "H",
+      "expectedAccept": false,
+      "accepted": false,
+      "passed": false,
+      "status": "0/30 got 429",
+      "durationMs": 0,
+      "message": "WARNING: No 429 observed in 30-request burst — rate limiting may not be active"
+    }
+  ]
+}

@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Axis Bank API Testing Utility</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background-color: #f4f7f9;
+            color: #333;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            background-color: #ffffff;
+            padding: 2.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #1a202c;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+            margin-top: 0;
+        }
+        h2 {
+            color: #2d3748;
+            margin-top: 2rem;
+            font-size: 1.3rem;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #4a5568;
+        }
+        input[type="text"],
+        input[type="password"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #cbd5e0;
+            border-radius: 4px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        textarea {
+            min-height: 200px;
+            resize: vertical;
+            font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+        }
+        button {
+            display: inline-block;
+            background-color: #4299e1;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-right: 1rem;
+            margin-top: 0.5rem;
+        }
+        button:hover {
+            background-color: #2b6cb0;
+        }
+        button:disabled {
+            background-color: #a0aec0;
+            cursor: not-allowed;
+        }
+        button.success {
+            background-color: #48bb78;
+        }
+        button.success:hover {
+            background-color: #38a169;
+        }
+        button.danger {
+            background-color: #f56565;
+        }
+        button.danger:hover {
+            background-color: #e53e3e;
+        }
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .result {
+            margin-top: 2rem;
+            background-color: #edf2f7;
+            padding: 1.5rem;
+            border-radius: 4px;
+            border-left: 5px solid #4299e1;
+        }
+        .result h3 {
+            margin-top: 0;
+            color: #2b6cb0;
+        }
+        .result-item {
+            margin-bottom: 1rem;
+        }
+        .result-item code {
+            display: block;
+            background-color: #1a202c;
+            color: #a0aec0;
+            padding: 1rem;
+            border-radius: 4px;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            position: relative;
+            font-size: 0.85rem;
+        }
+        .api-response {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            border-radius: 4px;
+            border-left: 5px solid #805ad5;
+        }
+        .api-response.success {
+            background-color: #f0fff4;
+            border-left-color: #48bb78;
+        }
+        .api-response.error {
+            background-color: #fff5f5;
+            border-left-color: #f56565;
+        }
+        .api-response h3 {
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .status-badge.success {
+            background-color: #c6f6d5;
+            color: #22543d;
+        }
+        .status-badge.error {
+            background-color: #fed7d7;
+            color: #742a2a;
+        }
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4299e1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .info-box {
+            background-color: #bee3f8;
+            border-left: 4px solid #4299e1;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1.5rem;
+        }
+        .info-box strong {
+            color: #2c5282;
+        }
+        pre {
+            background-color: #2d3748;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🔐 Axis Bank API Testing Utility</h1>
+        
+        <div class="info-box">
+            <strong>Quick Start:</strong> Enter your JSON payload below and click "Test Both APIs" to automatically call both validation and posting endpoints with proper HMAC-SHA256 signatures.
+        </div>
+
+        <h2>Configuration</h2>
+        
+        <div class="form-group">
+            <label for="baseUrl">Base URL</label>
+            <input type="text" id="baseUrl" value="https://api-staging.daee.in" placeholder="https://api-staging.daee.in">
+        </div>
+
+        <div class="form-group">
+            <label for="apiKey">X-API-KEY</label>
+            <input type="password" id="apiKey" value="axis_bank_staging_webhook_cgfzExiAWcQMcdlCy8TrdLHOgVADUuOz_chk1aa501">
+        </div>
+
+        <div class="form-group">
+            <label for="sharedSecret">Shared Secret (for HMAC-SHA256)</label>
+            <input type="password" id="sharedSecret" value="axisbank_staging_00baa492406e57463d417a570e0c58cc93890b5d9105d9d847f3bfedecd3b399">
+        </div>
+
+        <h2>Test Case Selection</h2>
+        
+        <div class="form-group">
+            <label for="testCaseSelect">Select Test Case</label>
+            <select id="testCaseSelect">
+                <optgroup label="Happy Path Tests">
+                    <option value="TC_ABP_01">TC_ABP_01 - Valid VAN with mapped dealer</option>
+                    <option value="TC_ABP_05">TC_ABP_05 - Successful posting with FIFO allocation</option>
+                </optgroup>
+                <optgroup label="Negative Tests">
+                    <option value="TC_ABP_02">TC_ABP_02 - Invalid/unmapped VAN</option>
+                    <option value="TC_ABP_03">TC_ABP_03 - Invalid signature</option>
+                    <option value="TC_ABP_04">TC_ABP_04 - Inactive dealer VAN</option>
+                    <option value="TC_ABP_06">TC_ABP_06 - Unvalidated payment posting</option>
+                </optgroup>
+                <optgroup label="Edge Cases - Validation">
+                    <option value="TC_ABP_07">TC_ABP_07 - Duplicate posting (same UTR)</option>
+                    <option value="TC_ABP_08">TC_ABP_08 - Amount mismatch</option>
+                    <option value="TC_ABP_28">TC_ABP_28 - Zero amount payment</option>
+                    <option value="TC_ABP_29">TC_ABP_29 - Negative amount payment</option>
+                    <option value="TC_ABP_30">TC_ABP_30 - Very large amount</option>
+                </optgroup>
+                <optgroup label="FIX-001 - Sender Account Matching">
+                    <option value="TC_ABP_09">TC_ABP_09 - Exact match</option>
+                    <option value="TC_ABP_10">TC_ABP_10 - Whitespace differences</option>
+                    <option value="TC_ABP_11">TC_ABP_11 - Case differences</option>
+                    <option value="TC_ABP_12">TC_ABP_12 - Mismatched sender account</option>
+                    <option value="TC_ABP_13">TC_ABP_13 - IFSC normalization</option>
+                </optgroup>
+                <optgroup label="FIX-002 - EPD Discount">
+                    <option value="TC_ABP_14">TC_ABP_14 - EPD within 7 days (2.5%)</option>
+                    <option value="TC_ABP_15">TC_ABP_15 - EPD 8-15 days (2.0%)</option>
+                    <option value="TC_ABP_16">TC_ABP_16 - No EPD after 30 days</option>
+                    <option value="TC_ABP_17">TC_ABP_17 - EPD on taxable amount only</option>
+                    <option value="TC_ABP_18">TC_ABP_18 - Partial payment EPD</option>
+                </optgroup>
+                <optgroup label="FIX-003 - Bank Account">
+                    <option value="TC_ABP_20">TC_ABP_20 - Axis Bank VAN account (1812)</option>
+                    <option value="TC_ABP_21">TC_ABP_21 - Tenant-configured bank account</option>
+                    <option value="TC_ABP_22">TC_ABP_22 - A/R Schedule III classification</option>
+                </optgroup>
+                <optgroup label="Security Tests">
+                    <option value="TC_ABP_26">TC_ABP_26 - No debug info in errors</option>
+                    <option value="TC_ABP_27">TC_ABP_27 - HMAC signature strictness</option>
+                    <option value="TC_ABP_31">TC_ABP_31 - XSS prevention in UTR</option>
+                    <option value="TC_ABP_32">TC_ABP_32 - SQL injection prevention</option>
+                </optgroup>
+                <optgroup label="Business Logic">
+                    <option value="TC_ABP_23">TC_ABP_23 - FIFO allocation order</option>
+                    <option value="TC_ABP_24">TC_ABP_24 - Overpayment creates advance</option>
+                    <option value="TC_ABP_25">TC_ABP_25 - No invoices - full advance</option>
+                    <option value="TC_ABP_33">TC_ABP_33 - Concurrent payments</option>
+                    <option value="TC_ABP_40">TC_ABP_40 - Idempotency test</option>
+                </optgroup>
+                <option value="CUSTOM">Custom Payload</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <button id="loadTestCaseBtn" class="success">📋 Load Selected Test Case</button>
+            <button id="loadSampleBtn">🎲 Generate Random Sample</button>
+        </div>
+
+        <h2>Test Payload</h2>
+        
+        <div class="form-group">
+            <label for="requestBody">Request Body (JSON)</label>
+            <textarea id="requestBody" placeholder='{"key":"value"}'></textarea>
+        </div>
+
+        <div class="button-group">
+            <button id="testBothBtn" class="success">🚀 Test Both APIs (Validation → Posting)</button>
+            <button id="testValidationBtn">Test Validation Only</button>
+            <button id="testPostingBtn">Test Posting Only</button>
+            <button id="generateCurlBtn">📋 Generate Curl Commands</button>
+        </div>
+
+        <div id="curlOutput" style="display: none;"></div>
+
+        <div id="validationResult" style="display: none;"></div>
+        <div id="postingResult" style="display: none;"></div>
+
+    </div>
+
+    <script>
+        // Test Case Payload Templates
+        const testCasePayloads = {
+            "TC_ABP_01": {
+                name: "Valid VAN with mapped dealer",
+                payload: {
+                    "Req_type": "validation",
+                    "Tran_id": "TC01-{{timestamp}}",
+                    "Req_date": "{{today}}",
+                    "UTR": "TC01-{{timestamp}}",
+                    "Bene_acc_no": "IACS1234",
+                    "Corp_code": "IACS",
+                    "Txn_amnt": "10000.00",
+                    "Pmode": "NEFT",
+                    "Sndr_acnt": "1122334455",
+                    "Sndr_ifsc": "HDFC0009307",
+                    "Sndr_nm": "DEMO DEALER PVT LTD"
+                }
+            },
+            "TC_ABP_02": {
+                name: "Invalid/unmapped VAN",
+                payload: {
+                    "UTR": "TC02-{{timestamp}}",
+                    "Tran_id": "TC02-{{timestamp}}",
+                    "Bene_acc_no": "INVALID9999",
+                    "Req_type": "validation",
+                    "Req_date": "{{today}}",
+                    "Txn_amnt": "5000.00",
+                    "Pmode": "NEFT",
+                    "Sndr_acnt": "1122334455",
+                    "Sndr_nm": "TEST SENDER",
+                    "Sndr_ifsc": "HDFC0009307"
+                }
+            },
+            "TC_ABP_03": {
+                name: "Invalid signature (will be tampered)",
+                payload: {
+                    "UTR": "TC0-{{timestamp}}",
+                    "Tran_id": "TC0-{{timestamp}}",
+                    "Bene_acc_no": "IACS1234",
+                    "Corp_code": "IACS",
+                    "Req_type": "validation",
+                    "Req_date": "{{today}}",
+                    "Txn_amnt": "5000.00",
+                    "Pmode": "NEFT",
+                    "Sndr_acnt": "1122334455",
+                    "Sndr_nm": "TEST SENDER",
+                    "Sndr_ifsc": "HDFC0009307"
+                },
+                tamperSignature: true
+            },
+            "TC_ABP_04": {
+                name: "Inactive dealer VAN",
+                payload: {
+                    "UTR": "TC0-{{timestamp}}",
+                    "Tran_id": "TC0-{{timestamp}}",
+                    "Bene_acc_no": "INACTIVE123",
+                    "Req_type": "validation",
+                    "Req_date": "{{today}}",
+                    "Txn_amnt": "5000.00",
+                    "Pmode": "NEFT",
+                    "Sndr_acnt": "1122334455",
+                    "Sndr_nm": "INACTIVE DEALER",
+                    "Sndr_ifsc": "HDFC0009307"
+                }
+            },
+            "TC_ABP_06": {
+                name: "Unvalidated payment posting",
+                payload: {
+                    "UTR": "TC06-NOVALIDATE-{{timestamp}}",
+                    "Tran_id": "TC06-NOVALIDATE-{{timestamp}}",
+                    "Bene_acc_no": "IACS1234",
+                    "Corp_code": "IACS",
+                    "Req_type": "notification",
+                    "Req_date": "{{today}}",
+                    "Txn_amnt": "5000.00",
+                    "Pmode": "NEFT",
+                    "Sndr_acnt": "1122334455",
+                    "Sndr_nm": "TEST SENDER",
+                    "Sndr_ifsc": "HDFC0009307"
+                }
+            },
+            "TC_ABP_07": {
+                name: "Duplicate posting",
+                payload: {
+                    "UTR": "DUPLICATE-UTR-001",
+                    "Tran_id": "DUPLICATE-UTR-001",
+                    "Bene_acc_no": "IACS1234",
+                    "Corp_code": "IACS",
+                    "Req_type": "validation",
+                    "Req_date": "{{today}}",
+                    "Txn_amnt": "5000.00",
+                    "Pmode": "NEFT",
+                    "Sndr_acnt": "1122334455",
+                    "Sndr_nm": "TEST SENDER",
+                    "Sndr_ifsc": "HDFC0009307"
+                },
+                note: "Run this twice to test duplicate detection"
+            },
+            "TC_ABP_08": {
+                name: "Amount mismatch",
+                payload: {
+                    "UTR": "TC0-{{timestamp}}",
+                    "Tran_id": "TC0-{{timestamp}}",
+                    "Bene_acc_no": "IACS1234",
+                    "Corp_code": "IACS",
+                    "Req_type": "validation",
+                    "Req_date": "{{today}}",
+                    "Txn_amnt": "10000.00",
+                    "Pmode": "NEFT",
+                    "Sndr_acnt": "1122334455",
+                    "Sndr_nm": "TEST SENDER",
+                    "Sndr_ifsc": "HDFC0009307"
+                },
+                note: "Validate with 10000, then post with 15000 (change amount before posting)"
+            },
+            "TC_ABP_09": {
+                name: "Exact sender account match",
+                payload: {
+                    "UTR": "TC0-{{timestamp}}",
+                    "Tran_id": "TC0-{{timestamp}}",
+                    "Bene_acc_no": "IACS1234",
+                    "Corp_code": "IACS",
+                    "Req_type": "validation",
+                    "Req_date": "{{today}}",
+                    "Txn_amnt": "5000.00",
+                    "Pmode": "NEFT",
+                    "Sndr_acnt": "1234567890",
+                    "Sndr_nm": "TEST SENDER",
+                    "Sndr_ifsc": "HDFC0009307"
+                }
+            },
+            "TC_ABP_10": {
+                name: "Whitespace in sender account",
+                payload: {
+                    "UTR": "TC0-{{timestamp}}",
+                    "Tran_id": "TC0-{{timestamp}}",
+                    "Bene_acc_no": "IACS1234",
+                    "Corp_code": "IACS",
+                    "Req_type": "validation",
+                    "Req_date": "{{today}}",
+                    "Txn_amnt": "5000.00",
+                    "Pmode": "NEFT",
+                    "Sndr_acnt": " 1234567890 ",
+                    "Sndr_nm": "TEST SENDER",
+                    "Sndr_ifsc": "HDFC0009307"
+                },
+                note: "Validate with spaces, post without spaces (should accept)"
+            },
+            "TC_ABP_11": {
+                name: "Case differences in sender account",
+                payload: {
+                    "UTR": "TC0-{{timestamp}}",
+                    "Tran_id": "TC0-{{timestamp}}",
+                    "Bene_acc_no": "IACS1234",
+                    "Corp_code": "IACS",
+                    "Req_type": "validation",
+                    "Req_date": "{{today}}",
+                    "Txn_amnt": "5000.00",
+                    "Pmode": "NEFT",
+                    "Sndr_acnt": "ABC123",
+                    "Sndr_nm": "TEST SENDER",
+                    "Sndr_ifsc": "HDFC0009307"
+                },
+                note: "Validate with ABC123, post with abc123 (should accept)"
+            },
+            "TC_ABP_12": {
+                name: "Mismatched sender account",
+                payload: {
+                    "UTR": "TC0-{{timestamp}}",
+                    "Tran_id": "TC0-{{timestamp}}",
+                    "Bene_acc_no": "IACS1234",
+                    "Corp_code": "IACS",
+                    "Req_type": "validation",
+                    "Req_date": "{{today}}",
+                    "Txn_amnt": "5000.00",
+                    "Pmode": "NEFT",
+                    "Sndr_acnt": "1234567890",
+                    "Sndr_nm": "TEST SENDER",
+                    "Sndr_ifsc": "HDFC0009307"
+                },
+                note: "Validate with 1234567890, then post with 9876543210 (should reject)"
+            },
+            "TC_ABP_13": {
+                name: "IFSC normalization",
+                payload: {
+                    "UTR": "TC0-{{timestamp}}",
+                    "Tran_id": "TC0-{{timestamp}}",
+                    "Bene_acc_no": "IACS1234",
+                    "Corp_code": "IACS",
+                    "Req_type": "validation",
+                    "Req_date": "{{today}}",
+                    "Txn_amnt": "5000.00",
+                    "Pmode": "NEFT",
+                    "Sndr_acnt": "1122334455",
+                    "Sndr_nm": "TEST SENDER",
+                    "Sndr_ifsc": "HDFC0009307"
+                },
+                note: "Validate with HDFC0009307, post with hdfc0009307 (lowercase, should accept)"
+            },
+            "TC_ABP_14": {
+                name: "EPD within 7 days (2.5%)",
+                payload: {
+                    "UTR": "TC0-{{timestamp}}",
+                    "Tran_id": "TC0-{{timestamp}}",
+                    "Bene_acc_no": "IACS1234",
+                    "Corp_code": "IACS",
+                    "Req_type": "validation",
+                    "Req_date": "{{today}}",
+                    "Txn_amnt": "11800.00",
+                    "Pmode": "NEFT",
+                    "Sndr_acnt": "1122334455",
+                    "Sndr_nm": "EPD TEST DEALER",
+                    "Sndr_ifsc": "HDFC0009307"
+                },
+                note: "Verify EPD 2.5% applied on taxable amount in cash_receipt_applications"
+            },
+            "TC_ABP_15": {
+                name: "EPD 8-15 days (2.0%)",
+                payload: {
+                    "UTR": "TC0-{{timestamp}}",
+                    "Tran_id": "TC0-{{timestamp}}",
+                    "Bene_acc_no": "IACS1234",
+                    "Corp_code": "IACS",
+                    "Req_type": "validation",
+                    "Req_date": "{{today}}",
+                    "Txn_amnt": "11800.00",
+                    "Pmode": "NEFT",
+                    "Sndr_acnt": "1122334455",
+                    "Sndr_nm": "EPD TEST DEALER",
+                    "Sndr_ifsc": "HDFC0009307"
+                },
+                note: "Invoice should be 10 days old. Verify EPD 2.0% applied"
+            },
+            "TC_ABP_16": {
+                name: "No EPD after 30 days",
+                payload: {
+                    "UTR": "TC0-{{timestamp}}",
+                    "Tran_id": "TC0-{{timestamp}}",
+                    "Bene_acc_no": "IACS1234",
+                    "Corp_code": "IACS",
+                    "Req_type": "validation",
+                    "Req_date": "{{today}}",
+                    "Txn_amnt": "11800.00",
+                    "Pmode": "NEFT",
+                    "Sndr_acnt": "1122334455",
+                    "Sndr_nm": "EPD TEST DEALER",
+                    "Sndr_ifsc": "HDFC0009307"
+                },
+                note: "Invoice should be 45 days old. Verify discount_taken = 0"
+            },
+            "TC_ABP_28": {
+                name: "Zero amount",
+                payload: {
+                    "UTR": "TC0-{{timestamp}}",
+                    "Tran_id": "TC0-{{timestamp}}",
+                    "Bene_acc_no": "IACS1234",
+                    "Corp_code": "IACS",
+                    "Req_type": "validation",
+                    "Req_date": "{{today}}",
+                    "Txn_amnt": "0.00",
+                    "Pmode": "NEFT",
+                    "Sndr_acnt": "1122334455",
+                    "Sndr_nm": "TEST SENDER",
+                    "Sndr_ifsc": "HDFC0009307"
+                }
+            },
+            "TC_ABP_29": {
+                name: "Negative amount",
+                payload: {
+                    "UTR": "TC0-{{timestamp}}",
+                    "Tran_id": "TC0-{{timestamp}}",
+                    "Bene_acc_no": "IACS1234",
+                    "Corp_code": "IACS",
+                    "Req_type": "validation",
+                    "Req_date": "{{today}}",
+                    "Txn_amnt": "-1000.00",
+                    "Pmode": "NEFT",
+                    "Sndr_acnt": "1122334455",
+                    "Sndr_nm": "TEST SENDER",
+                    "Sndr_ifsc": "HDFC0009307"
+                }
+            },
+            "TC_ABP_30": {
+                name: "Very large amount",
+                payload: {
+                    "UTR": "TC0-{{timestamp}}",
+                    "Tran_id": "TC0-{{timestamp}}",
+                    "Bene_acc_no": "IACS1234",
+                    "Corp_code": "IACS",
+                    "Req_type": "validation",
+                    "Req_date": "{{today}}",
+                    "Txn_amnt": "999999999999.99",
+                    "Pmode": "NEFT",
+                    "Sndr_acnt": "1122334455",
+                    "Sndr_nm": "TEST SENDER",
+                    "Sndr_ifsc": "HDFC0009307"
+                }
+            },
+            "TC_ABP_31": {
+                name: "XSS in UTR",
+                payload: {
+                    "UTR": "UTR{{xss_payload}}",
+                    "Tran_id": "TC31-{{timestamp}}",
+                    "Bene_acc_no": "IACS1234",
+                    "Corp_code": "IACS",
+                    "Req_type": "validation",
+                    "Req_date": "{{today}}",
+                    "Txn_amnt": "5000.00",
+                    "Pmode": "NEFT",
+                    "Sndr_acnt": "1122334455",
+                    "Sndr_nm": "TEST SENDER",
+                    "Sndr_ifsc": "HDFC0009307"
+                }
+            },
+            "TC_ABP_32": {
+                name: "SQL injection in VAN",
+                payload: {
+                    "UTR": "TC0-{{timestamp}}",
+                    "Tran_id": "TC0-{{timestamp}}",
+                    "Bene_acc_no": "1234'; DROP TABLE van_payment_collections;--",
+                    "Req_type": "validation",
+                    "Req_date": "{{today}}",
+                    "Txn_amnt": "5000.00",
+                    "Pmode": "NEFT",
+                    "Sndr_acnt": "1122334455",
+                    "Sndr_nm": "TEST SENDER",
+                    "Sndr_ifsc": "HDFC0009307"
+                }
+            },
+            "TC_ABP_40": {
+                name: "Idempotency test",
+                payload: {
+                    "UTR": "IDEMPOTENT-001",
+                    "Tran_id": "IDEMPOTENT-001",
+                    "Bene_acc_no": "IACS1234",
+                    "Corp_code": "IACS",
+                    "Req_type": "validation",
+                    "Req_date": "{{today}}",
+                    "Txn_amnt": "5000.00",
+                    "Pmode": "NEFT",
+                    "Sndr_acnt": "1122334455",
+                    "Sndr_nm": "TEST SENDER",
+                    "Sndr_ifsc": "HDFC0009307"
+                },
+                note: "Send this request twice - should handle gracefully"
+            }
+        };
+
+        // Set default JSON body
+        const todayDate = new Date().toISOString().split('T')[0];
+        const timestamp = Math.floor(Date.now() / 1000);
+        document.getElementById('requestBody').value = JSON.stringify({
+            "Req_type": "validation",
+            "Tran_id": "AXIS-" + todayDate.replace(/-/g, '') + "-" + timestamp,
+            "Req_date": todayDate,
+            "UTR": "UTR" + todayDate.replace(/-/g, '') + timestamp,
+            "Bene_acc_no": "IACS1234",
+            "Corp_code": "IACS",
+            "Txn_amnt": "1000.00",
+            "Pmode": "NEFT",
+            "Sndr_acnt": "1234567890",
+            "Sndr_ifsc": "UTIB0000001",
+            "Sndr_nm": "Test Customer Pvt Ltd"
+        }, null, 2);
+
+        // HMAC-SHA256 signature generation
+        async function hmacSha256(secret, message) {
+            const encoder = new TextEncoder();
+            const keyData = encoder.encode(secret);
+            const messageData = encoder.encode(message);
+
+            const cryptoKey = await window.crypto.subtle.importKey(
+                'raw',
+                keyData,
+                { name: 'HMAC', hash: 'SHA-256' },
+                false,
+                ['sign']
+            );
+
+            const signatureBuffer = await window.crypto.subtle.sign('HMAC', cryptoKey, messageData);
+            
+            return Array.from(new Uint8Array(signatureBuffer))
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join('');
+        }
+
+        // Generic API call function
+        async function callAPI(endpoint, requestType) {
+            const baseUrl = document.getElementById('baseUrl').value;
+            const apiKey = document.getElementById('apiKey').value;
+            const sharedSecret = document.getElementById('sharedSecret').value;
+            const requestBodyRaw = document.getElementById('requestBody').value;
+
+            if (!baseUrl || !apiKey || !sharedSecret) {
+                alert('Please fill in all configuration fields.');
+                return null;
+            }
+
+            let requestBody = '';
+            let requestBodyObj = null;
+            try {
+                requestBodyObj = JSON.parse(requestBodyRaw);
+                // Update Req_type based on endpoint
+                requestBodyObj.Req_type = requestType;
+                requestBody = JSON.stringify(requestBodyObj);
+            } catch (error) {
+                alert('Invalid JSON in Request Body. Please correct it and try again.\nError: ' + error.message);
+                return null;
+            }
+
+            const httpMethod = 'POST';
+            const timestamp = Math.floor(Date.now() / 1000);
+            
+            // For signature: use simplified path without /functions/v1
+            const signaturePath = endpoint.replace('/functions/v1', '');
+            const payloadString = `${httpMethod}${signaturePath}${requestBody}${timestamp}`;
+            
+            try {
+                const signature = await hmacSha256(sharedSecret, payloadString);
+                
+                const startTime = Date.now();
+                
+                const response = await fetch(baseUrl + endpoint, {
+                    method: httpMethod,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-KEY': apiKey,
+                        'X-Timestamp': timestamp.toString(),
+                        'X-Signature': signature
+                    },
+                    body: requestBody
+                });
+
+                const duration = Date.now() - startTime;
+                const responseData = await response.json();
+
+                return {
+                    success: response.ok,
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries()),
+                    data: responseData,
+                    duration: duration,
+                    request: {
+                        endpoint: endpoint,
+                        signaturePath: signaturePath,
+                        timestamp: timestamp,
+                        signature: signature,
+                        body: requestBody,
+                        payloadString: payloadString
+                    }
+                };
+
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error.message,
+                    request: {
+                        endpoint: endpoint,
+                        signaturePath: signaturePath,
+                        body: requestBody
+                    }
+                };
+            }
+        }
+
+        // Display API result
+        function displayResult(result, resultDivId, apiName) {
+            const resultDiv = document.getElementById(resultDivId);
+            
+            if (!result) {
+                resultDiv.style.display = 'none';
+                return;
+            }
+
+            const isSuccess = result.success && !result.error;
+            const statusClass = isSuccess ? 'success' : 'error';
+            const statusBadge = isSuccess ? 
+                `<span class="status-badge success">✓ ${result.status} ${result.statusText}</span>` :
+                `<span class="status-badge error">✗ ${result.error || result.status + ' ' + result.statusText}</span>`;
+
+            let html = `
+                <div class="api-response ${statusClass}">
+                    <h3>${apiName} ${statusBadge}</h3>
+                    ${result.duration ? `<p><strong>Response Time:</strong> ${result.duration}ms</p>` : ''}
+                    
+                    <div class="result-item">
+                        <label><strong>Request Details:</strong></label>
+                        <code>Endpoint: ${result.request.endpoint}
+Timestamp: ${result.request.timestamp}
+Signature: ${result.request.signature}
+
+Payload String:
+${result.request.payloadString || 'N/A'}
+
+Request Body:
+${result.request.body}</code>
+                    </div>
+
+                    ${result.data ? `
+                    <div class="result-item">
+                        <label><strong>Response Data:</strong></label>
+                        <pre>${JSON.stringify(result.data, null, 2)}</pre>
+                    </div>
+                    ` : ''}
+
+                    ${result.error ? `
+                    <div class="result-item">
+                        <label><strong>Error:</strong></label>
+                        <code style="color: #fc8181;">${result.error}</code>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+
+            resultDiv.innerHTML = html;
+            resultDiv.style.display = 'block';
+        }
+
+        // Event Listeners
+        document.getElementById('testValidationBtn').addEventListener('click', async function() {
+            this.disabled = true;
+            this.innerHTML = '<span class="loading"></span> Testing...';
+            
+            const result = await callAPI('/functions/v1/axis-bank-validation', 'validation');
+            displayResult(result, 'validationResult', '1️⃣ Validation API');
+            
+            this.disabled = false;
+            this.innerHTML = 'Test Validation Only';
+        });
+
+        document.getElementById('testPostingBtn').addEventListener('click', async function() {
+            this.disabled = true;
+            this.innerHTML = '<span class="loading"></span> Testing...';
+            
+            const result = await callAPI('/functions/v1/axis-bank-posting', 'notification');
+            displayResult(result, 'postingResult', '2️⃣ Posting API');
+            
+            this.disabled = false;
+            this.innerHTML = 'Test Posting Only';
+        });
+
+        document.getElementById('testBothBtn').addEventListener('click', async function() {
+            this.disabled = true;
+            this.innerHTML = '<span class="loading"></span> Testing Both APIs...';
+            
+            // Test Validation first
+            const validationResult = await callAPI('/functions/v1/axis-bank-validation', 'validation');
+            displayResult(validationResult, 'validationResult', '1️⃣ Validation API');
+            
+            // Wait 1 second before posting
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Test Posting
+            const postingResult = await callAPI('/functions/v1/axis-bank-posting', 'notification');
+            displayResult(postingResult, 'postingResult', '2️⃣ Posting API');
+            
+            this.disabled = false;
+            this.innerHTML = '🚀 Test Both APIs (Validation → Posting)';
+        });
+
+        document.getElementById('loadSampleBtn').addEventListener('click', function() {
+            const todayDate = new Date().toISOString().split('T')[0];
+            const timestamp = Math.floor(Date.now() / 1000);
+            const sampleData = {
+                "Req_type": "validation",
+                "Tran_id": "AXIS-" + todayDate.replace(/-/g, '') + "-" + timestamp,
+                "Req_date": todayDate,
+                "UTR": "UTR" + todayDate.replace(/-/g, '') + timestamp,
+                "Bene_acc_no": "IACS1234",
+                "Corp_code": "IACS",
+                "Txn_amnt": (Math.random() * 10000).toFixed(2),
+                "Pmode": "NEFT",
+                "Sndr_acnt": "1234567890",
+                "Sndr_ifsc": "UTIB0000001",
+                "Sndr_nm": "Test Customer " + Math.floor(Math.random() * 100) + " Pvt Ltd"
+            };
+            
+            document.getElementById('requestBody').value = JSON.stringify(sampleData, null, 2);
+            alert('Sample data loaded with random values!');
+        });
+
+        // Generate fresh payload with current timestamp
+        function generateFreshPayload(testCase) {
+            const timestamp = Date.now();
+            const today = new Date().toISOString().split('T')[0];
+            const xssPayload = '<script>alert(1)<\/script>';
+            
+            // Convert to JSON string, replace templates, then parse back
+            let payloadStr = JSON.stringify(testCase.payload);
+            payloadStr = payloadStr.replace(/\{\{timestamp\}\}/g, timestamp);
+            payloadStr = payloadStr.replace(/\{\{today\}\}/g, today);
+            payloadStr = payloadStr.replace(/\{\{xss_payload\}\}/g, xssPayload);
+            
+            return JSON.parse(payloadStr);
+        }
+
+        // Load selected test case
+        document.getElementById('loadTestCaseBtn').addEventListener('click', function() {
+            const selectedTestCase = document.getElementById('testCaseSelect').value;
+            
+            if (selectedTestCase === 'CUSTOM') {
+                alert('Custom payload mode - edit the JSON directly below.');
+                return;
+            }
+            
+            const testCase = testCasePayloads[selectedTestCase];
+            if (!testCase) {
+                alert('Test case not found!');
+                return;
+            }
+            
+            const freshPayload = generateFreshPayload(testCase);
+            document.getElementById('requestBody').value = JSON.stringify(freshPayload, null, 2);
+            
+            let message = `Test Case Loaded: ${selectedTestCase}\n${testCase.name}`;
+            if (testCase.note) {
+                message += `\n\nNote: ${testCase.note}`;
+            }
+            alert(message);
+        });
+
+        // Generate curl commands
+        document.getElementById('generateCurlBtn').addEventListener('click', async function() {
+            const baseUrl = document.getElementById('baseUrl').value;
+            const apiKey = document.getElementById('apiKey').value;
+            const sharedSecret = document.getElementById('sharedSecret').value;
+            const requestBodyRaw = document.getElementById('requestBody').value;
+
+            if (!baseUrl || !apiKey || !sharedSecret) {
+                alert('Please fill in all configuration fields.');
+                return;
+            }
+
+            let requestBodyObj;
+            try {
+                requestBodyObj = JSON.parse(requestBodyRaw);
+            } catch (error) {
+                alert('Invalid JSON in Request Body.');
+                return;
+            }
+
+            const curlDiv = document.getElementById('curlOutput');
+            curlDiv.innerHTML = '<div class="result"><h3>📋 Generated Curl Commands</h3></div>';
+            
+            // Generate for validation
+            const validationBody = {...requestBodyObj, Req_type: 'validation'};
+            const validationBodyStr = JSON.stringify(validationBody);
+            const validationTimestamp = Math.floor(Date.now() / 1000);
+            const validationEndpoint = '/functions/v1/axis-bank-validation';
+            const validationSignaturePath = '/axis-bank-validation';  // Path for signature calculation
+            const validationPayloadString = `POST${validationSignaturePath}${validationBodyStr}${validationTimestamp}`;
+            const validationSignature = await hmacSha256(sharedSecret, validationPayloadString);
+
+            let curlValidation = `curl -X POST '${baseUrl}${validationEndpoint}' \\
+  -H 'Content-Type: application/json' \\
+  -H 'X-API-KEY: ${apiKey}' \\
+  -H 'X-Timestamp: ${validationTimestamp}' \\
+  -H 'X-Signature: ${validationSignature}' \\
+  -d '${validationBodyStr}'`;
+
+            // Generate for posting
+            const postingBody = {...requestBodyObj, Req_type: 'notification'};
+            const postingBodyStr = JSON.stringify(postingBody);
+            const postingTimestamp = validationTimestamp + 2; // Slightly different timestamp
+            const postingEndpoint = '/functions/v1/axis-bank-posting';
+            const postingSignaturePath = '/axis-bank-posting';  // Path for signature calculation
+            const postingPayloadString = `POST${postingSignaturePath}${postingBodyStr}${postingTimestamp}`;
+            const postingSignature = await hmacSha256(sharedSecret, postingPayloadString);
+
+            let curlPosting = `curl -X POST '${baseUrl}${postingEndpoint}' \\
+  -H 'Content-Type: application/json' \\
+  -H 'X-API-KEY: ${apiKey}' \\
+  -H 'X-Timestamp: ${postingTimestamp}' \\
+  -H 'X-Signature: ${postingSignature}' \\
+  -d '${postingBodyStr}'`;
+
+            curlDiv.innerHTML += 
+                '<div class="result-item">' +
+                    '<label><strong>1️⃣ Validation API Curl:</strong></label>' +
+                    '<code>' + curlValidation + '</code>' +
+                    '<button onclick="copyToClipboard(this, \'validation\')" style="margin-top: 0.5rem;">📋 Copy Validation Curl</button>' +
+                '</div>' +
+                '<div class="result-item">' +
+                    '<label><strong>2️⃣ Posting API Curl:</strong></label>' +
+                    '<code>' + curlPosting + '</code>' +
+                    '<button onclick="copyToClipboard(this, \'posting\')" style="margin-top: 0.5rem;">📋 Copy Posting Curl</button>' +
+                '</div>' +
+                '<div class="info-box">' +
+                    '<strong>Usage:</strong> Copy these commands and run them in your terminal. Run validation first, then posting.' +
+                    '<br><br>' +
+                    '<strong>Tip:</strong> Add <code>| jq</code> at the end for pretty JSON output (requires jq installed).' +
+                '</div>';
+            curlDiv.style.display = 'block';
+
+            // Store for copying
+            window.curlCommands = {
+                validation: curlValidation,
+                posting: curlPosting
+            };
+        });
+
+        // Copy to clipboard function
+        window.copyToClipboard = function(button, type) {
+            const text = window.curlCommands[type];
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = button.innerHTML;
+                button.innerHTML = '✓ Copied!';
+                button.style.backgroundColor = '#48bb78';
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.style.backgroundColor = '';
+                }, 2000);
+            }).catch(err => {
+                alert('Failed to copy: ' + err);
+            });
+        };
+    </script>
+
+</body>
+</html>

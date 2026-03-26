@@ -1,0 +1,189 @@
+TC ID,Test Case,Precondition,Test Steps,Expected Resut,Actual Result,Status (Pass/Fail),Comments
+TC_ABP_01,Verify VAN Validation API accepts valid VAN with mapped dealer,"1. Valid VAN exists in van_dealer_mappings
+ 2. Dealer has outstanding invoices
+ 3. API credentials configured","1. Send validation request with valid VAN (Bene_acc_no)
+ 2. Include valid Corp_id and signature","1. Response code: 00 (Success)
+ 2. Response includes dealer name and VAN details
+ 3. van_payment_collections record created with status=validated","{""Stts_flg"":""S"",""Err_cd"":""000"",""message"":""Success""}",Pass,Happy path - Basic validation
+TC_ABP_02,Verify VAN Validation API rejects invalid/unmapped VAN,1. VAN does not exist in van_dealer_mappings,"1. Send validation request with unmapped VAN
+ 2. Include valid Corp_id and signature","1. Response code: 01 (Invalid VAN)
+ 2. Error message indicates VAN not found
+ 3. No van_payment_collections record created","{""Stts_flg"":""F"",""Err_cd"":""002"",""message"":""Virtual Account Number not found or inactive""}",Pass,Negative test - Invalid VAN
+TC_ABP_03,Verify VAN Validation API rejects invalid signature,"1. Valid VAN exists
+ 2. Invalid/tampered HMAC signature","1. Send validation request with valid VAN
+ 2. Include invalid signature (wrong key or tampered)","1. Response code: 03 (Signature Error)
+ 2. Generic error message (no debug info exposed)
+ 3. No van_payment_collections record created","{""status"":""failure"",""error_code"":""INVALID_SIGNATURE"",""message"":""Invalid signature"",""timestamp"":""2026-01-08T18:32:41.080Z"",""debug"":{""message"":""Invalid signature - HMAC-SHA256 verification failed"",""expected_payload_format"":""{METHOD}{PATH}{JSON_BODY}{TIMESTAMP}"",""your_request"":{""method"":""POST"",""path"":""/axis-bank-validation"",""body_length"":284,""timestamp_used"":""1767897045"",""payload_length"":319},""signature_comparison"":{""received_prefix"":""ba4d43be96d48623..."",""expected_prefix"":""927280df7828186c...""},""troubleshooting"":[""1. Ensure path is exactly: /axis-bank-validation"",""2. Ensure JSON body is minified (no extra spaces/newlines)"",""3. Ensure X-Timestamp header value matches timestamp in payload"",""4. Ensure HMAC-SHA256 with shared secret, output as lowercase hex"",""5. Payload format: METHOD + PATH + JSON_BODY + TIMESTAMP (no separators)""]}}",Pass,Security test - FIX-004
+TC_ABP_04,Verify VAN Validation API rejects inactive dealer VAN,1. VAN exists but dealer is_active=false in dealers table,1. Send validation request with VAN of inactive dealer,"1. Response code: 01 or appropriate error
+ 2. Error indicates dealer is inactive","{""Stts_flg"":""F"",""Err_cd"":""002"",""message"":""Dealer account is inactive or suspended""}%  ",Pass,Edge case - Inactive dealer
+TC_ABP_05,Verify VAN Posting API successfully posts validated payment,"1. Payment validated (status=validated in van_payment_collections)
+ 2. Dealer has outstanding invoices","1. Send posting request with same transaction details
+ 2. Include valid UTR and amount","1. Response code: 00 (Success)
+ 2. van_payment_collections status=posted
+ 3. Cash receipt created
+ 4. Journal entry created with Bank 1812
+ 5. Invoice allocations created (FIFO)","Step 5 failed:
+https://linear.app/daee-issues/issue/DAEE-38/van-issues#comment-474e8d49",Fail,Happy path - Full posting flow
+TC_ABP_06,Verify VAN Posting API rejects unvalidated payment,1. No prior validation for this transaction,1. Send posting request without prior validation,"1. Response code: 02 (Validation Required)
+ 2. Error indicates payment must be validated first
+ 3. No records created","{""Stts_flg"":""F"",""Err_cd"":""002"",""message"":""Payment must be validated before posting""}% ",Pass,Negative test - Missing validation
+TC_ABP_07,Verify VAN Posting API rejects duplicate posting (same UTR),1. Payment already posted with same UTR,1. Send posting request with already posted UTR,"1. Response code: 04 (Duplicate)
+ 2. Error indicates duplicate UTR
+ 3. No new records created","{""Stts_flg"":""F"",""Err_cd"":""002"",""message"":""Duplicate entry""}%  ",Pass,Edge case - Duplicate prevention
+TC_ABP_08,Verify VAN Posting with amount mismatch between validation and posting,"1. Payment validated with amount X
+ 2. Posting request has amount Y (different)","1. Validate payment with amount 10000
+ 2. Post payment with amount 15000","1. Response code: 05 (Amount Mismatch)
+ 2. Error indicates amount mismatch
+ 3. No posting occurs","The diff of 0.01 is ignored and transaction processed:
+https://linear.app/daee-issues/issue/DAEE-38/van-issues#comment-1a319edb
+
+But for mismatch > 0.01:
+{""Stts_flg"":""F"",""Err_cd"":""002"",""message"":""Transaction amount mismatch between validation and posting""}% is returned",Fail,Edge case - Amount mismatch
+TC_ABP_09,Verify posting accepts matching sender account (exact match),"1. Payment validated with sender_account=1234567890
+ 2. Posting has same sender account","1. Validate with Sndr_acnt=1234567890
+ 2. Post with Sndr_acnt=1234567890","1. Response code: 00 (Success)
+ 2. Payment posted successfully","{""Stts_flg"":""S"",""Err_cd"":""000"",""message"":""Success""}%   ",Pass,FIX-001 - Exact match
+TC_ABP_10,Verify posting accepts sender account with whitespace differences,"1. Payment validated with sender_account="" 1234567890 ""
+ 2. Posting has ""1234567890""","1. Validate with Sndr_acnt with leading/trailing spaces
+ 2. Post with trimmed Sndr_acnt","1. Response code: 00 (Success)
+ 2. Normalized comparison accepts payment","{""Stts_flg"":""S"",""Err_cd"":""000"",""message"":""Success""}%   ",Pass,FIX-001 - Whitespace normalization
+TC_ABP_11,Verify posting accepts sender account with case differences,"1. Payment validated with sender_account=""ABC123""
+ 2. Posting has ""abc123""","1. Validate with Sndr_acnt=ABC123
+ 2. Post with Sndr_acnt=abc123","1. Response code: 00 (Success)
+ 2. Case-insensitive comparison accepts payment","{""Stts_flg"":""S"",""Err_cd"":""000"",""message"":""Success""}%   ",Pass,FIX-001 - Case normalization
+TC_ABP_12,Verify posting rejects mismatched sender account,"1. Payment validated with sender_account=1234567890
+ 2. Posting has 9876543210","1. Validate with Sndr_acnt=1234567890
+ 2. Post with Sndr_acnt=9876543210","1. Response code: 06 (Sender Mismatch)
+ 2. Error indicates sender account mismatch
+ 3. No posting occurs","{""Stts_flg"":""F"",""Err_cd"":""002"",""message"":""Sender account mismatch between validation and posting""}%  ",Pass,FIX-001 - Mismatch rejection
+TC_ABP_13,Verify posting accepts matching IFSC with case/whitespace differences,"1. Payment validated with IFSC=""HDFC0001234""
+ 2. Posting has "" hdfc0001234 ""","1. Validate with Sndr_IFSC=HDFC0001234
+ 2. Post with Sndr_IFSC= hdfc0001234 (lowercase, spaces)","1. Response code: 00 (Success)
+ 2. Normalized IFSC comparison accepts payment","{""Stts_flg"":""S"",""Err_cd"":""000"",""message"":""Success""}%   ",Pass,FIX-001 - IFSC normalization
+TC_ABP_14,Verify EPD discount applied for payment within 7 days of invoice,"1. Invoice dated 01-Jan-2026
+ 2. EPD slab: 0-7 days = 2.5%
+ 3. Payment received 05-Jan-2026","1. Post VAN payment on day 5
+ 2. Check cash_receipt_applications.discount_taken","1. EPD calculated: 2.5% of taxable amount
+ 2. discount_taken field populated
+ 3. Invoice balance reduced by (payment + discount)",https://linear.app/daee-issues/issue/DAEE-38/van-issues#comment-7c93f667,Fail,FIX-002 - EPD within 7 days
+TC_ABP_15,Verify EPD discount applied for payment within 8-15 days,"1. Invoice dated 01-Jan-2026
+ 2. EPD slab: 8-15 days = 2.0%
+ 3. Payment received 10-Jan-2026","1. Post VAN payment on day 10
+ 2. Check cash_receipt_applications.discount_taken","1. EPD calculated: 2.0% of taxable amount
+ 2. discount_taken field populated correctly",https://linear.app/daee-issues/issue/DAEE-38/van-issues#comment-7c93f667,Fail,FIX-002 - EPD 8-15 days slab
+TC_ABP_16,Verify no EPD discount for payment after 30 days,"1. Invoice dated 01-Jan-2026
+ 2. EPD slabs end at 30 days
+ 3. Payment received 15-Feb-2026","1. Post VAN payment on day 45
+ 2. Check cash_receipt_applications.discount_taken","1. discount_taken = 0
+ 2. Invoice balance reduced by payment amount only",,Pass,FIX-002 - No EPD after 30 days
+TC_ABP_17,Verify EPD calculated on taxable amount (excluding GST),"1. Invoice: Subtotal=10000, GST=1800, Total=11800
+ 2. EPD slab: 2.5%
+ 3. Payment within 7 days","1. Post VAN payment within EPD period
+ 2. Verify EPD calculation base","1. EPD = 2.5% of 10000 = 250 (not 2.5% of 11800)
+ 2. discount_taken = 250",https://linear.app/daee-issues/issue/DAEE-38/van-issues#comment-7c93f667,Fail,FIX-002 - EPD on taxable amount
+TC_ABP_18,Verify EPD for partial payment allocation,"1. Invoice balance=10000
+ 2. Payment amount=5000
+ 3. EPD slab: 2.5%","1. Post partial VAN payment
+ 2. Verify EPD applied proportionally","1. EPD calculated on allocated portion
+ 2. Invoice balance = 10000 - 5000 - (proportional EPD)",https://linear.app/daee-issues/issue/DAEE-38/van-issues#comment-7c93f667,Fail,FIX-002 - Partial payment EPD
+TC_ABP_19,Verify EPD for tenant without EPD slabs configured,"1. Tenant has no records in epd_discount_slabs
+ 2. Payment within typical EPD period",1. Post VAN payment for tenant without EPD slabs,"1. discount_taken = 0 (graceful fallback)
+ 2. Payment allocated without discount
+ 3. No errors",,,FIX-002 - Missing EPD slabs
+TC_ABP_20,Verify journal entry uses Axis Bank VAN account (1812),"1. Account 1812 exists (Bank - Axis VAN Collection Account)
+ 2. VAN payment posted","1. Post VAN payment
+ 2. Check journal_entry_lines for bank account","1. Debit line uses account 1812
+ 2. Credit line uses A/R account (1700/1702)
+ 3. Journal balanced",,Pass,FIX-003 - Bank account 1812
+TC_ABP_21,Verify journal uses tenant-configured bank account from tenant_settings,"1. tenant_settings has axis_bank_van_gl_account_code=1815
+ 2. Account 1815 exists","1. Configure tenant_settings with custom bank account
+ 2. Post VAN payment","1. Journal entry uses configured account 1815
+ 2. Not default 1812",,,FIX-003 - Tenant override
+TC_ABP_22,Verify A/R account lookup uses Schedule III classification,"1. Demo Tenant: A/R is 1700
+ 2. Idhyah Agri: A/R is 1702
+ 3. Both have classification ca_trade_receivable_unsecured","1. Post VAN payment for Demo Tenant
+ 2. Post VAN payment for Idhyah Agri
+ 3. Check journal entries","1. Demo Tenant journal credits 1700
+ 2. Idhyah Agri journal credits 1702
+ 3. Both correctly identified via Schedule III",,Pass,Schedule III - Dynamic A/R lookup
+TC_ABP_23,Verify FIFO allocation - oldest invoice paid first,"1. Invoice A: 01-Jan-2026, balance=5000
+ 2. Invoice B: 10-Jan-2026, balance=5000
+ 3. Payment=7000","1. Post VAN payment of 7000
+ 2. Check allocation order","1. Invoice A fully paid (5000 allocated)
+ 2. Invoice B partially paid (2000 allocated)
+ 3. FIFO order maintained",https://linear.app/daee-issues/issue/DAEE-38/van-issues#comment-474e8d49,Fail,FIFO allocation order
+TC_ABP_24,Verify overpayment creates dealer advance,"1. Total outstanding invoices=8000
+ 2. Payment received=10000","1. Post VAN payment of 10000
+ 2. Check dealer_advances table","1. All invoices fully paid
+ 2. Dealer advance created for 2000
+ 3. Cash receipt shows allocated + advance",,Pass,"Overpayment handling:
+http://localhost:3000/finance/cash-receipts/2a42c191-3d03-4ad0-9b39-842dfc86cd72"
+TC_ABP_25,Verify payment with no outstanding invoices creates full advance,"1. Dealer has no outstanding invoices
+ 2. Payment received=5000",1. Post VAN payment when no invoices outstanding,"1. No allocations created
+ 2. Full amount as dealer advance
+ 3. Cash receipt status=unapplied",,Pass,Full advance scenario
+TC_ABP_26,Verify error responses do not expose debug information,1. Invalid request that causes internal error,"1. Send request with invalid signature
+ 2. Check error response content","1. Generic error message returned
+ 2. No stack traces exposed
+ 3. No internal variable names
+ 4. No database details","{""status"":""failure"",""error_code"":""INVALID_SIGNATURE"",""message"":""Invalid signature"",""timestamp"":""2026-01-08T19:58:23.551Z"",""debug"":{""message"":""Invalid signature - HMAC-SHA256 verification failed"",""expected_payload_format"":""{METHOD}{PATH}{JSON_BODY}{TIMESTAMP}"",""your_request"":{""method"":""POST"",""path"":""/axis-bank-validation"",""body_length"":282,""timestamp_used"":""1767902172"",""payload_length"":317},""signature_comparison"":{""received_prefix"":""1307801dc9b24a85..."",""expected_prefix"":""1307801dc9b24a85...""},""troubleshooting"":[""1. Ensure path is exactly: /axis-bank-validation"",""2. Ensure JSON body is minified (no extra spaces/newlines)"",""3. Ensure X-Timestamp header value matches timestamp in payload"",""4. Ensure HMAC-SHA256 with shared secret, output as lowercase hex"",""5. Payload format: METHOD + PATH + JSON_BODY + TIMESTAMP (no separators)""]}}%",Fail,FIX-004 - Security
+TC_ABP_27,Verify HMAC signature validation is strict,"1. Valid request payload
+ 2. Signature with 1 character difference","1. Generate valid signature
+ 2. Modify last character
+ 3. Send request","1. Request rejected
+ 2. Error code 03
+ 3. No data processed","{""status"":""failure"",""error_code"":""INVALID_SIGNATURE"",""message"":""Invalid signature"",""timestamp"":""2026-01-08T19:58:23.551Z"",""debug"":{""message"":""Invalid signature - HMAC-SHA256 verification failed"",""expected_payload_format"":""{METHOD}{PATH}{JSON_BODY}{TIMESTAMP}"",""your_request"":{""method"":""POST"",""path"":""/axis-bank-validation"",""body_length"":282,""timestamp_used"":""1767902172"",""payload_length"":317},""signature_comparison"":{""received_prefix"":""1307801dc9b24a85..."",""expected_prefix"":""1307801dc9b24a85...""},""troubleshooting"":[""1. Ensure path is exactly: /axis-bank-validation"",""2. Ensure JSON body is minified (no extra spaces/newlines)"",""3. Ensure X-Timestamp header value matches timestamp in payload"",""4. Ensure HMAC-SHA256 with shared secret, output as lowercase hex"",""5. Payload format: METHOD + PATH + JSON_BODY + TIMESTAMP (no separators)""]}}%",Pass,Signature strictness
+TC_ABP_28,Verify handling of zero amount payment,"1. Valid VAN and dealer
+ 2. Payment amount=0",1. Send validation request with amount=0,"1. Request rejected
+ 2. Error indicates invalid amount","{""Stts_flg"":""F"",""Err_cd"":""002"",""message"":""Transaction amount must be a valid positive number""}%       ",Pass,Edge case - Zero amount
+TC_ABP_29,Verify handling of negative amount payment,"1. Valid VAN and dealer
+ 2. Payment amount=-1000",1. Send validation request with negative amount,"1. Request rejected
+ 2. Error indicates invalid amount","{""Stts_flg"":""F"",""Err_cd"":""002"",""message"":""Transaction amount must be a valid positive number""}%       ",Pass,Edge case - Negative amount
+TC_ABP_30,Verify handling of very large payment amount,"1. Valid VAN
+ 2. Payment amount=999999999999",1. Send validation request with very large amount,"1. System handles gracefully
+ 2. No numeric overflow
+ 3. Appropriate validation","Daily limit cannot exceed ₹10,00,00,000
+On sending Amount greater than this system return ""{""Stts_flg"":""F"",""Err_cd"":""002"",""message"":""Daily collection limit of ₹1000000 exceeded""}%"" test case update needed. ",Pass,Edge case - Large amount
+TC_ABP_31,Verify handling of special characters in UTR,"1. Valid payment
+ 2. UTR contains special chars","1. Send request with UTR=""UTR<script>alert(1)</script>""","1. Request handled safely
+ 2. No XSS vulnerability
+ 3. UTR sanitized or rejected",https://linear.app/daee-issues/issue/DAEE-38/van-issues#comment-93ae24a4,Pass,Security - XSS prevention
+TC_ABP_32,Verify handling of SQL injection in VAN field,1. Malicious VAN input,"1. Send request with Bene_acc_no=""1234; DROP TABLE van_payment_collections;--""","1. Request rejected safely
+ 2. No SQL executed
+ 3. Parameterized queries protect DB","https://linear.app/daee-issues/issue/DAEE-38/van-issues#comment-201a0757
+",Pass,Security - SQL injection
+TC_ABP_33,Verify concurrent payments for same dealer,"1. Two payments arriving simultaneously
+ 2. Same dealer, different UTRs","1. Send two posting requests simultaneously
+ 2. Check for race conditions","1. Both processed correctly
+ 2. No duplicate allocations
+ 3. Invoice balances correct",,,Edge case - Concurrency
+TC_ABP_34,Verify payment for dealer with expired VAN,1. VAN mapping exists but is_active=false,1. Send validation request with expired VAN,"1. Request rejected
+ 2. Error indicates VAN inactive/expired","{""Stts_flg"":""F"",""Err_cd"":""002"",""message"":""Virtual Account Number not found or inactive""}%                                                                       ",Pass,Edge case - Expired VAN
+TC_ABP_35,Verify payment reversal flow,"1. Payment already posted
+ 2. Reversal request received","1. Send reversal request with original UTR
+ 2. Check reversals","1. Original payment marked reversed
+ 2. Reverse journal entry created
+ 3. Invoice balances restored",https://linear.app/daee-issues/issue/DAEE-38/van-issues#comment-571ae8e5,Pass,Reversal handling
+TC_ABP_36,Verify EPD on invoice crossing fiscal year boundary,"1. Invoice: 28-Mar-2026 (FY 25-26)
+ 2. Payment: 05-Apr-2026 (FY 26-27)
+ 3. EPD slab: 0-15 days","1. Post payment crossing fiscal year
+ 2. Check EPD and journal fiscal period","1. EPD calculated based on days (not fiscal year)
+ 2. Journal posted to correct fiscal period
+ 3. Both periods handle correctly",,,Edge case - Fiscal year boundary
+TC_ABP_37,Verify handling when fiscal period is closed,"1. Payment date in closed fiscal period
+ 2. Current period is open",1. Post VAN payment with date in closed period,"1. Appropriate error or handling
+ 2. May post to current period with note
+ 3. No orphaned records",,,Edge case - Closed period
+TC_ABP_38,Verify multi-currency handling (if applicable),"1. Invoice in USD
+ 2. Payment in INR",1. Post payment in different currency,"1. Currency conversion applied
+ 2. Exchange rate recorded
+ 3. Forex gain/loss handled",NA,NA,Edge case - Multi-currency
+TC_ABP_39,Verify system user used for automated journal entries,1. VAN payment posted automatically,"1. Check created_by on journal_entry_headers
+ 2. Verify it is valid auth.users ID","1. created_by is per-tenant system user
+ 2. Not NULL or invalid UUID
+ 3. Audit trail complete",,Pass,Audit - System user
+TC_ABP_40,Verify idempotency - reprocessing same request,"1. Network timeout after successful processing
+ 2. Same request resent","1. Post payment successfully
+ 2. Resend exact same request","1. Second request returns success (idempotent)
+ 2. No duplicate records created
+ 3. Original response returned","{""Stts_flg"":""S"",""Err_cd"":""000"",""message"":""Success - duplicate request processed idempotently""}",Pass,Edge case - Idempotency

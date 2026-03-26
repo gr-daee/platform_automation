@@ -7,6 +7,7 @@ import { testContext } from './test-context';
 import { 
   getUserProfile, 
   getProfilesToAuthenticate, 
+  hasProfile,
   displayProfilesSummary,
   type UserProfile 
 } from './config/user-profiles.config';
@@ -110,6 +111,78 @@ interface UserCredentials {
   permissions?: string[];
 }
 
+function getCliArgValues(flagName: string): string[] {
+  const values: string[] = [];
+  for (let i = 0; i < process.argv.length; i += 1) {
+    const token = process.argv[i];
+    if (token === flagName) {
+      const next = process.argv[i + 1];
+      if (next && !next.startsWith('-')) values.push(next);
+      continue;
+    }
+    if (token.startsWith(`${flagName}=`)) {
+      values.push(token.slice(flagName.length + 1));
+    }
+  }
+  return values.flatMap(v => v.split(',').map(p => p.trim()).filter(Boolean));
+}
+
+function detectEdRequirementFromSelection(): boolean {
+  const grepTokens = [...getCliArgValues('--grep'), ...getCliArgValues('-g')].join(' ');
+  if (/P2P-P4-TC-003|requires-iacs-ed|@iacs-ed|FIN-AR-TC-009|FIN-DL-TC-008|FIN-CM-TC-022|SR-PH7-TC-002/i.test(grepTokens)) return true;
+
+  const featurePaths = process.argv.filter(arg => arg.endsWith('.feature'));
+  for (const featurePath of featurePaths) {
+    try {
+      const content = fs.readFileSync(featurePath, 'utf8');
+      if (/@requires-iacs-ed/i.test(content)) return true;
+    } catch {
+      // Ignore unreadable paths and continue detection.
+    }
+  }
+
+  return false;
+}
+
+function getProfilesToAuthenticateForCurrentRun(): string[] {
+  // Explicit env override always wins.
+  if (process.env.TEST_AUTH_PROFILES) {
+    return getProfilesToAuthenticate();
+  }
+
+  const selectedProjects = getCliArgValues('--project');
+  const profiles = new Set<string>();
+
+  // Map selected projects to their primary auth profiles.
+  if (selectedProjects.length === 0 || selectedProjects.includes('iacs-md')) {
+    if (hasProfile('iacs-md')) profiles.add('iacs-md');
+  }
+  if (selectedProjects.length === 0 || selectedProjects.includes('iacs-ed')) {
+    if (hasProfile('iacs-ed')) profiles.add('iacs-ed');
+  }
+  if (selectedProjects.includes('iacs-finance') || selectedProjects.includes('multi-user-iacs-finance')) {
+    if (hasProfile('iacs-finance-admin')) profiles.add('iacs-finance-admin');
+  }
+  if (selectedProjects.includes('iacs-warehouse') || selectedProjects.includes('multi-user-iacs-warehouse')) {
+    if (hasProfile('iacs-warehouse-manager')) profiles.add('iacs-warehouse-manager');
+  }
+  if (selectedProjects.includes('super-admin') || selectedProjects.includes('multi-user-super-admin')) {
+    if (hasProfile('super-admin')) profiles.add('super-admin');
+  }
+
+  // Secondary approver session is only needed for tagged scenarios.
+  if (detectEdRequirementFromSelection() && hasProfile('iacs-ed')) {
+    profiles.add('iacs-ed');
+  }
+
+  // Safe fallback if no mapping matched.
+  if (profiles.size === 0) {
+    return getProfilesToAuthenticate().filter(p => p !== 'iacs-ed');
+  }
+
+  return [...profiles];
+}
+
 async function authenticateUser(
   baseURL: string,
   user: UserCredentials,
@@ -120,8 +193,11 @@ async function authenticateUser(
   if (user.tenant) console.log(`🏢 Tenant: ${user.tenant}`);
   if (user.role) console.log(`👤 Role: ${user.role}`);
 
+  // In this repo, npm scripts set TEST_HEADED=true (not HEADED).
+  // Treat either env as an indicator that we should launch headed browsers during auth setup.
+  const headed = process.env.HEADED === 'true' || process.env.TEST_HEADED === 'true';
   const browser = await chromium.launch({
-    headless: process.env.HEADED !== 'true',
+    headless: !headed,
   });
 
   const context = await browser.newContext({ baseURL });
@@ -251,8 +327,8 @@ async function globalSetup(config: FullConfig) {
   // Display available profiles
   displayProfilesSummary();
 
-  // Get profiles to authenticate (from env or all)
-  const profilesToAuth = getProfilesToAuthenticate();
+  // Get profiles to authenticate (from env override or run-aware defaults)
+  const profilesToAuth = getProfilesToAuthenticateForCurrentRun();
   console.log(`🎯 Authenticating ${profilesToAuth.length} profile(s): ${profilesToAuth.join(', ')}\n`);
 
   // Convert profiles to UserCredentials format

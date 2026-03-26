@@ -17,6 +17,13 @@ Order-to-cash process including indents, orders, and invoicing.
 - [Test Cases](o2c/test-cases.md)
 - [Module Overview](o2c/README.md)
 
+### Plant Production (`plant-production/`)
+Manufacturing lifecycle: plants, licenses, assets, BOMs, work orders, material issuance, finished goods, and QC.
+- [Knowledge Base](plant-production/knowledge.md)
+- [Test Cases](plant-production/test-cases.md)
+- [Gap Analysis](plant-production/gap-analysis.md)
+- [Implementation History](plant-production/implementation-history.md)
+
 ## Module Documentation Structure
 
 Each module directory contains:

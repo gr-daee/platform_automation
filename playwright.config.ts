@@ -61,7 +61,8 @@ console.log(`👷 Workers: ${workers === undefined ? 'auto (50% of cores)' : wor
  * - Development: 90s test, 45s action (balance between speed and debugging)
  */
 const timeouts = {
-  test: isDebugMode ? 180000 : isDevelopmentMode ? 150000 : 60000, // Increased: debug=180s, dev=150s
+  // Dev: 240s — full O2C E2E (indent → picklist → e-invoice → dispatch → PDF → ledger) exceeds 150s when PDF is background-generated
+  test: isDebugMode ? 180000 : isDevelopmentMode ? 240000 : 60000,
   action: isDebugMode ? 60000 : isDevelopmentMode ? 60000 : 30000, // Increased: debug/dev=60s
   navigation: isDebugMode ? 60000 : isDevelopmentMode ? 60000 : 30000, // Increased: debug/dev=60s
 };
@@ -105,7 +106,8 @@ const testDir = defineBddConfig({
  */
 const chromeConfig = {
   ...devices['Desktop Chrome'],
-  channel: 'chrome' as const, // Use system Chrome instead of bundled Chromium
+  // Use system Chrome when available (via PLAYWRIGHT_CHANNEL=chrome env var), fallback to bundled Chromium
+  ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL as 'chrome' } : {}),
 };
 
 /**
@@ -256,9 +258,24 @@ export default defineConfig({
         ...chromeConfig,
         storageState: 'e2e/.auth/iacs-md.json',
       },
-      testMatch: /(o2c|finance)[/\\].*\.spec\.js$/,  // File path routing: O2C + Finance (matches generated .spec.js files)
+      testMatch: /(o2c|finance|p2p)[/\\].*\.spec\.js$/,  // File path routing: O2C + Finance + P2P (matches generated .spec.js files)
       grep: /@iacs-md/,                          // Tag filtering
       grepInvert: /@skip-iacs-md/,               // Skip exclusions
+      dependencies: ['setup'],
+      testIgnore: /login\.spec\.js/,
+    },
+
+    // IACS ED User — P2P approver; used for Dealer Ledger RBAC (no dealer_ledger.read)
+    {
+      name: 'iacs-ed',
+      use: {
+        ...chromeConfig,
+        storageState: 'e2e/.auth/iacs-ed.json',
+      },
+      testMatch:
+        /(finance[/\\](dealer-ledger|ar-aging|credit-memos|dealer-outstanding)[/\\].*\.spec\.js$)|(o2c[/\\]sales-returns[/\\]sales-returns-report\.feature\.spec\.js$)/,
+      grep: /@iacs-ed/,
+      grepInvert: /@skip-iacs-ed/,
       dependencies: ['setup'],
       testIgnore: /login\.spec\.js/,
     },
@@ -291,6 +308,20 @@ export default defineConfig({
       testIgnore: /login\.spec\.js/,
     },
 
+    // Plant Production - IACS MD User (has plant_production permissions)
+    {
+      name: 'iacs-md-plant',
+      use: {
+        ...chromeConfig,
+        storageState: 'e2e/.auth/iacs-md.json',
+      },
+      testMatch: /plant-production[/\\].*\.spec\.js$/,
+      grep: /@iacs-md/,
+      grepInvert: /@skip-iacs-md/,
+      dependencies: ['setup'],
+      testIgnore: /login\.spec\.js/,
+    },
+
     // Super Admin - Primary for Admin tests + fallback
     {
       name: 'super-admin',
@@ -298,7 +329,7 @@ export default defineConfig({
         ...chromeConfig,
         storageState: 'e2e/.auth/admin.json',
       },
-      testMatch: /(?!login|o2c|finance|warehouse).*\.spec\.js$/,
+      testMatch: /(?!login|o2c|finance|warehouse|plant-production).*\.spec\.js$/,
       grep: /@super-admin/,
       dependencies: ['setup'],
       testIgnore: /login\.spec\.js/,

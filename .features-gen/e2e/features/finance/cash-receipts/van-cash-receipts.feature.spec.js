@@ -1,0 +1,119 @@
+/** Generated from: e2e/features/finance/cash-receipts/van-cash-receipts.feature */
+import { test } from "playwright-bdd";
+
+test.describe("VAN Cash Receipts", () => {
+
+  test.beforeEach(async ({ Given, page }) => {
+    await Given("I am logged in to the Application", null, { page });
+  });
+
+  test("End-to-end VAN flow from validation to VAN payment details with receipt and allocation checks", { tag: ["@FIN-VAN-TC-001", "@smoke", "@critical", "@p0", "@iacs-md"] }, async ({ When, Then, And, page }) => {
+    await When("I send VAN validation then posting with amount \"234.56\"");
+    await Then("VAN payment should be posted successfully");
+    await And("cash receipt should be created for VAN payment \"<utr>\"");
+    await And("I should see the latest VAN cash receipt on cash receipts page", null, { page });
+    await When("I open the latest VAN cash receipt details page", null, { page });
+    await Then("the cash receipt detail should show VAN payment summary and journal details", null, { page });
+    await And("the cash receipt detail should show auto allocation in FIFO order");
+    await And("the cash receipt detail should validate CCN calculation and hyperlink details when discount exists", null, { page });
+    await And("the invoice for the last VAN payment should reflect updated outstanding balance", null, { page });
+    await Then("I should see latest VAN payment on VAN payments page and open details", null, { page });
+    await And("I should be able to navigate VAN payment detail tabs and see content", null, { page });
+  });
+
+  test("Invalid VAN is rejected", { tag: ["@FIN-VAN-TC-002", "@negative", "@iacs-md"] }, async ({ When, Then }) => {
+    await When("I send VAN validation request with VAN \"INVALID_VAN_999\" and amount \"5000.00\"");
+    await Then("VAN validation should fail with message containing \"not found or inactive\"");
+  });
+
+  test("Invalid signature is rejected", { tag: ["@FIN-VAN-TC-003", "@security", "@iacs-md"] }, async ({ When, Then }) => {
+    await When("I send VAN validation request with invalid signature");
+    await Then("VAN validation should fail with message containing \"signature\"");
+  });
+
+  test("Unvalidated payment is rejected on posting", { tag: ["@FIN-VAN-TC-004", "@negative", "@iacs-md"] }, async ({ When, Then }) => {
+    await When("I send VAN posting request with UTR \"UNVALIDATED_UTR_001\"");
+    await Then("VAN posting should fail with message containing \"validated\"");
+  });
+
+  test("Successful posting creates cash receipt and FIFO allocation", { tag: ["@FIN-VAN-TC-005", "@critical", "@p0", "@iacs-md"] }, async ({ When, Then, And }) => {
+    await When("I send VAN validation then posting with unique UTR");
+    await Then("VAN payment should be posted successfully");
+    await And("cash receipt should be created for VAN payment \"<utr>\"");
+    await And("payment should be allocated FIFO to invoices");
+  });
+
+  test("Duplicate UTR is rejected", { tag: ["@FIN-VAN-TC-006", "@edge", "@iacs-md"] }, async ({ When, And, Then }) => {
+    await When("I send VAN validation request with VAN \"IACS1234\" and amount \"5000.00\" and UTR \"AUTO_QA_DUP_UTR\"");
+    await And("I send VAN posting request with UTR \"AUTO_QA_DUP_UTR\"");
+    await And("I send VAN posting request with UTR \"AUTO_QA_DUP_UTR\"");
+    await Then("VAN posting should fail with message containing \"duplicate\"");
+  });
+
+  test("Posted VAN payment shows EPD discount in receipt details", { tag: ["@FIN-VAN-TC-007", "@critical", "@p0", "@iacs-md"] }, async ({ When, Then, And, page }) => {
+    await When("I send VAN validation then posting with unique UTR");
+    await Then("VAN payment should be posted successfully");
+    await And("cash receipt should be created for VAN payment \"<utr>\"");
+    await And("I open the cash receipt for the last VAN payment", null, { page });
+    await And("the receipt detail shows EPD discount displayed", null, { page });
+  });
+
+  test("Un-apply then re-apply receipt", { tag: ["@FIN-VAN-TC-009", "@regression", "@p1", "@iacs-md"] }, async ({ When, Then, And, page }) => {
+    await When("I send VAN validation then posting with unique UTR");
+    await Then("VAN payment should be posted successfully");
+    await And("cash receipt should be created for VAN payment \"<utr>\"");
+    await And("I open the cash receipt for the last VAN payment", null, { page });
+    await And("I un-apply the receipt", null, { page });
+    await When("I re-apply the receipt to invoices", null, { page });
+    await And("I open the cash receipt for the last VAN payment", null, { page });
+    await Then("the receipt detail shows amount applied and status", null, { page });
+  });
+
+  test("VAN posting reflects temporary slab override from payment terms configuration", { tag: ["@FIN-VAN-TC-010", "@critical", "@p1", "@iacs-md"] }, async ({ Given, page, When, Then, And }) => {
+    await Given("the EPD slab for the oldest allocatable invoice is set to a temporary test percentage", null, { page });
+    await When("I send VAN validation then posting with unique UTR");
+    await Then("VAN payment should be posted successfully");
+    await And("cash receipt should be created for VAN payment \"<utr>\"");
+    await And("I open the cash receipt for the last VAN payment", null, { page });
+    await Then("the receipt detail shows EPD discount displayed", null, { page });
+    await Then("the EPD slab is restored to its original percentage in the database", null, { page });
+  });
+
+  test("Data integrity - VAN posting should reconcile VAN collection and cash receipt amounts", { tag: ["@FIN-VAN-TC-011", "@critical", "@p1", "@iacs-md"] }, async ({ Given, Then }) => {
+    await Given("I load the latest posted VAN payment with linked cash receipt");
+    await Then("VAN payment and cash receipt totals should reconcile");
+  });
+
+  test("VAN lifecycle integrity - un-apply then re-apply keeps receipt totals consistent", { tag: ["@FIN-VAN-TC-012", "@critical", "@p1", "@iacs-md"] }, async ({ Given, And, page, Then, When }) => {
+    await Given("I load the latest posted VAN payment with linked cash receipt");
+    await And("I open the cash receipt for the last VAN payment", null, { page });
+    await And("I un-apply the receipt", null, { page });
+    await Then("the last VAN cash receipt totals should reconcile in database");
+    await When("I re-apply the receipt to invoices", null, { page });
+    await And("I open the cash receipt for the last VAN payment", null, { page });
+    await Then("the last VAN cash receipt totals should reconcile in database");
+  });
+
+});
+
+// == technical section ==
+
+test.use({
+  $test: ({}, use) => use(test),
+  $uri: ({}, use) => use("e2e/features/finance/cash-receipts/van-cash-receipts.feature"),
+  $bddFileMeta: ({}, use) => use(bddFileMeta),
+});
+
+const bddFileMeta = {
+  "End-to-end VAN flow from validation to VAN payment details with receipt and allocation checks": {"pickleLocation":"15:3","tags":["@FIN-VAN-TC-001","@smoke","@critical","@p0","@iacs-md"],"ownTags":["@iacs-md","@p0","@critical","@smoke","@FIN-VAN-TC-001"]},
+  "Invalid VAN is rejected": {"pickleLocation":"29:3","tags":["@FIN-VAN-TC-002","@negative","@iacs-md"],"ownTags":["@iacs-md","@negative","@FIN-VAN-TC-002"]},
+  "Invalid signature is rejected": {"pickleLocation":"34:3","tags":["@FIN-VAN-TC-003","@security","@iacs-md"],"ownTags":["@iacs-md","@security","@FIN-VAN-TC-003"]},
+  "Unvalidated payment is rejected on posting": {"pickleLocation":"39:3","tags":["@FIN-VAN-TC-004","@negative","@iacs-md"],"ownTags":["@iacs-md","@negative","@FIN-VAN-TC-004"]},
+  "Successful posting creates cash receipt and FIFO allocation": {"pickleLocation":"44:3","tags":["@FIN-VAN-TC-005","@critical","@p0","@iacs-md"],"ownTags":["@iacs-md","@p0","@critical","@FIN-VAN-TC-005"]},
+  "Duplicate UTR is rejected": {"pickleLocation":"51:3","tags":["@FIN-VAN-TC-006","@edge","@iacs-md"],"ownTags":["@iacs-md","@edge","@FIN-VAN-TC-006"]},
+  "Posted VAN payment shows EPD discount in receipt details": {"pickleLocation":"58:3","tags":["@FIN-VAN-TC-007","@critical","@p0","@iacs-md"],"ownTags":["@iacs-md","@p0","@critical","@FIN-VAN-TC-007"]},
+  "Un-apply then re-apply receipt": {"pickleLocation":"66:3","tags":["@FIN-VAN-TC-009","@regression","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@regression","@FIN-VAN-TC-009"]},
+  "VAN posting reflects temporary slab override from payment terms configuration": {"pickleLocation":"77:3","tags":["@FIN-VAN-TC-010","@critical","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@critical","@FIN-VAN-TC-010"]},
+  "Data integrity - VAN posting should reconcile VAN collection and cash receipt amounts": {"pickleLocation":"88:3","tags":["@FIN-VAN-TC-011","@critical","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@critical","@FIN-VAN-TC-011"]},
+  "VAN lifecycle integrity - un-apply then re-apply keeps receipt totals consistent": {"pickleLocation":"93:3","tags":["@FIN-VAN-TC-012","@critical","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@critical","@FIN-VAN-TC-012"]},
+};

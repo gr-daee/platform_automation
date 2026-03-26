@@ -42,7 +42,8 @@ export interface InventorySnapshot {
  * 3. E2E_TENANT_ID (default/fallback)
  * 4. Query by name 'IACS' (final fallback)
  */
-async function getTenantIdForE2E(): Promise<string | null> {
+/** Exported for scenarios that need tenant-scoped raw SQL (e.g. invoices, back orders). */
+export async function getE2ETenantId(): Promise<string | null> {
   // Check tenant-specific env vars (IACS_TENANT_ID, ADMIN_TENANT_ID, etc.)
   const tenantSpecificVars = ['IACS_TENANT_ID', 'ADMIN_TENANT_ID', 'DEMO_TENANT_ID'];
   for (const varName of tenantSpecificVars) {
@@ -328,7 +329,7 @@ export async function getInventoryForProductAndWarehouse(
   productCode: string,
   warehouseSearch: string
 ): Promise<InventorySnapshot | null> {
-  const tenantId = await getTenantIdForE2E();
+  const tenantId = await getE2ETenantId();
   const warehouseId = await getWarehouseIdBySearch(warehouseSearch, tenantId);
   if (!warehouseId) return null;
 
@@ -374,7 +375,7 @@ export interface DealerCreditSnapshot {
  * Tenant-scoped when tenant_id available (E2E runs as IACS).
  */
 export async function getDealerCreditByCode(dealerCode: string): Promise<DealerCreditSnapshot | null> {
-  const tenantId = await getTenantIdForE2E();
+  const tenantId = await getE2ETenantId();
   const params: (string | boolean)[] = [dealerCode];
   const tenantFilter = tenantId ? ' AND tenant_id = $2' : '';
   if (tenantId) params.push(tenantId);
@@ -409,6 +410,113 @@ export async function getDealerCreditByCode(dealerCode: string): Promise<DealerC
 }
 
 /**
+ * Invoices for a dealer (by code) with positive balance and invoice_date strictly before
+ * the rolling "90 days ago" cutoff (same rule as `processApproval.ts` 90-day unpaid block).
+ * Read-only; used to gate E2E that requires seeded overdue data.
+ */
+export interface UnpaidInvoice90DaysRow {
+  invoice_number: string;
+  invoice_date: string;
+  balance_amount: number;
+}
+
+export async function getUnpaidInvoicesOlderThan90DaysForDealerCode(
+  dealerCode: string
+): Promise<UnpaidInvoice90DaysRow[]> {
+  const tenantId = await getE2ETenantId();
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+  const cutoff = ninetyDaysAgo.toISOString().split('T')[0];
+
+  const params: string[] = [dealerCode, cutoff];
+  let sql = `
+    SELECT i.invoice_number,
+           i.invoice_date::text AS invoice_date,
+           COALESCE(i.balance_amount, 0)::numeric AS balance_amount
+    FROM invoices i
+    INNER JOIN master_dealers md ON md.id = i.dealer_id
+    WHERE md.dealer_code = $1
+      AND (md.is_active IS NULL OR md.is_active = true)
+      AND i.deleted_at IS NULL
+      AND (i.status IS NULL OR i.status <> 'cancelled')
+      AND COALESCE(i.balance_amount, 0) > 0
+      AND i.invoice_date < $2::date
+  `;
+  if (tenantId) {
+    sql += ' AND i.tenant_id = $3 AND md.tenant_id = $3';
+    params.push(tenantId);
+  }
+  sql += ' ORDER BY i.invoice_date ASC NULLS LAST LIMIT 5';
+
+  const rows = await executeQuery<{
+    invoice_number: string;
+    invoice_date: string;
+    balance_amount: string | number;
+  }>(sql, params);
+
+  return rows.map((r) => ({
+    invoice_number: r.invoice_number,
+    invoice_date: r.invoice_date,
+    balance_amount: Number(r.balance_amount),
+  }));
+}
+
+/** Dealer row returned by {@link findFirstDealerWithUnpaidInvoicesOlderThan90Days}. */
+export interface DealerWith90DayUnpaidInvoices {
+  dealerId: string;
+  dealerCode: string;
+  businessName: string;
+}
+
+/**
+ * Single efficient query: first dealer (any) in the E2C tenant with at least one unpaid invoice
+ * whose invoice_date is before the rolling 90-day cutoff — same predicates as `processApproval.ts`.
+ * Uses `invoices` → `master_dealers` join with `ORDER BY invoice_date` + `LIMIT 1` (stops after first match).
+ */
+export async function findFirstDealerWithUnpaidInvoicesOlderThan90Days(): Promise<DealerWith90DayUnpaidInvoices | null> {
+  const tenantId = await getE2ETenantId();
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+  const cutoff = ninetyDaysAgo.toISOString().split('T')[0];
+
+  const params: string[] = [cutoff];
+  let sql = `
+    SELECT md.id::text AS id,
+           md.dealer_code,
+           md.business_name
+    FROM invoices i
+    INNER JOIN master_dealers md ON md.id = i.dealer_id
+    WHERE i.deleted_at IS NULL
+      AND (i.status IS NULL OR i.status <> 'cancelled')
+      AND COALESCE(i.balance_amount, 0) > 0
+      AND i.invoice_date < $1::date
+      AND (md.is_active IS NULL OR md.is_active = true)
+  `;
+  if (tenantId) {
+    sql += ' AND i.tenant_id = $2 AND md.tenant_id = $2';
+    params.push(tenantId);
+  }
+  sql += `
+    ORDER BY i.invoice_date ASC NULLS LAST
+    LIMIT 1
+  `;
+
+  const rows = await executeQuery<{
+    id: string;
+    dealer_code: string;
+    business_name: string;
+  }>(sql, params);
+
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  return {
+    dealerId: r.id,
+    dealerCode: (r.dealer_code || '').trim(),
+    businessName: (r.business_name || '').trim(),
+  };
+}
+
+/**
  * Get the most recently created sales order id for an indent (after Process Workflow).
  */
 export async function getSalesOrderIdByIndentId(indentId: string): Promise<string | null> {
@@ -428,4 +536,582 @@ export async function getInvoiceIdsBySalesOrderId(salesOrderId: string): Promise
     [salesOrderId]
   );
   return rows.map((r) => r.id);
+}
+
+export interface BackOrderManagementRow {
+  id: string;
+  back_order_number: string;
+  original_indent_id: string | null;
+  sales_order_id: string | null;
+  status: string | null;
+  ordered_quantity: number | string | null;
+  pending_quantity: number | string | null;
+}
+
+/**
+ * Read-only: back orders linked to an indent.
+ *
+ * Matches either:
+ * - `back_order_management.original_indent_id` (direct link), or
+ * - rows created from the SO workflow with only `sales_order_id` set (`sales_orders.indent_id`).
+ */
+export async function getBackOrdersByOriginalIndentId(indentId: string): Promise<BackOrderManagementRow[]> {
+  const tenantId = await getE2ETenantId();
+  const params: string[] = [indentId];
+  let sql = `SELECT bom.id, bom.back_order_number, bom.original_indent_id, bom.sales_order_id, bom.status,
+                    COALESCE(bom.ordered_quantity, 0)::numeric AS ordered_quantity,
+                    COALESCE(bom.pending_quantity, 0)::numeric AS pending_quantity
+             FROM back_order_management bom
+             LEFT JOIN sales_orders so ON so.id = bom.sales_order_id
+             WHERE (bom.is_deleted IS NOT TRUE)
+               AND (bom.original_indent_id = $1 OR so.indent_id = $1)`;
+  if (tenantId) {
+    sql += ' AND bom.tenant_id = $2';
+    params.push(tenantId);
+  }
+  sql += ' ORDER BY bom.created_at DESC NULLS LAST';
+  try {
+    const rows = await executeQuery<BackOrderManagementRow>(sql, params);
+    return rows.map((r) => ({
+      ...r,
+      ordered_quantity: r.ordered_quantity != null ? Number(r.ordered_quantity) : null,
+      pending_quantity: r.pending_quantity != null ? Number(r.pending_quantity) : null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Invoice with IRN generated within the last `withinHours` hours (for e-invoice cancellation window tests).
+ * May include invoices that have an E-Way bill; prefer {@link getInvoiceIdWithRecentIrnWithoutEwayBill} for IRN-only cancel flows (staging).
+ */
+export async function getInvoiceIdWithRecentIrn(withinHours: number): Promise<string | null> {
+  const tenantId = await getE2ETenantId();
+  const params: (string | number)[] = [withinHours];
+  let sql = `SELECT id FROM invoices
+             WHERE irn_number IS NOT NULL AND TRIM(irn_number) <> ''
+               AND irn_generation_date IS NOT NULL
+               AND irn_generation_date >= NOW() - ($1::int * INTERVAL '1 hour')
+               AND (einvoice_status IS NULL OR LOWER(einvoice_status::text) <> 'cancelled')
+               AND (irn_status IS NULL OR irn_status <> 'CANCELLED')`;
+  if (tenantId) {
+    sql += ' AND tenant_id = $2';
+    params.push(tenantId);
+  }
+  sql += ' ORDER BY irn_generation_date DESC NULLS LAST LIMIT 1';
+  try {
+    const rows = await executeQuery<{ id: string }>(sql, params);
+    return rows.length > 0 ? rows[0].id : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Same as {@link getInvoiceIdWithRecentIrn}, but excludes invoices that have an E-Way bill on the row.
+ * Also requires **posted to GL** (`journal_entry_id`) and **unpaid full balance** so header **Cancel Invoice**
+ * is visible (see `InvoiceDetailsContent`); TC-004 uses this for candidate selection.
+ */
+export async function getInvoiceIdWithRecentIrnWithoutEwayBill(withinHours: number): Promise<string | null> {
+  const tenantId = await getE2ETenantId();
+  const params: (string | number)[] = [withinHours];
+  let sql = `SELECT id FROM invoices
+             WHERE irn_number IS NOT NULL AND TRIM(irn_number) <> ''
+               AND irn_generation_date IS NOT NULL
+               AND irn_generation_date >= NOW() - ($1::int * INTERVAL '1 hour')
+               AND (einvoice_status IS NULL OR LOWER(einvoice_status::text) <> 'cancelled')
+               AND (irn_status IS NULL OR irn_status <> 'CANCELLED')
+               AND (eway_bill_number IS NULL OR TRIM(eway_bill_number::text) = '')
+               AND journal_entry_id IS NOT NULL
+               AND total_amount IS NOT NULL
+               AND balance_amount IS NOT NULL
+               AND balance_amount = total_amount`;
+  if (tenantId) {
+    sql += ' AND tenant_id = $2';
+    params.push(tenantId);
+  }
+  sql += ' ORDER BY irn_generation_date DESC NULLS LAST LIMIT 1';
+  try {
+    const rows = await executeQuery<{ id: string }>(sql, params);
+    return rows.length > 0 ? rows[0].id : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getInvoiceEinvoiceStatus(invoiceId: string): Promise<string | null> {
+  const rows = await executeQuery<{ einvoice_status: string | null }>(
+    'SELECT einvoice_status FROM invoices WHERE id = $1 LIMIT 1',
+    [invoiceId]
+  );
+  return rows.length > 0 ? rows[0].einvoice_status ?? null : null;
+}
+
+export interface InvoiceTaxSplit {
+  cgst: number;
+  sgst: number;
+  igst: number;
+}
+
+/**
+ * Tax split from invoice_items for regime assertions (e.g. IGST-only interstate invoices).
+ */
+export async function getInvoiceItemsTaxSplit(invoiceId: string): Promise<InvoiceTaxSplit | null> {
+  try {
+    const rows = await executeQuery<{
+      cgst: string | number;
+      sgst: string | number;
+      igst: string | number;
+    }>(
+      `SELECT COALESCE(SUM(COALESCE(ii.cgst_amount, 0)), 0)::numeric AS cgst,
+              COALESCE(SUM(COALESCE(ii.sgst_amount, 0)), 0)::numeric AS sgst,
+              COALESCE(SUM(COALESCE(ii.igst_amount, 0)), 0)::numeric AS igst
+       FROM invoice_items ii
+       WHERE ii.invoice_id = $1`,
+      [invoiceId]
+    );
+    if (!rows[0]) return null;
+    return {
+      cgst: Number(rows[0].cgst ?? 0),
+      sgst: Number(rows[0].sgst ?? 0),
+      igst: Number(rows[0].igst ?? 0),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Sum invoiced quantity for a product code on an invoice.
+ * Uses invoice_items -> product_variant_packages(material_code) and products(product_code) fallback.
+ */
+export async function getInvoicedQuantityForProductCodeOnInvoice(
+  invoiceId: string,
+  productCode: string
+): Promise<number | null> {
+  const tenantId = await getE2ETenantId();
+  try {
+    const byPackageRows = await executeQuery<{ qty: string | number }>(
+      `SELECT COALESCE(SUM(ii.quantity), 0)::numeric AS qty
+       FROM invoice_items ii
+       INNER JOIN product_variant_packages pvp
+         ON pvp.id = ii.product_variant_package_id
+        AND pvp.tenant_id = ii.tenant_id
+       WHERE ii.invoice_id = $1
+         AND ($2::uuid IS NULL OR ii.tenant_id = $2::uuid)
+         AND pvp.material_code = $3`,
+      [invoiceId, tenantId, productCode]
+    );
+    const byPackage = Number(byPackageRows[0]?.qty ?? 0);
+    if (byPackage > 0) return byPackage;
+  } catch {
+    // fall through to product_code path
+  }
+
+  try {
+    const byProductRows = await executeQuery<{ qty: string | number }>(
+      `SELECT COALESCE(SUM(ii.quantity), 0)::numeric AS qty
+       FROM invoice_items ii
+       INNER JOIN products p
+         ON p.id = ii.product_id
+        AND p.tenant_id = ii.tenant_id
+       WHERE ii.invoice_id = $1
+         AND ($2::uuid IS NULL OR ii.tenant_id = $2::uuid)
+         AND p.product_code = $3`,
+      [invoiceId, tenantId, productCode]
+    );
+    return Number(byProductRows[0]?.qty ?? 0);
+  } catch {
+    return null;
+  }
+}
+
+export interface InvoiceCancelInventoryContext {
+  tenantId: string;
+  warehouseId: string;
+  productVariantPackageId: string;
+  cancelledQty: number;
+}
+
+/**
+ * Resolve one deterministic invoice line for cancellation-inventory sandwich:
+ * - invoice -> sales_order warehouse_assigned_id
+ * - invoice_items grouped by product_id
+ * - pick the product with max qty to compare before/after inventory available.
+ */
+export async function getInvoiceCancelInventoryContext(
+  invoiceId: string
+): Promise<InvoiceCancelInventoryContext | null> {
+  const rows = await executeQuery<{
+    tenant_id: string;
+    warehouse_id: string;
+    product_variant_package_id: string;
+    cancelled_qty: string | number;
+  }>(
+    `SELECT i.tenant_id::text AS tenant_id,
+            so.warehouse_assigned_id::text AS warehouse_id,
+            ii.product_variant_package_id::text AS product_variant_package_id,
+            COALESCE(SUM(ii.quantity), 0)::numeric AS cancelled_qty
+     FROM invoices i
+     INNER JOIN sales_orders so
+       ON so.id = i.sales_order_id
+      AND so.tenant_id = i.tenant_id
+     INNER JOIN invoice_items ii
+       ON ii.invoice_id = i.id
+      AND ii.tenant_id = i.tenant_id
+     WHERE i.id = $1
+       AND i.sales_order_id IS NOT NULL
+       AND so.warehouse_assigned_id IS NOT NULL
+       AND ii.product_variant_package_id IS NOT NULL
+     GROUP BY i.tenant_id, so.warehouse_assigned_id, ii.product_variant_package_id
+     ORDER BY COALESCE(SUM(ii.quantity), 0)::numeric DESC, ii.product_variant_package_id
+     LIMIT 1`,
+    [invoiceId]
+  );
+  const r = rows[0];
+  if (!r?.tenant_id || !r.warehouse_id || !r.product_variant_package_id) return null;
+  return {
+    tenantId: r.tenant_id,
+    warehouseId: r.warehouse_id,
+    productVariantPackageId: r.product_variant_package_id,
+    cancelledQty: Number(r.cancelled_qty ?? 0),
+  };
+}
+
+/**
+ * True when DB shows no inventory rows (or net sellable is zero) for product+warehouse — e.g. NPK at Kurnook.
+ */
+export async function productHasNoSellableInventoryAtWarehouse(
+  productCode: string,
+  warehouseSearch: string
+): Promise<boolean> {
+  const snap = await getInventoryForProductAndWarehouse(productCode, warehouseSearch);
+  if (!snap) return true;
+  return snap.netAvailable <= 0 && snap.available <= 0;
+}
+
+export interface MixedIndentProductPair {
+  /** Search term for Add Products modal (typically `product_variant_packages.material_code`). */
+  inStockMaterialCode: string;
+  outOfStockMaterialCode: string;
+}
+
+async function tryFallbackMixedProductPairs(warehouseSearch: string): Promise<MixedIndentProductPair | null> {
+  const pairs: MixedIndentProductPair[] = [
+    { inStockMaterialCode: '1013', outOfStockMaterialCode: 'NPK' },
+    { inStockMaterialCode: '1041', outOfStockMaterialCode: 'NPK' },
+    { inStockMaterialCode: '1013', outOfStockMaterialCode: '1041' },
+  ];
+  for (const p of pairs) {
+    if (p.inStockMaterialCode === p.outOfStockMaterialCode) continue;
+    const snap = await getInventoryForProductAndWarehouse(p.inStockMaterialCode, warehouseSearch);
+    const oos = await productHasNoSellableInventoryAtWarehouse(p.outOfStockMaterialCode, warehouseSearch);
+    if (snap && snap.netAvailable > 0 && oos) return p;
+  }
+  return null;
+}
+
+/**
+ * Discover one material code with positive net available at the warehouse and one with none (for mixed indent → SO + back order).
+ *
+ * Priority: **E2E_O2C_MIXED_IN_STOCK_CODE** + **E2E_O2C_MIXED_OUT_OF_STOCK_CODE** (if both valid) → SQL discovery → static fallbacks (1013/NPK, etc.).
+ */
+export async function resolveMixedIndentProductPairAtWarehouse(
+  warehouseSearch: string
+): Promise<MixedIndentProductPair | null> {
+  const envIn = process.env.E2E_O2C_MIXED_IN_STOCK_CODE?.trim();
+  const envOut = process.env.E2E_O2C_MIXED_OUT_OF_STOCK_CODE?.trim();
+  if (envIn && envOut && envIn !== envOut) {
+    const snap = await getInventoryForProductAndWarehouse(envIn, warehouseSearch);
+    const oos = await productHasNoSellableInventoryAtWarehouse(envOut, warehouseSearch);
+    if (snap && snap.netAvailable > 0 && oos) {
+      return { inStockMaterialCode: envIn, outOfStockMaterialCode: envOut };
+    }
+    console.warn(
+      '⚠️ E2E_O2C_MIXED_* env codes invalid for warehouse; falling through to SQL/fallback:',
+      { envIn, envOut, warehouseSearch }
+    );
+  }
+
+  const tenantId = await getE2ETenantId();
+  const warehouseId = await getWarehouseIdBySearch(warehouseSearch, tenantId);
+  if (!tenantId || !warehouseId) {
+    return tryFallbackMixedProductPairs(warehouseSearch);
+  }
+
+  try {
+    const inStockRows = await executeQuery<{ code: string }>(
+      `SELECT pvp.material_code AS code
+       FROM inventory i
+       INNER JOIN product_variant_packages pvp ON pvp.id = i.product_variant_package_id
+       WHERE i.warehouse_id = $1 AND i.tenant_id = $2
+         AND (i.status = 'available' OR i.status IS NULL)
+         AND NULLIF(TRIM(pvp.material_code), '') IS NOT NULL
+       GROUP BY pvp.material_code
+       HAVING SUM(COALESCE(i.available_units, 0)::numeric - COALESCE(i.allocated_units, 0)::numeric) > 0
+       ORDER BY SUM(COALESCE(i.available_units, 0)::numeric - COALESCE(i.allocated_units, 0)::numeric) DESC
+       LIMIT 25`,
+      [warehouseId, tenantId]
+    );
+
+    const outStockRows = await executeQuery<{ code: string }>(
+      `SELECT TRIM(pvp.material_code) AS code
+       FROM product_variant_packages pvp
+       INNER JOIN product_variants pv ON pv.id = pvp.product_variant_id
+       INNER JOIN products p ON p.id = pv.product_id
+       WHERE p.tenant_id = $1
+         AND (pvp.is_active IS NULL OR pvp.is_active = true)
+         AND NULLIF(TRIM(pvp.material_code), '') IS NOT NULL
+         AND COALESCE(
+           (
+             SELECT SUM(COALESCE(i.available_units, 0)::numeric - COALESCE(i.allocated_units, 0)::numeric)
+             FROM inventory i
+             WHERE i.product_variant_package_id = pvp.id
+               AND i.warehouse_id = $2
+               AND i.tenant_id = $1
+               AND (i.status = 'available' OR i.status IS NULL)
+           ),
+           0
+         ) <= 0
+       ORDER BY pvp.material_code
+       LIMIT 80`,
+      [tenantId, warehouseId]
+    );
+
+    const outCandidates = [...new Set(outStockRows.map((r) => r.code.trim()).filter(Boolean))];
+    const inLimited = inStockRows.slice(0, 10);
+    const outLimited = outCandidates.slice(0, 25);
+
+    for (const inRow of inLimited) {
+      const inCode = inRow.code.trim();
+      if (!inCode) continue;
+      for (const outCode of outLimited) {
+        if (inCode === outCode) continue;
+        const verifyIn = await getInventoryForProductAndWarehouse(inCode, warehouseSearch);
+        const verifyOut = await productHasNoSellableInventoryAtWarehouse(outCode, warehouseSearch);
+        if (verifyIn && verifyIn.netAvailable > 0 && verifyOut) {
+          return { inStockMaterialCode: inCode, outOfStockMaterialCode: outCode };
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ resolveMixedIndentProductPairAtWarehouse SQL failed:', err);
+  }
+
+  return tryFallbackMixedProductPairs(warehouseSearch);
+}
+
+// ---------------------------------------------------------------------------
+// Sales Returns (read-only) — list search / test data
+// ---------------------------------------------------------------------------
+
+/**
+ * First return line + invoice SO warehouse for GRN → inventory sandwich tests.
+ * Mirrors `getWarehouseFromInvoice`: `invoices.sales_order_id` → `sales_orders.warehouse_assigned_id`.
+ */
+export interface SalesReturnReceiptInventoryContextRow {
+  tenant_id: string;
+  warehouse_id: string;
+  product_variant_package_id: string;
+  return_qty: string | number;
+}
+
+export async function getSalesReturnFirstLineReceiptInventoryContext(
+  returnOrderId: string
+): Promise<SalesReturnReceiptInventoryContextRow | null> {
+  try {
+    const rows = await executeQuery<SalesReturnReceiptInventoryContextRow>(
+      `SELECT sro.tenant_id::text AS tenant_id,
+              so.warehouse_assigned_id::text AS warehouse_id,
+              sroi.product_variant_package_id::text AS product_variant_package_id,
+              sroi.return_quantity::numeric AS return_qty
+       FROM sales_return_order_items sroi
+       INNER JOIN sales_return_orders sro
+         ON sro.id = sroi.return_order_id AND sro.tenant_id = sroi.tenant_id
+       INNER JOIN invoices inv
+         ON inv.id = sro.original_invoice_id AND inv.tenant_id = sro.tenant_id
+       INNER JOIN sales_orders so
+         ON so.id = inv.sales_order_id AND so.tenant_id = sro.tenant_id
+       WHERE sroi.return_order_id = $1::uuid
+         AND inv.sales_order_id IS NOT NULL
+         AND so.warehouse_assigned_id IS NOT NULL
+       ORDER BY COALESCE(sroi.line_number, 999999), sroi.id
+       LIMIT 1`,
+      [returnOrderId]
+    );
+    const r = rows[0];
+    if (!r?.warehouse_id || !r?.product_variant_package_id) return null;
+    return r;
+  } catch (err) {
+    console.warn('⚠️ getSalesReturnFirstLineReceiptInventoryContext failed:', err);
+    return null;
+  }
+}
+
+/**
+ * Sum `inventory.available_units` for rows matching package + warehouse (same grain as return receipt stock update).
+ */
+export async function getInventoryAvailableSumByPackageAndWarehouse(
+  tenantId: string,
+  warehouseId: string,
+  productVariantPackageId: string
+): Promise<number> {
+  const rows = await executeQuery<{ total: string | number }>(
+    `SELECT COALESCE(SUM(COALESCE(i.available_units, 0)), 0)::numeric AS total
+     FROM inventory i
+     WHERE i.tenant_id = $1::uuid
+       AND i.warehouse_id = $2::uuid
+       AND i.product_variant_package_id = $3::uuid
+       AND (i.status = 'available' OR i.status IS NULL)`,
+    [tenantId, warehouseId, productVariantPackageId]
+  );
+  return Number(rows[0]?.total ?? 0);
+}
+
+/**
+ * Latest `return_order_number` for the E2E tenant (Sales Returns list search).
+ * UI list search applies `ilike` on **return_order_number only** (not invoice number — see web `getReturnOrders`).
+ */
+export async function getLatestReturnOrderNumberForE2ETenant(): Promise<string | null> {
+  const tenantId = await getE2ETenantId();
+  if (!tenantId) return null;
+  try {
+    const rows = await executeQuery<{ return_order_number: string }>(
+      `SELECT return_order_number
+       FROM sales_return_orders
+       WHERE tenant_id = $1
+         AND return_order_number IS NOT NULL
+         AND TRIM(return_order_number) <> ''
+       ORDER BY created_at DESC NULLS LAST
+       LIMIT 1`,
+      [tenantId]
+    );
+    return rows[0]?.return_order_number?.trim() ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Non-trivial substring for `ilike` search (proves partial match, not only full-number paste).
+ */
+export function returnOrderNumberSearchSubstring(returnOrderNumber: string): string {
+  const t = returnOrderNumber.trim();
+  if (t.length <= 4) return t;
+  const take = Math.min(8, Math.max(4, t.length - 2));
+  const start = Math.max(0, Math.floor((t.length - take) / 2));
+  return t.slice(start, start + take);
+}
+
+/** Row shape for {@link getInvoiceWithReturnableLinesForE2ETenant}. */
+export interface EligibleReturnInvoiceRow {
+  invoice_number: string;
+  dealer_name: string;
+  dealer_code: string;
+}
+
+/**
+ * Pick an invoice that matches `getEligibleInvoices` / load-invoice rules and has at least one line
+ * with `available_to_return > 0` (same logic as `getInvoiceItemsWithReturnInfo` in web_app).
+ */
+export async function getInvoiceWithReturnableLinesForE2ETenant(): Promise<EligibleReturnInvoiceRow | null> {
+  const tenantId = await getE2ETenantId();
+  if (!tenantId) return null;
+
+  const lineAvailable = `
+        COALESCE(ii.quantity::numeric, 0) - COALESCE(
+          (
+            SELECT SUM(sroi.return_quantity::numeric)
+            FROM sales_return_order_items sroi
+            INNER JOIN sales_return_orders sro
+              ON sro.id = sroi.return_order_id
+             AND sro.tenant_id = ii.tenant_id
+            WHERE sroi.original_invoice_item_id = ii.id
+              AND sro.original_invoice_id = i.id
+              AND sro.status IN ('pending', 'received', 'credit_memo_created')
+          ),
+          0
+        ) > 0
+  `;
+
+  const sqlWithInvoiceType = `
+    SELECT i.invoice_number, md.business_name AS dealer_name, md.dealer_code
+    FROM invoices i
+    INNER JOIN master_dealers md ON md.id = i.dealer_id AND md.is_active = true
+    WHERE i.tenant_id = $1
+      AND i.status IN (
+        'generated', 'partial_paid', 'paid', 'e_invoice_generated', 'sent', 'overdue'
+      )
+      AND (i.invoice_type IS NULL OR i.invoice_type::text NOT IN ('inter_warehouse_transfer', 'job_work'))
+      AND EXISTS (
+        SELECT 1 FROM invoice_items ii
+        WHERE ii.invoice_id = i.id AND ii.tenant_id = i.tenant_id
+          AND (${lineAvailable})
+      )
+    ORDER BY i.invoice_date DESC NULLS LAST
+    LIMIT 1
+  `;
+
+  const sqlSimple = `
+    SELECT i.invoice_number, md.business_name AS dealer_name, md.dealer_code
+    FROM invoices i
+    INNER JOIN master_dealers md ON md.id = i.dealer_id AND md.is_active = true
+    WHERE i.tenant_id = $1
+      AND i.status IN (
+        'generated', 'partial_paid', 'paid', 'e_invoice_generated', 'sent', 'overdue'
+      )
+      AND EXISTS (
+        SELECT 1 FROM invoice_items ii
+        WHERE ii.invoice_id = i.id AND ii.tenant_id = i.tenant_id
+          AND (${lineAvailable})
+      )
+    ORDER BY i.invoice_date DESC NULLS LAST
+    LIMIT 1
+  `;
+
+  try {
+    let rows = await executeQuery<EligibleReturnInvoiceRow>(sqlWithInvoiceType, [tenantId]);
+    if (rows.length === 0) {
+      rows = await executeQuery<EligibleReturnInvoiceRow>(sqlSimple, [tenantId]);
+    }
+    const r = rows[0];
+    if (!r?.invoice_number?.trim()) return null;
+    return {
+      invoice_number: r.invoice_number.trim(),
+      dealer_name: (r.dealer_name || '').trim(),
+      dealer_code: (r.dealer_code || '').trim(),
+    };
+  } catch (err) {
+    console.warn('⚠️ getInvoiceWithReturnableLinesForE2ETenant failed:', err);
+    return null;
+  }
+}
+
+/**
+ * Return order id whose linked credit memo matches UI rules for **Retry E-Credit Note**
+ * (`[id]/page.tsx`: `ecredit_note_status` null or `pending`, and no `irn`).
+ * Read-only; used by SR-PH5-TC-003.
+ */
+export async function getSalesReturnOrderIdWithPendingEcreditForE2ETenant(): Promise<string | null> {
+  const tenantId = await getE2ETenantId();
+  if (!tenantId) return null;
+  try {
+    const rows = await executeQuery<{ id: string }>(
+      `SELECT sro.id
+       FROM sales_return_orders sro
+       INNER JOIN credit_memos cm ON cm.id = sro.credit_memo_id
+       WHERE sro.tenant_id = $1
+         AND sro.credit_memo_id IS NOT NULL
+         AND (cm.ecredit_note_status IS NULL OR cm.ecredit_note_status = 'pending')
+         AND (cm.irn IS NULL OR TRIM(cm.irn::text) = '')
+       ORDER BY sro.updated_at DESC NULLS LAST
+       LIMIT 1`,
+      [tenantId]
+    );
+    return rows[0]?.id ?? null;
+  } catch (err) {
+    console.warn('⚠️ getSalesReturnOrderIdWithPendingEcreditForE2ETenant failed:', err);
+    return null;
+  }
 }
