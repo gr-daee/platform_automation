@@ -20,6 +20,12 @@ export interface InventoryRow {
   allocated_units: number;
 }
 
+export interface SalesOrderPackageAllocationRow {
+  productVariantPackageId: string;
+  orderedQty: number;
+  allocatedQty: number;
+}
+
 export interface InventorySnapshot {
   available: number;
   allocated: number;
@@ -734,6 +740,13 @@ export interface InvoiceCancelInventoryContext {
   cancelledQty: number;
 }
 
+export interface InvoiceCancelInventoryLineContext {
+  tenantId: string;
+  warehouseId: string;
+  productVariantPackageId: string;
+  cancelledQty: number;
+}
+
 /**
  * Resolve one deterministic invoice line for cancellation-inventory sandwich:
  * - invoice -> sales_order warehouse_assigned_id
@@ -777,6 +790,49 @@ export async function getInvoiceCancelInventoryContext(
     productVariantPackageId: r.product_variant_package_id,
     cancelledQty: Number(r.cancelled_qty ?? 0),
   };
+}
+
+/**
+ * Resolve all invoice line package buckets for cancellation sandwich verification.
+ * Grouped by package in the assigned SO warehouse so each bucket can be reconciled.
+ */
+export async function getInvoiceCancelInventoryLineContexts(
+  invoiceId: string
+): Promise<InvoiceCancelInventoryLineContext[]> {
+  const rows = await executeQuery<{
+    tenant_id: string;
+    warehouse_id: string;
+    product_variant_package_id: string;
+    cancelled_qty: string | number;
+  }>(
+    `SELECT i.tenant_id::text AS tenant_id,
+            so.warehouse_assigned_id::text AS warehouse_id,
+            ii.product_variant_package_id::text AS product_variant_package_id,
+            COALESCE(SUM(ii.quantity), 0)::numeric AS cancelled_qty
+     FROM invoices i
+     INNER JOIN sales_orders so
+       ON so.id = i.sales_order_id
+      AND so.tenant_id = i.tenant_id
+     INNER JOIN invoice_items ii
+       ON ii.invoice_id = i.id
+      AND ii.tenant_id = i.tenant_id
+     WHERE i.id = $1
+       AND i.sales_order_id IS NOT NULL
+       AND so.warehouse_assigned_id IS NOT NULL
+       AND ii.product_variant_package_id IS NOT NULL
+     GROUP BY i.tenant_id, so.warehouse_assigned_id, ii.product_variant_package_id
+     ORDER BY ii.product_variant_package_id`,
+    [invoiceId]
+  );
+
+  return rows
+    .filter((r) => r.tenant_id && r.warehouse_id && r.product_variant_package_id)
+    .map((r) => ({
+      tenantId: r.tenant_id,
+      warehouseId: r.warehouse_id,
+      productVariantPackageId: r.product_variant_package_id,
+      cancelledQty: Number(r.cancelled_qty ?? 0),
+    }));
 }
 
 /**
@@ -917,6 +973,13 @@ export interface SalesReturnReceiptInventoryContextRow {
   return_qty: string | number;
 }
 
+export interface SalesReturnReceiptInventoryLineContextRow {
+  tenant_id: string;
+  warehouse_id: string;
+  product_variant_package_id: string;
+  return_qty: string | number;
+}
+
 export async function getSalesReturnFirstLineReceiptInventoryContext(
   returnOrderId: string
 ): Promise<SalesReturnReceiptInventoryContextRow | null> {
@@ -950,6 +1013,40 @@ export async function getSalesReturnFirstLineReceiptInventoryContext(
 }
 
 /**
+ * Aggregate all return-order item quantities by package at SO warehouse (for multi-line GRN reconciliation).
+ */
+export async function getSalesReturnReceiptInventoryLineContexts(
+  returnOrderId: string
+): Promise<SalesReturnReceiptInventoryLineContextRow[]> {
+  try {
+    const rows = await executeQuery<SalesReturnReceiptInventoryLineContextRow>(
+      `SELECT sro.tenant_id::text AS tenant_id,
+              so.warehouse_assigned_id::text AS warehouse_id,
+              sroi.product_variant_package_id::text AS product_variant_package_id,
+              COALESCE(SUM(sroi.return_quantity), 0)::numeric AS return_qty
+       FROM sales_return_order_items sroi
+       INNER JOIN sales_return_orders sro
+         ON sro.id = sroi.return_order_id AND sro.tenant_id = sroi.tenant_id
+       INNER JOIN invoices inv
+         ON inv.id = sro.original_invoice_id AND inv.tenant_id = sro.tenant_id
+       INNER JOIN sales_orders so
+         ON so.id = inv.sales_order_id AND so.tenant_id = sro.tenant_id
+       WHERE sroi.return_order_id = $1::uuid
+         AND inv.sales_order_id IS NOT NULL
+         AND so.warehouse_assigned_id IS NOT NULL
+         AND sroi.product_variant_package_id IS NOT NULL
+       GROUP BY sro.tenant_id, so.warehouse_assigned_id, sroi.product_variant_package_id
+       ORDER BY sroi.product_variant_package_id`,
+      [returnOrderId]
+    );
+    return rows.filter((r) => !!r.warehouse_id && !!r.product_variant_package_id);
+  } catch (err) {
+    console.warn('⚠️ getSalesReturnReceiptInventoryLineContexts failed:', err);
+    return [];
+  }
+}
+
+/**
  * Sum `inventory.available_units` for rows matching package + warehouse (same grain as return receipt stock update).
  */
 export async function getInventoryAvailableSumByPackageAndWarehouse(
@@ -967,6 +1064,55 @@ export async function getInventoryAvailableSumByPackageAndWarehouse(
     [tenantId, warehouseId, productVariantPackageId]
   );
   return Number(rows[0]?.total ?? 0);
+}
+
+/**
+ * Sum `inventory.allocated_units` for rows matching package + warehouse.
+ */
+export async function getInventoryAllocatedSumByPackageAndWarehouse(
+  tenantId: string,
+  warehouseId: string,
+  productVariantPackageId: string
+): Promise<number> {
+  const rows = await executeQuery<{ total: string | number }>(
+    `SELECT COALESCE(SUM(COALESCE(i.allocated_units, 0)), 0)::numeric AS total
+     FROM inventory i
+     WHERE i.tenant_id = $1::uuid
+       AND i.warehouse_id = $2::uuid
+       AND i.product_variant_package_id = $3::uuid
+       AND (i.status = 'available' OR i.status IS NULL)`,
+    [tenantId, warehouseId, productVariantPackageId]
+  );
+  return Number(rows[0]?.total ?? 0);
+}
+
+/**
+ * Group SO items by package for precise allocation checks.
+ */
+export async function getSalesOrderPackageAllocations(
+  salesOrderId: string
+): Promise<SalesOrderPackageAllocationRow[]> {
+  const rows = await executeQuery<{
+    product_variant_package_id: string;
+    ordered_qty: string | number;
+    allocated_qty: string | number;
+  }>(
+    `SELECT soi.product_variant_package_id::text AS product_variant_package_id,
+            COALESCE(SUM(soi.quantity), 0)::numeric AS ordered_qty,
+            COALESCE(SUM(soi.allocated_quantity), 0)::numeric AS allocated_qty
+     FROM sales_order_items soi
+     WHERE soi.sales_order_id = $1
+       AND soi.product_variant_package_id IS NOT NULL
+     GROUP BY soi.product_variant_package_id
+     ORDER BY soi.product_variant_package_id`,
+    [salesOrderId]
+  );
+
+  return rows.map((r) => ({
+    productVariantPackageId: r.product_variant_package_id,
+    orderedQty: Number(r.ordered_qty),
+    allocatedQty: Number(r.allocated_qty),
+  }));
 }
 
 /**
@@ -1011,11 +1157,20 @@ export interface EligibleReturnInvoiceRow {
   dealer_code: string;
 }
 
+export interface InvoiceContextByIdRow {
+  invoice_number: string;
+  dealer_name: string;
+  dealer_code: string;
+}
+
 /**
  * Pick an invoice that matches `getEligibleInvoices` / load-invoice rules and has at least one line
  * with `available_to_return > 0` (same logic as `getInvoiceItemsWithReturnInfo` in web_app).
  */
-export async function getInvoiceWithReturnableLinesForE2ETenant(): Promise<EligibleReturnInvoiceRow | null> {
+export async function getInvoiceWithReturnableLinesForE2ETenant(
+  minimumReturnableLineCount: number = 1,
+  minimumDistinctReturnablePackages: number = 1
+): Promise<EligibleReturnInvoiceRow | null> {
   const tenantId = await getE2ETenantId();
   if (!tenantId) return null;
 
@@ -1044,11 +1199,17 @@ export async function getInvoiceWithReturnableLinesForE2ETenant(): Promise<Eligi
         'generated', 'partial_paid', 'paid', 'e_invoice_generated', 'sent', 'overdue'
       )
       AND (i.invoice_type IS NULL OR i.invoice_type::text NOT IN ('inter_warehouse_transfer', 'job_work'))
-      AND EXISTS (
-        SELECT 1 FROM invoice_items ii
+      AND (
+        SELECT COUNT(1) FROM invoice_items ii
         WHERE ii.invoice_id = i.id AND ii.tenant_id = i.tenant_id
           AND (${lineAvailable})
-      )
+      ) >= $2
+      AND (
+        SELECT COUNT(DISTINCT ii.product_variant_package_id) FROM invoice_items ii
+        WHERE ii.invoice_id = i.id AND ii.tenant_id = i.tenant_id
+          AND ii.product_variant_package_id IS NOT NULL
+          AND (${lineAvailable})
+      ) >= $3
     ORDER BY i.invoice_date DESC NULLS LAST
     LIMIT 1
   `;
@@ -1061,19 +1222,33 @@ export async function getInvoiceWithReturnableLinesForE2ETenant(): Promise<Eligi
       AND i.status IN (
         'generated', 'partial_paid', 'paid', 'e_invoice_generated', 'sent', 'overdue'
       )
-      AND EXISTS (
-        SELECT 1 FROM invoice_items ii
+      AND (
+        SELECT COUNT(1) FROM invoice_items ii
         WHERE ii.invoice_id = i.id AND ii.tenant_id = i.tenant_id
           AND (${lineAvailable})
-      )
+      ) >= $2
+      AND (
+        SELECT COUNT(DISTINCT ii.product_variant_package_id) FROM invoice_items ii
+        WHERE ii.invoice_id = i.id AND ii.tenant_id = i.tenant_id
+          AND ii.product_variant_package_id IS NOT NULL
+          AND (${lineAvailable})
+      ) >= $3
     ORDER BY i.invoice_date DESC NULLS LAST
     LIMIT 1
   `;
 
   try {
-    let rows = await executeQuery<EligibleReturnInvoiceRow>(sqlWithInvoiceType, [tenantId]);
+    let rows = await executeQuery<EligibleReturnInvoiceRow>(sqlWithInvoiceType, [
+      tenantId,
+      minimumReturnableLineCount,
+      minimumDistinctReturnablePackages,
+    ]);
     if (rows.length === 0) {
-      rows = await executeQuery<EligibleReturnInvoiceRow>(sqlSimple, [tenantId]);
+      rows = await executeQuery<EligibleReturnInvoiceRow>(sqlSimple, [
+        tenantId,
+        minimumReturnableLineCount,
+        minimumDistinctReturnablePackages,
+      ]);
     }
     const r = rows[0];
     if (!r?.invoice_number?.trim()) return null;
@@ -1084,6 +1259,59 @@ export async function getInvoiceWithReturnableLinesForE2ETenant(): Promise<Eligi
     };
   } catch (err) {
     console.warn('⚠️ getInvoiceWithReturnableLinesForE2ETenant failed:', err);
+    return null;
+  }
+}
+
+export async function getTwoInStockMaterialCodesAtWarehouse(
+  warehouseSearch: string
+): Promise<string[] | null> {
+  const tenantId = await getE2ETenantId();
+  const warehouseId = await getWarehouseIdBySearch(warehouseSearch, tenantId);
+  if (!warehouseId) return null;
+  try {
+    const rows = await executeQuery<{ code: string }>(
+      `SELECT pvp.material_code AS code
+       FROM inventory i
+       INNER JOIN product_variant_packages pvp ON pvp.id = i.product_variant_package_id
+       WHERE i.warehouse_id = $1
+         AND i.tenant_id = $2
+         AND (i.status = 'available' OR i.status IS NULL)
+         AND NULLIF(TRIM(pvp.material_code), '') IS NOT NULL
+       GROUP BY pvp.material_code
+       HAVING SUM(COALESCE(i.available_units, 0)::numeric - COALESCE(i.allocated_units, 0)::numeric) > 0
+       ORDER BY SUM(COALESCE(i.available_units, 0)::numeric - COALESCE(i.allocated_units, 0)::numeric) DESC
+       LIMIT 5`,
+      [warehouseId, tenantId]
+    );
+    const codes = rows.map((r) => (r.code || '').trim()).filter(Boolean);
+    if (codes.length < 2) return null;
+    return [codes[0], codes[1]];
+  } catch {
+    return null;
+  }
+}
+
+export async function getInvoiceContextById(invoiceId: string): Promise<InvoiceContextByIdRow | null> {
+  try {
+    const rows = await executeQuery<InvoiceContextByIdRow>(
+      `SELECT i.invoice_number,
+              COALESCE(md.business_name, '') AS dealer_name,
+              COALESCE(md.dealer_code, '') AS dealer_code
+       FROM invoices i
+       LEFT JOIN master_dealers md ON md.id = i.dealer_id
+       WHERE i.id = $1
+       LIMIT 1`,
+      [invoiceId]
+    );
+    const r = rows[0];
+    if (!r?.invoice_number) return null;
+    return {
+      invoice_number: r.invoice_number.trim(),
+      dealer_name: (r.dealer_name || '').trim(),
+      dealer_code: (r.dealer_code || '').trim(),
+    };
+  } catch {
     return null;
   }
 }

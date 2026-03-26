@@ -72,6 +72,20 @@ test.describe("Phase 1 - Procurement Request Requirement and Approval", () => {
     await And("the audit trail should list status transitions such as \"Draft\" to \"Submitted\" or \"Approved\"", null, { page });
   });
 
+  test("Procurement Request audit trail should show complete chronological status changes with actor and timestamp", { tag: ["@p2p-phase1", "@P2P-P1-TC-010", "@p1", "@regression", "@iacs-md", "@daee-149", "@audit"] }, async ({ Given, page, When, Then, And }) => {
+    await Given("I am on the \"p2p/procurement-requests\" page", null, { page });
+    await When("I create a new procurement request in draft with unique purpose prefix \"AUTO_QA_P1_TC010\"", null, { page });
+    await Then("I should see a success message for procurement request creation", null, { page });
+    await And("the new procurement request should appear in the list with status \"Draft\"", null, { page });
+    await When("I submit the draft procurement request for approval", null, { page });
+    await Then("the procurement request status should be \"Submitted\"", null, { page });
+    await When("I approve the submitted procurement request", null, { page });
+    await Then("I should see a success message for approval", null, { page });
+    await And("the procurement request status should be \"Approved\"", null, { page });
+    await When("I open the procurement request audit trail", null, { page });
+    await Then("the audit trail should show complete chronological status changes with actor and timestamp", null, { page });
+  });
+
 });
 
 // == technical section ==
@@ -91,4 +105,5 @@ const bddFileMeta = {
   "Approve button not available for Draft PR": {"pickleLocation":"66:3","tags":["@p2p-phase1","@P2P-P1-TC-006","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P1-TC-006"]},
   "Approved PR shows Create RFQ or Convert to PO option": {"pickleLocation":"73:3","tags":["@p2p-phase1","@P2P-P1-TC-007","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@P2P-P1-TC-007"]},
   "Procurement Request audit trail shows user names and status change history": {"pickleLocation":"80:3","tags":["@p2p-phase1","@P2P-P1-TC-009","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P1-TC-009"]},
+  "Procurement Request audit trail should show complete chronological status changes with actor and timestamp": {"pickleLocation":"89:3","tags":["@p2p-phase1","@P2P-P1-TC-010","@p1","@regression","@iacs-md","@daee-149","@audit"],"ownTags":["@audit","@daee-149","@iacs-md","@regression","@p1","@P2P-P1-TC-010"]},
 };

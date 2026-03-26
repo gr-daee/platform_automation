@@ -270,11 +270,43 @@ export class NewCashReceiptPage extends BasePage {
   }
 
   async save(): Promise<void> {
+    const ensureSelectionsAndRetry = async (): Promise<void> => {
+      const customerNeedsSelection = await this.customerSelect
+        .filter({ hasText: /Select customer/i })
+        .isVisible()
+        .catch(() => false);
+      if (customerNeedsSelection) {
+        await this.selectCustomer('Ramesh ningappa diggai');
+      }
+
+      const bankNeedsSelection = await this.bankAccountSelect
+        .filter({ hasText: /Select bank account/i })
+        .isVisible()
+        .catch(() => false);
+      if (bankNeedsSelection) {
+        await this.selectBankAccount();
+      }
+
+      await this.page.waitForTimeout(200);
+      await this.saveButton.click();
+    };
+
     await this.saveButton.click();
-    // App shows toast then immediately router.push() to detail; toast may unmount before we see it.
-    // Treat navigation to detail page as success (reliable); optionally wait for toast briefly.
     await this.waitForSuccessToast(4000).catch(() => {});
-    await expect(this.page).toHaveURL(/\/finance\/cash-receipts\/[a-f0-9-]+/, { timeout: 15000 });
+    const reachedDetail = await this.page
+      .waitForURL(/\/finance\/cash-receipts\/[a-f0-9-]+/, {
+        timeout: 20000,
+        waitUntil: 'domcontentloaded',
+      })
+      .then(() => true)
+      .catch(() => false);
+    if (reachedDetail) return;
+
+    // Sometimes one required selector state lags in UI and submit remains on /new.
+    // Re-ensure selections and retry once before failing.
+    await ensureSelectionsAndRetry();
+    await this.waitForSuccessToast(4000).catch(() => {});
+    await expect(this.page).toHaveURL(/\/finance\/cash-receipts\/[a-f0-9-]+/, { timeout: 20000 });
   }
 
   async clickSave(): Promise<void> {

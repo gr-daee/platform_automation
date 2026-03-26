@@ -164,6 +164,23 @@ For **every** phase below, complete in order:
 
 ---
 
+## Phase 8 — Inventory invariants (QC Failed path)
+
+**Goal:** Ensure GRN with **QC Failed** does not increase warehouse inventory.
+
+| ID | Focus |
+|----|--------|
+| SR-PH8-TC-001 | Create return order → note inventory baseline for first line package + SO warehouse → record goods receipt with **QC Failed** → assert inventory delta = 0 |
+| SR-PH8-TC-002 | Create return order → note inventory baseline for first line package + SO warehouse → cancel while **Pending Receipt** (before GRN) → assert inventory delta = 0 |
+| SR-PH8-TC-003 | Create return order → GRN (**QC Passed**) increases inventory once → capture post-GRN baseline → run credit memo flow → assert no additional inventory delta |
+| SR-PH8-TC-004 | Create return with at least two eligible lines → baseline package buckets → GRN (**QC Passed**) → assert per-package delta equals aggregated return quantities |
+
+**Exit criteria:** DB sandwich consistently confirms no `inventory.available_units` increase for QC failed receipts.
+
+**Status (2026-03-23):** ✅ **SR-PH8-TC-001–004** implemented in `sales-returns.feature`; step logic in `sales-returns-steps.ts`; includes QC Failed, pre-GRN cancel, post-credit-memo, and multi-line GRN reconciliation invariants.
+
+---
+
 ## Artifact map (incremental)
 
 | Phase | Feature file(s) | POM(s) | Steps |
@@ -173,6 +190,7 @@ For **every** phase below, complete in order:
 | 4–5 | `sales-returns.feature` | `SalesReturnDetailPage.ts`, `CreateSalesReturnOrderPage.ts` | `sales-returns-steps.ts` |
 | 6 | `sales-returns.feature` | `CreateSalesReturnOrderPage.ts`, `SalesReturnDetailPage.ts` | `sales-returns-steps.ts` |
 | 7 | `sales-returns.feature` | `SalesReturnReportPage.ts` | `sales-returns-steps.ts` |
+| 8 | `sales-returns.feature` | `SalesReturnDetailPage.ts`, `CreateSalesReturnOrderPage.ts` | `sales-returns-steps.ts` |
 
 ---
 

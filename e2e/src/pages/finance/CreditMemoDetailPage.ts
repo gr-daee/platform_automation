@@ -13,6 +13,7 @@ export class CreditMemoDetailPage extends BasePage {
   readonly invoiceTrigger: Locator;
   readonly applyAmountInput: Locator;
   readonly applyCreditButton: Locator;
+  readonly headerReverseButton: Locator;
 
   constructor(page: Page) {
     super(page);
@@ -21,6 +22,11 @@ export class CreditMemoDetailPage extends BasePage {
     this.invoiceTrigger = page.locator('#invoice');
     this.applyAmountInput = page.locator('#amount');
     this.applyCreditButton = page.getByRole('button', { name: /^Apply Credit$/i });
+    this.headerReverseButton = page
+      .locator('div')
+      .filter({ has: page.getByRole('link', { name: /Back/i }) })
+      .getByRole('button', { name: /^Reverse$/i })
+      .first();
   }
 
   async verifyPageLoaded(): Promise<void> {
@@ -143,5 +149,9 @@ export class CreditMemoDetailPage extends BasePage {
     await expect(
       this.page.locator('[data-sonner-toast]').filter({ hasText: /Application reversed successfully/i }).first()
     ).toBeVisible({ timeout: 30000 });
+  }
+
+  async expectFullCreditMemoReverseActionVisible(): Promise<void> {
+    await expect(this.headerReverseButton).toBeVisible({ timeout: 10000 });
   }
 }

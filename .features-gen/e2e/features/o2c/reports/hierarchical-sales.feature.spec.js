@@ -70,6 +70,14 @@ test.describe("Hierarchical Sales Report", () => {
     await Then("I should see \"No Sales Data Found\" or report loads with zero dealers", null, { page });
   });
 
+  test("Exported By Dealer sheet includes City column and values", { tag: ["@O2C-HSR-TC-029", "@regression", "@p1", "@iacs-md"] }, async ({ Given, page, When, And, Then }) => {
+    await Given("I am on the Hierarchical Sales Report page", null, { page });
+    await When("I set date range to a valid past period", null, { page });
+    await And("I click Generate Report", null, { page });
+    await And("I export Hierarchical Sales report to Excel", null, { page });
+    await Then("the Hierarchical Sales By Dealer sheet should include City column");
+  });
+
 });
 
 // == technical section ==
@@ -91,4 +99,5 @@ const bddFileMeta = {
   "Export Excel is disabled when no report data": {"pickleLocation":"71:3","tags":["@O2C-HSR-TC-022","@regression","@iacs-md"],"ownTags":["@iacs-md","@regression","@O2C-HSR-TC-022"]},
   "Initial load shows No Report Generated empty state": {"pickleLocation":"76:3","tags":["@O2C-HSR-TC-025","@regression","@iacs-md"],"ownTags":["@iacs-md","@regression","@O2C-HSR-TC-025"]},
   "After Generate with no invoices shows No Sales Data Found": {"pickleLocation":"81:3","tags":["@O2C-HSR-TC-026","@regression","@iacs-md"],"ownTags":["@iacs-md","@regression","@O2C-HSR-TC-026"]},
+  "Exported By Dealer sheet includes City column and values": {"pickleLocation":"88:3","tags":["@O2C-HSR-TC-029","@regression","@p1","@iacs-md"],"ownTags":["@iacs-md","@p1","@regression","@O2C-HSR-TC-029"]},
 };

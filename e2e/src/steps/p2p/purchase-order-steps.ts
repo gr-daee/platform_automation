@@ -728,6 +728,8 @@ Then(
 type Tc007Context = {
   tc007PrId?: string;
   tc007PoNumbers?: string[];
+  tc007InitialQty?: number;
+  tc007ConvertedQty?: number;
 };
 
 async function ensureOnTc007PrDetail(page: any, ctx: Tc007Context): Promise<void> {
@@ -854,9 +856,10 @@ Given(
     await expect(materialDialog).toBeHidden({ timeout: 10000 });
 
     // Force split-capable quantity for 3 PO conversions.
+    const totalQty = 9;
     const qtyInput = page.locator('input[id^="qty-"]').first();
     await expect(qtyInput).toBeVisible({ timeout: 10000 });
-    await qtyInput.fill('9');
+    await qtyInput.fill(String(totalQty));
 
     await prPage.saveDraft();
     // Purpose is not displayed in list columns; pick newest Draft row after save.
@@ -883,6 +886,8 @@ Given(
     const urlMatch = page.url().match(/\/p2p\/procurement-requests\/([^/]+)$/);
     ctx.tc007PrId = urlMatch?.[1];
     ctx.tc007PoNumbers = [];
+    ctx.tc007InitialQty = totalQty;
+    ctx.tc007ConvertedQty = 0;
     console.log(`✅ [P2P] TC-007 setup complete on PR ${ctx.tc007PrId}`);
   }
 );
@@ -892,8 +897,10 @@ When(
   async function ({ page, $test }) {
     const ctx = this as Tc007Context;
     await ensureOnTc007PrDetail(page, ctx);
-    const po = await convertApprovedPrToPoWithSplit(page, 3, 0, $test);
+    const convertedQty = 3;
+    const po = await convertApprovedPrToPoWithSplit(page, convertedQty, 0, $test);
     if (po) ctx.tc007PoNumbers = [...(ctx.tc007PoNumbers || []), po];
+    ctx.tc007ConvertedQty = (ctx.tc007ConvertedQty || 0) + convertedQty;
     console.log(`✅ [P2P] TC-007 created PO #1 ${po || '(number not parsed)'}`);
   }
 );
@@ -943,4 +950,44 @@ Then('the procurement request should be marked as "Fully converted" or equivalen
   await expect(finalStatus).toBeVisible({ timeout: 15000 });
   console.log('✅ [P2P] PR marked with final status after 3 split POs');
 });
+
+Then(
+  'the remaining conversion view should exclude already converted quantity and keep conversion available for pending quantity only',
+  async function ({ page }) {
+    const ctx = this as Tc007Context;
+    await ensureOnTc007PrDetail(page, ctx);
+
+    const convertBtn = page
+      .getByRole('button', { name: /Convert Remaining to PO|Convert to Purchase Order/i })
+      .first();
+    await expect(convertBtn).toBeVisible({ timeout: 15000 });
+    await convertBtn.click();
+
+    const dialog = page.getByRole('dialog').filter({ hasText: /Convert to Purchase Order/i });
+    await expect(dialog).toBeVisible({ timeout: 15000 });
+
+    const expectedPendingQty = (ctx.tc007InitialQty || 9) - (ctx.tc007ConvertedQty || 3);
+    const qtyInput = dialog.locator('input[type="number"]').first();
+    await expect(qtyInput).toBeVisible({ timeout: 10000 });
+
+    const maxAttr = await qtyInput.getAttribute('max');
+    if (maxAttr) {
+      expect(Number(maxAttr), `Expected max pending qty to be ${expectedPendingQty}`).toBeLessThanOrEqual(expectedPendingQty);
+    } else {
+      const currentValue = Number((await qtyInput.inputValue()) || '0');
+      expect(
+        currentValue,
+        'Default conversion quantity should not exceed remaining pending quantity'
+      ).toBeLessThanOrEqual(expectedPendingQty);
+    }
+
+    await expect(dialog.getByText(/remaining|pending|available/i).first()).toBeVisible({ timeout: 5000 }).catch(() => {
+      // Some UI variants may not show explicit labels; quantity bound check above is the hard assertion.
+    });
+
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden({ timeout: 5000 });
+    console.log(`✅ [P2P] Remaining conversion flow constrained to pending quantity <= ${expectedPendingQty}`);
+  }
+);
 

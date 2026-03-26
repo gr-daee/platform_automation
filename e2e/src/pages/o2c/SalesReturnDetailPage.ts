@@ -31,11 +31,11 @@ export class SalesReturnDetailPage extends BasePage {
   }
 
   /**
-   * SR-PH4-TC-002 — Submit receipt dialog; warehouse often auto-filled from invoice.
-   * If trigger still shows “Select Warehouse…”, opens nested dialog and picks first row.
-   * @param options.qcPassed — SR-PH4-TC-004: set **QC Passed** so GRN stock update matches accepted path (`RecordGoodsReceiptButton.tsx`).
+   * SR-PH4/SR-PH8 — Submit receipt dialog; warehouse often auto-filled from invoice.
+   * If trigger still shows "Select Warehouse...", opens nested dialog and picks first row.
+   * `qcPassed` and `qcFailed` are mutually exclusive; defaults to app default when omitted.
    */
-  async completeRecordGoodsReceiptDialog(options?: { qcPassed?: boolean }): Promise<void> {
+  async completeRecordGoodsReceiptDialog(options?: { qcPassed?: boolean; qcFailed?: boolean }): Promise<void> {
     await this.page.getByRole('button', { name: 'Record Goods Receipt', exact: true }).click();
     const dialog = this.page.getByRole('dialog', { name: /record goods receipt/i });
     await expect(dialog).toBeVisible();
@@ -43,6 +43,9 @@ export class SalesReturnDetailPage extends BasePage {
     if (options?.qcPassed) {
       await dialog.locator('#qcStatus').click();
       await this.page.getByRole('option', { name: /QC Passed/i }).click();
+    } else if (options?.qcFailed) {
+      await dialog.locator('#qcStatus').click();
+      await this.page.getByRole('option', { name: /QC Failed/i }).click();
     }
 
     const warehouseTrigger = dialog.locator('div.space-y-4').getByRole('button').first();
@@ -95,12 +98,31 @@ export class SalesReturnDetailPage extends BasePage {
       await expect(this.page).toHaveURL(/\/finance\/credit-memos\/[^/?]+/, { timeout: 120000 });
       return;
     }
-    await expect(
-      this.page
-        .getByText('Credit Memo Created', { exact: true })
-        .or(this.page.getByRole('link', { name: /view credit memo/i }))
-        .first()
-    ).toBeVisible({ timeout: 30000 });
+
+    // Sometimes the workflow advances fast: instead of "Create Credit Memo", the page shows
+    // "Credit Memo Created" and a "View Credit Memo" deep-link. To make this step deterministic
+    // for follow-up GL assertions, we should navigate to the credit memo details if a link/button exists.
+    const createdBadge = this.page.getByText('Credit Memo Created', { exact: true });
+    const viewLink = this.page.getByRole('link', { name: /view credit memo/i }).first();
+    const viewBtn = this.page.getByRole('button', { name: /view credit memo/i }).first();
+
+    await expect(createdBadge.or(viewLink).or(viewBtn).first()).toBeVisible({ timeout: 60000 });
+
+    const linkVisible = await viewLink.isVisible().catch(() => false);
+    if (linkVisible) {
+      await viewLink.click();
+      await expect(this.page).toHaveURL(/\/finance\/credit-memos\/[^/?]+/, { timeout: 120000 });
+      return;
+    }
+
+    const btnVisible = await viewBtn.isVisible().catch(() => false);
+    if (btnVisible) {
+      await viewBtn.click();
+      await expect(this.page).toHaveURL(/\/finance\/credit-memos\/[^/?]+/, { timeout: 120000 });
+      return;
+    }
+
+    // Fallback: if we only see the created badge, keep the page as-is (downstream can assert or retry).
   }
 
   async expectCreditMemoOutcomeVisibleOnReturnOrFinancePage(): Promise<void> {

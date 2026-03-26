@@ -64,6 +64,9 @@ This registry tracks all automated test cases with their unique identifiers for 
 | O2C-E2E-TC-004 | O2C | E2E | Cancel e-invoice within 24h (reuse IRN from DB or full O2C flow) | e2e/features/o2c/o2c-e2e-indent-so-invoice.feature | @o2c-flow @regression @p1 @iacs-md | ✅ |
 | O2C-E2E-TC-005 | O2C | E2E | SRI HANUMAN AGENCIES (IACS3558) IGST invoice (picklist → e-invoice → DB tax split) | e2e/features/o2c/o2c-e2e-indent-so-invoice.feature | @o2c-flow @regression @p1 @iacs-md | ✅ |
 | O2C-E2E-TC-006 | O2C | E2E | 90+ day unpaid invoice blocks approval (DB-resolved dealer, toast; skips if none) | e2e/features/o2c/o2c-e2e-indent-so-invoice.feature | @o2c-flow @regression @p1 @iacs-md | ✅ |
+| O2C-E2E-TC-007 | O2C | E2E | Cancel e-invoice restores inventory across all invoice lines (full-line DB reconciliation) | e2e/features/o2c/o2c-e2e-indent-so-invoice.feature | @o2c-flow @regression @p1 @iacs-md | ✅ |
+| O2C-E2E-TC-008 | O2C | E2E | SO creation reconciles package-level allocated deltas exactly | e2e/features/o2c/o2c-e2e-indent-so-invoice.feature | @o2c-flow @regression @p1 @iacs-md | ✅ |
+| O2C-E2E-TC-009 | O2C | E2E | Invoice cancellation is idempotent and does not double-increment inventory | e2e/features/o2c/o2c-e2e-indent-so-invoice.feature | @o2c-flow @regression @p1 @iacs-md | ✅ |
 
 ### Warehouse Inventory (WH-INV)
 
@@ -149,6 +152,15 @@ This registry tracks all automated test cases with their unique identifiers for 
 | SR-PH7-TC-001 | O2C | SR-PH7 | Sales Return Order report shell loads for authorized user | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p2 @iacs-md @sales-returns @SR-PH7 | ✅ |
 | SR-PH7-TC-002 | O2C | SR-PH7 | Sales Return Order report denied for ED without sales_orders read when applicable | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p2 @iacs-ed @multi-user @sales-returns @SR-PH7 | ✅ |
 
+### Sales Returns Phase 8 (SR-PH8)
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| SR-PH8-TC-001 | O2C | SR-PH8 | QC failed goods receipt does not change inventory available | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p1 @iacs-md @sales-returns @SR-PH8 | ✅ |
+| SR-PH8-TC-002 | O2C | SR-PH8 | Cancelling pending return before GRN does not change inventory available | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p1 @iacs-md @sales-returns @SR-PH8 | ✅ |
+| SR-PH8-TC-003 | O2C | SR-PH8 | Credit memo flow does not cause additional inventory movement after goods receipt | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p1 @iacs-md @sales-returns @SR-PH8 | ✅ |
+| SR-PH8-TC-004 | O2C | SR-PH8 | Multi-line goods receipt reconciles inventory increase across all return lines | e2e/features/o2c/sales-returns/sales-returns.feature | @regression @p1 @iacs-md @sales-returns @SR-PH8 | ✅ |
+
 ### Reports / Hierarchical Sales SubModule (HSR)
 
 *Feature file: `e2e/features/o2c/reports/hierarchical-sales.feature`. TC-001/002 documented only (Pending).*
@@ -159,6 +171,26 @@ This registry tracks all automated test cases with their unique identifiers for 
 | O2C-HSR-TC-002 | O2C | HSR | User without sales_reports.read is denied | e2e/features/o2c/reports/hierarchical-sales.feature | @critical @p0 @multi-user | ⏳ Pending |
 | O2C-HSR-TC-003 | O2C | HSR | Generate Report disabled when From or To date missing | e2e/features/o2c/reports/hierarchical-sales.feature | @regression | ✅ |
 | O2C-HSR-TC-004–TC-028 | O2C | HSR | Filters, quick period, report gen, hierarchy, export, empty/no-data, optional DB | e2e/features/o2c/reports/hierarchical-sales.feature | @regression @smoke | ✅ |
+| O2C-HSR-TC-029 | O2C | HSR | Exported By Dealer sheet includes City column and values | e2e/features/o2c/reports/hierarchical-sales.feature | @regression @p1 @iacs-md | ✅ |
+
+### Reports / Collection Report SubModule (CR)
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| O2C-CR-TC-001 | O2C | CR | Quick period This Month sets From and To date correctly | e2e/features/o2c/reports/collection-report.feature | @smoke @p0 @iacs-md | ✅ |
+| O2C-CR-TC-002 | O2C | CR | Collection efficiency KPI card is visible after loading report | e2e/features/o2c/reports/collection-report.feature | @smoke @p0 @iacs-md | ✅ |
+| O2C-CR-TC-003 | O2C | CR | Period totals should match summary total amount | e2e/features/o2c/reports/collection-report.feature | @regression @p1 @iacs-md | ✅ |
+| O2C-CR-TC-004 | O2C | CR | Export Excel includes efficiency and comparison sections | e2e/features/o2c/reports/collection-report.feature | @regression @p1 @iacs-md | ✅ |
+| O2C-CR-TC-005 | O2C | CR | Payment/Region/Dealer totals match summary total amount | e2e/features/o2c/reports/collection-report.feature | @regression @p1 @iacs-md | ✅ |
+
+### Reports / Hierarchical Product Sales SubModule (HPS)
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| O2C-HPS-TC-001 | O2C | HPS | Dealer hierarchy appears between Territory and Product in UI | e2e/features/o2c/reports/hierarchical-product-sales.feature | @smoke @p0 @iacs-md | ✅ |
+| O2C-HPS-TC-002 | O2C | HPS | Dealer city is visible in UI hierarchy rows | e2e/features/o2c/reports/hierarchical-product-sales.feature | @regression @p1 @iacs-md | ✅ |
+| O2C-HPS-TC-003 | O2C | HPS | Detailed Excel hierarchy report includes DEALER rows and City column | e2e/features/o2c/reports/hierarchical-product-sales.feature | @smoke @p0 @iacs-md | ✅ |
+| O2C-HPS-TC-004 | O2C | HPS | Invoice Details and Dealer Ranking sheets include City column | e2e/features/o2c/reports/hierarchical-product-sales.feature | @regression @p1 @iacs-md | ✅ |
 
 ### Sales Order SubModule (SO)
 
@@ -267,6 +299,27 @@ This registry is version-controlled with git, making it:
 - Free and lightweight for small teams
 
 ## Finance Module (FIN)
+
+### Posting profiles, fiscal periods, journal GL (IMPL-055)
+
+*Full scenario titles: feature files under `e2e/features/finance/posting-profiles/`, `fiscal-periods/`, `journal-entries/`.*
+
+| Test Case ID | Module | SubModule | Scenario Name | Feature File | Tags | Status |
+|--------------|--------|-----------|---------------|--------------|------|--------|
+| FIN-PP-TC-001–022 | FIN | PP | Posting profiles dashboard, matrix, simulation, import/export | e2e/features/finance/posting-profiles/posting-profiles.feature | @regression @iacs-md | ✅ |
+| FIN-FP-TC-001–012 | FIN | FP | Fiscal period lifecycle and posting rules | e2e/features/finance/fiscal-periods/fiscal-periods.feature | @regression @iacs-md | ✅ |
+| FIN-JE-TC-001–007 | FIN | JE | Manual journal entry posting and validation | e2e/features/finance/journal-entries/manual-je.feature | @regression @iacs-md | ✅ |
+| FIN-INV-TC-001–008 | FIN | JE | Invoice creation JE / GL lines | e2e/features/finance/journal-entries/invoice-je.feature | @regression @iacs-md | ✅ |
+| FIN-INVC-TC-001–007 | FIN | JE | Invoice cancellation JE | e2e/features/finance/journal-entries/invoice-je.feature | @regression @iacs-md | ✅ |
+| FIN-CR-TC-030–035 | FIN | JE | Manual cash receipt JE patterns | e2e/features/finance/journal-entries/cash-receipt-je.feature | @regression @iacs-md | ✅ |
+| FIN-VAN-TC-030–034 | FIN | JE | VAN cash receipt JE patterns | e2e/features/finance/journal-entries/cash-receipt-je.feature | @regression @iacs-md | ✅ |
+| FIN-ACR-TC-001–007 | FIN | JE | Cash receipt application JE | e2e/features/finance/journal-entries/cr-application-je.feature | @regression @iacs-md | ✅ |
+| FIN-CCN-TC-001–007 | FIN | JE | CCN creation JE | e2e/features/finance/journal-entries/ccn-je.feature | @regression @iacs-md | ✅ |
+| FIN-CCNA-TC-001–006 | FIN | JE | CCN application | e2e/features/finance/journal-entries/ccn-je.feature | @regression @iacs-md | ✅ |
+| FIN-CCNR-TC-001–007 | FIN | JE | CCN reversal | e2e/features/finance/journal-entries/ccn-je.feature | @regression @iacs-md | ✅ |
+| FIN-CRR-TC-001–008 | FIN | JE | Cash receipt reversal JE | e2e/features/finance/journal-entries/cr-reversal-je.feature | @regression @iacs-md | ✅ |
+| FIN-UDCR-TC-001–005 | FIN | JE | Unknown / suspense dealer cash receipt | e2e/features/finance/journal-entries/cr-reversal-je.feature | @regression @iacs-md | ✅ |
+| FIN-SR-TC-001–007 | FIN | JE | Sales return JE / CM GL | e2e/features/finance/journal-entries/sales-return-je.feature | @regression @iacs-md | ✅ |
 
 ### Cash Receipts SubModule (CR)
 

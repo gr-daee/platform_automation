@@ -311,7 +311,7 @@ Scenario: User searches and selects dealer from Create Indent modal
 
 ---
 
-## System E2E Tests (O2C-E2E-TC-001 – TC-006)
+## System E2E Tests (O2C-E2E-TC-001 – TC-008)
 
 ### @O2C-E2E-TC-001 - Full E2E flow with Dealer IACS5509, Product 1013, Warehouse Kurnook, Transporter Just In Time Shipper
 - **Feature File**: `e2e/features/o2c/o2c-e2e-indent-so-invoice.feature`
@@ -328,6 +328,33 @@ Scenario: User searches and selects dealer from Create Indent modal
 - Transporter: **Just In Time Shipper**
 
 **Notes**: Single-user; reuses indent steps from `indent-steps.ts`; E2E-specific steps in `o2c-e2e-steps.ts`; DB helpers in `o2c-db-helpers.ts` (read-only). POMs: `SalesOrderDetailPage`, `WarehousePicklistDialogPage`, `InvoiceDetailPage`, `DealerLedgerPage`.
+
+---
+
+## O2C Reports - Collection Report (CR)
+
+**Feature file:** `e2e/features/o2c/reports/collection-report.feature`
+
+| ID | Scenario (summary) | Tags | Status |
+|----|---------------------|------|--------|
+| O2C-CR-TC-001 | This Month quick period sets month start to today | @smoke @p0 @iacs-md | ✅ |
+| O2C-CR-TC-002 | Collections vs Outstanding % KPI visible after load | @smoke @p0 @iacs-md | ✅ |
+| O2C-CR-TC-003 | By Period totals approximately match summary total amount | @regression @p1 @iacs-md | ✅ |
+| O2C-CR-TC-004 | Excel export contains efficiency and comparison sections | @regression @p1 @iacs-md | ✅ |
+| O2C-CR-TC-005 | By Payment/Region/Dealer totals approximately match summary | @regression @p1 @iacs-md | ✅ |
+
+---
+
+## O2C Reports - Hierarchical Product Sales (HPS)
+
+**Feature file:** `e2e/features/o2c/reports/hierarchical-product-sales.feature`
+
+| ID | Scenario (summary) | Tags | Status |
+|----|---------------------|------|--------|
+| O2C-HPS-TC-001 | Dealer level exists between Territory and Product in UI hierarchy | @smoke @p0 @iacs-md | ✅ |
+| O2C-HPS-TC-002 | Dealer rows show city badge or fallback in UI | @regression @p1 @iacs-md | ✅ |
+| O2C-HPS-TC-003 | Detailed Excel Hierarchy Report contains DEALER rows and City | @smoke @p0 @iacs-md | ✅ |
+| O2C-HPS-TC-004 | Detailed Excel Invoice Details and Dealer Ranking include City | @regression @p1 @iacs-md | ✅ |
 
 ---
 
@@ -385,6 +412,40 @@ Scenario: User searches and selects dealer from Create Indent modal
 - **Last Updated**: 2026-03-21
 
 **Notes**: Aligns with **`web_app`** `processApproval.ts` (90-day unpaid block on **approve**). **`processIndentWorkflow`** does not re-check; blocking happens before SO.
+
+---
+
+### @O2C-E2E-TC-007 - Cancel e-invoice restores inventory across all invoice lines (full-line DB reconciliation)
+- **Feature File**: `e2e/features/o2c/o2c-e2e-indent-so-invoice.feature`
+- **Scenario**: Resolve cancellable invoice (or build via e-invoice-only O2C flow) → note inventory baseline for **all** invoice item package buckets (`getInvoiceCancelInventoryLineContexts`) at SO assigned warehouse → cancel via header **Cancel Invoice** → DB `einvoice_status=cancelled` → assert per-bucket delta and total delta exactly match cancelled quantities.
+- **Status**: ✅ Automated (conditional: same integration constraints as TC-004)
+- **Tags**: @o2c-flow @regression @p1 @iacs-tenant @iacs-md
+- **Last Updated**: 2026-03-23
+
+**Notes**: Extends TC-004 depth from single-line bucket to full-line reconciliation across invoice items; catches partial restoration defects.
+
+---
+
+
+### @O2C-E2E-TC-008 - SO creation reconciles package-level allocated deltas exactly
+- **Feature File**: `e2e/features/o2c/o2c-e2e-indent-so-invoice.feature`
+- **Scenario**: Standard indent → approve → Process Workflow → navigate SO → read `sales_order_items` grouped by package and assert each package `allocated_quantity` equals DB `inventory.allocated_units` delta from pre-workflow baseline for selected warehouse/product snapshot.
+- **Status**: ✅ Automated
+- **Tags**: @o2c-flow @regression @p1 @iacs-tenant @iacs-md
+- **Last Updated**: 2026-03-23
+
+**Notes**: Hardens SO creation validation from coarse trend checks to exact package-level reconciliation.
+
+---
+
+### @O2C-E2E-TC-009 - Invoice cancellation is idempotent (no double inventory increment)
+- **Feature File**: `e2e/features/o2c/o2c-e2e-indent-so-invoice.feature`
+- **Scenario**: Resolve cancellable invoice (or build via e-invoice-only O2C flow) → note all-line inventory baselines → cancel once and assert exact full-line restoration → snapshot post-cancel inventory → attempt second cancel if action is visible → assert no package-level inventory delta after second attempt.
+- **Status**: ✅ Automated (conditional: same integration constraints as TC-004/TC-007)
+- **Tags**: @o2c-flow @regression @p1 @iacs-tenant @iacs-md
+- **Last Updated**: 2026-03-23
+
+**Notes**: Guards against duplicate-cancel side effects and stale-action retries by enforcing DB idempotency invariants as source of truth.
 
 ---
 
@@ -472,7 +533,7 @@ Scenario: User searches and selects dealer from Create Indent modal
 
 ---
 
-## Sales Returns (SR-PH4–PH7) — Detail, credit memo, validation, report
+## Sales Returns (SR-PH4–PH8) — Detail, credit memo, validation, report, inventory invariants
 
 **Phased plan / detail:** [sales-returns/FEATURE-SR-phased-plan.md](sales-returns/FEATURE-SR-phased-plan.md), [sales-returns/test-cases.md](sales-returns/test-cases.md)  
 **Implementation:** [IMPL-050](../../implementations/2026-03/IMPL-053_sales-returns-consolidated.md)
@@ -483,8 +544,9 @@ Scenario: User searches and selects dealer from Create Indent modal
 | SR-PH5 | `sales-returns.feature` | Credit memo create or already-linked CM |
 | SR-PH6 | `sales-returns.feature` | Cancel guardrails + `alert()` validation on wizard |
 | SR-PH7 | `sales-returns.feature` | Report page **Load Report** + **Filters** |
+| SR-PH8 | `sales-returns.feature` | QC Failed GRN inventory invariant (delta must remain zero) |
 
-**Full Sales Returns pack:** `npm run test:dev -- --project=iacs-md --grep "@sales-returns"` — **17** scenarios (2026-03-23).
+**Full Sales Returns pack:** `npm run test:dev -- --project=iacs-md --grep "@sales-returns"` — **20** scenarios (2026-03-23).
 
 ---
 

@@ -112,6 +112,18 @@ UI source: `WarehousePicklistDialog.tsx`, `sales-orders/[id]/page.tsx`, `Dispatc
 - **Full knowledge**: [reports/hierarchical-sales/knowledge.md](reports/hierarchical-sales/knowledge.md)
 - **Test cases**: [reports/hierarchical-sales/test-cases.md](reports/hierarchical-sales/test-cases.md)
 
+## Reports → Collection Report
+
+- **Route**: `/o2c/reports/collection-report`
+- **Purpose**: Collection analytics with quick periods, payment/region/territory filters, period/dealer/region breakdowns, and CSV/XLSX/PDF exports.
+- **Recent automation**: `@O2C-CR-TC-001`–`@O2C-CR-TC-005` covering quick period correctness, KPI presence, total-parity checks, and export sheet coverage.
+
+## Reports → Hierarchical Product Sales
+
+- **Route**: `/o2c/reports/hierarchical-product-sales`
+- **Purpose**: State → Region → Territory → Dealer → Product → Variant hierarchy with dealer-level and city context.
+- **Recent automation**: `@O2C-HPS-TC-001`–`@O2C-HPS-TC-004` covering dealer hierarchy insertion and city propagation in UI + detailed Excel sheets.
+
 ## Related Modules
 - **Dealers**: Indents require dealer selection
 - **Products**: Indents include product line items
@@ -151,5 +163,7 @@ UI source: `WarehousePicklistDialog.tsx`, `sales-orders/[id]/page.tsx`, `Dispatc
 - ✅ Transporter, credit warning, stock warning, Process Workflow dialog (TC-016–TC-020)
 - **Source:** [test-cases.md](test-cases.md) (TC-001–TC-020)
 - ✅ Hierarchical Sales Report: filters, generate, summary, hierarchy, export (O2C-HSR-TC-003–TC-028); access tests (TC-001, TC-002) documented only. **Source:** [reports/hierarchical-sales/test-cases.md](reports/hierarchical-sales/test-cases.md)
+- ✅ Collection Report: quick period correctness, KPI visibility, parity checks, and export sections (`O2C-CR-TC-001`–`005`)
+- ✅ Hierarchical Product Sales Report: dealer hierarchy + city in UI/export (`O2C-HPS-TC-001`–`004`)
 - ✅ Warehouse inventory (WH-INV-TC-001–015): shell, tabs, filters, search/pagination, page size. **Source:** [test-cases.md](test-cases.md) (WH-INV), [inventory/FEATURE-WH-INV-phased-plan.md](inventory/FEATURE-WH-INV-phased-plan.md)
 - ✅ Sales Returns (SR): **Phase 1–7** — list, filters, create wizard, detail + receipt, **GRN → inventory sandwich** (SR-PH4-TC-004: `SUM(available_units)` before/after by `product_variant_package_id` + SO warehouse, QC Passed), credit memo + **Retry E-Credit shell** (SR-PH5-TC-003), validation/cancel, report + **ED RBAC** (SR-PH7-TC-002) — [sales-returns/test-cases.md](sales-returns/test-cases.md); [IMPL-050](../../implementations/2026-03/IMPL-053_sales-returns-consolidated.md), [IMPL-051](../../implementations/2026-03/IMPL-053_sales-returns-consolidated.md), [IMPL-052](../../implementations/2026-03/IMPL-053_sales-returns-consolidated.md). **Search gap:** list placeholder vs `return_order_number` only. **Receipt/CM:** badge may show **Goods Received** or **Credit Memo Created**; DB sandwich accepts `received` or `credit_memo_created`. **Native `alert`:** use `page.once('dialog', …)` before `evaluate(click)` / keyboard qty.

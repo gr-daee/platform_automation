@@ -155,6 +155,14 @@ Scenario Outline: User without sales_reports.read is denied access
 - **Status**: ✅ Automated
 - **Tags**: @O2C-HSR-TC-024 @regression @iacs-md
 
+### @O2C-HSR-TC-029 - Exported By Dealer sheet includes City column
+- **Feature File**: `e2e/features/o2c/reports/hierarchical-sales.feature`
+- **Scenario**: Exported By Dealer sheet includes City column and values
+- **Coverage**: DAEE-344 city export regression in By Dealer sheet
+- **Status**: ✅ Automated
+- **Tags**: @O2C-HSR-TC-029 @regression @p1 @iacs-md
+- **Last Updated**: 2026-03-24
+
 ---
 
 ## 4.6 Empty and No-Data States (P1–P2)
@@ -192,4 +200,4 @@ Scenario Outline: User without sales_reports.read is denied access
 | 4.5 Export   | 3  | 3         | 0       |
 | 4.6 Empty    | 2  | 2         | 0       |
 | 4.7 Optional | 2 | 2         | 0       |
-| **Total**    | **28** | **26** | **2**   |
+| **Total**    | **29** | **27** | **2**   |

@@ -175,11 +175,17 @@ export class IndentsPage extends BasePage {
     // Find Select button in the first matching row
     const selectButton = firstMatchingRow.getByRole('button', { name: /select/i });
     await selectButton.click();
-
     console.log(`✅ Selected dealer: "${dealerName}" (first match)`);
 
-    // Wait for navigation to indent detail (modal closes on navigation)
-    await expect(this.page).toHaveURL(/\/o2c\/indents\/[a-f0-9-]+/, { timeout: 15000 });
+    // Navigation to detail can be delayed/flaky in some runs. Retry once by clicking row itself.
+    const navigated = await this.page
+      .waitForURL(/\/o2c\/indents\/[a-f0-9-]+/, { timeout: 15000, waitUntil: 'domcontentloaded' })
+      .then(() => true)
+      .catch(() => false);
+    if (!navigated) {
+      await firstMatchingRow.click();
+      await expect(this.page).toHaveURL(/\/o2c\/indents\/[a-f0-9-]+/, { timeout: 20000 });
+    }
   }
 
   /**

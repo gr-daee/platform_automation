@@ -28,6 +28,8 @@ Test automation for P2P phases aligned to Linear user stories (DAEE-149, DAEE-15
 | P2P-P1-TC-005 | Approver rejects submitted PR | ⏭️ Skipped (@skip-known-defect) – defect on DAEE-149 |
 | P2P-P1-TC-006 | Approve button not available for Draft PR | ✅ Steps implemented |
 | P2P-P1-TC-007 | Approved PR shows Convert to PO / Create RFQ option | ✅ Steps implemented |
+| P2P-P1-TC-009 | Procurement Request audit trail shows user names and status transitions | ✅ Automated (defect regression coverage) |
+| P2P-P1-TC-010 | Procurement Request audit trail shows complete chronological status changes with actor and timestamp | ✅ Automated (DAEE-149 comment-53bb2100 regression) |
 
 **Step definitions:** `e2e/src/steps/p2p/procurement-request-steps.ts`  
 **Page object:** `e2e/src/pages/p2p/ProcurementRequestsPage.ts`
@@ -38,6 +40,14 @@ Test automation for P2P phases aligned to Linear user stories (DAEE-149, DAEE-15
 | P2P-P2-TC-001 | View RFQ list page | ✅ Automated (smoke) |
 | P2P-P2-TC-002 | Create RFQ from approved PR with response deadline (7 days) | ✅ Automated |
 | P2P-P2-TC-003 | Create RFQ page shows select PR step; submit not visible until PR selected | ✅ Automated |
+| P2P-P2-TC-004 | Approved PR shows converted status after RFQ creation | ✅ Automated (DAEE-149/150 conversion regression) |
+| P2P-P2-TC-005 | RFQ generated from approved PR excludes internal budget/cost-center fields | ✅ Automated |
+| P2P-P2-TC-006 | RFQ issue flow logs recipients/date/version for audit | ✅ Automated |
+| P2P-P2-TC-007 | RFQ resend/additional supplier action increases send audit log | ✅ Automated |
+| P2P-P2-TC-008 | PR converted to RFQ blocks direct Convert to PO action | ✅ Automated (defect regression) |
+| P2P-P2-TC-009 | Single-supplier issue requires single-source justification | ✅ Automated |
+| P2P-P2-TC-010 | RFQ remains actionable before deadline when responses are received | ✅ Automated |
+| P2P-P2-TC-011 | Quote visibility follows role-based policy (multi-user) | ✅ Automated |
 
 **Step definitions:** `e2e/src/steps/p2p/rfq-steps.ts`  
 **Page objects:** `e2e/src/pages/p2p/RFQListPage.ts`, `e2e/src/pages/p2p/CreateRFQPage.ts`
@@ -49,6 +59,14 @@ Test automation for P2P phases aligned to Linear user stories (DAEE-149, DAEE-15
 | P2P-P3-TC-002 | RFQ detail shows Compare Quotes when quotes received or evaluation | ✅ Automated |
 | P2P-P3-TC-003 | Quote comparison to recommendation – full E2E validation | ✅ Automated (E2E); creates RFQ from PR, then invite → issue → enter quote → compare → recommend. **Prerequisite:** At least one approved PR and at least one supplier in tenant. |
 | P2P-P3-TC-004 | Create PO from approved selection not available until selection approved | ✅ Automated |
+| P2P-P3-TC-005 | Captured quote should persist structured fields for comparison | ✅ Automated |
+| P2P-P3-TC-006 | Quote comparison should display criteria-based decision evidence | ✅ Automated |
+| P2P-P3-TC-007 | Supplier recommendation should require documented reason | ✅ Automated |
+| P2P-P3-TC-008 | Selector should not be allowed to approve own recommendation | ✅ Automated |
+| P2P-P3-TC-009 | Non-selector approver can approve recommended quote | ✅ Automated (multi-user) |
+| P2P-P3-TC-010 | Single-quote flow should require sole-source justification | ✅ Automated |
+| P2P-P3-TC-011 | PO creation should be blocked for non-approved/non-winning selections | ✅ Automated |
+| P2P-P3-TC-012 | Selected quote should be immutable or locked after recommendation | ✅ Automated |
 
 **Step definitions:** `e2e/src/steps/p2p/quote-comparison-steps.ts`  
 **Page objects:** `e2e/src/pages/p2p/RFQListPage.ts`, `e2e/src/pages/p2p/RFQDetailPage.ts`, `e2e/src/pages/p2p/QuoteComparisonPage.ts`
@@ -60,6 +78,7 @@ Test automation for P2P phases aligned to Linear user stories (DAEE-149, DAEE-15
 |---------|----------|--------|
 | P2P-P4-TC-001 | View Purchase Orders list page | ✅ Automated (smoke) |
 | P2P-P4-TC-002 | Create PO from approved quote selection and submit for approval | ✅ Automated (`@e2e`): full chain PR → approve → RFQ → invite up to 3 suppliers → issue → quotes → compare → select winner → **DB approval** (`approveRfqSelectionForE2ETest`) → create PO → submit PO. **Prerequisites:** ≥2 active suppliers, `SUPABASE_DB_*` in `.env.local` for DB approval step, `IACS_MD_USER_EMAIL` for approver id lookup. |
+| P2P-P4-TC-009 | After partial PR→PO conversion, remaining conversion should only expose pending quantity/items | ✅ Automated (DAEE-149 comment-468d1fa0 regression) |
 
 **Step definitions:** `e2e/src/steps/p2p/purchase-order-steps.ts`, `e2e/src/steps/p2p/phase4-full-flow-steps.ts`, `e2e/src/steps/p2p/procurement-request-steps.ts`, `e2e/src/steps/p2p/quote-comparison-steps.ts`, `e2e/src/steps/p2p/rfq-steps.ts`  
 **DB (test only):** `approveRfqSelectionForE2ETest` in `e2e/src/support/db-helper.ts` — sets `rfq_headers.status` to `selection_approved` after UI places selection in `selection_pending` (bypasses SoD vs same user).
@@ -68,11 +87,25 @@ Test automation for P2P phases aligned to Linear user stories (DAEE-149, DAEE-15
 | Test ID | Scenario | Status |
 |---------|----------|--------|
 | P2P-P5-TC-001 | View Purchase Orders page for send flow | ✅ Automated (smoke) |
+| P2P-P5-TC-002 | Approved PO can be marked as sent to supplier with audit evidence | ✅ Automated |
+| P2P-P5-TC-003 | PO amendment creates versioned/supersede audit evidence | ✅ Automated |
+| P2P-P5-TC-004 | Cancelled PO before GRN blocks downstream GRN/invoice actions | ✅ Automated |
+| P2P-P5-TC-005 | PO cancellation after GRN is blocked or policy-gated | ✅ Automated |
+| P2P-P5-TC-006 | Send and amendment events are available in audit trail | ✅ Automated |
 
 ### Phase 6 – Receipt & Quality (DAEE-157)
 | Test ID | Scenario | Status |
 |---------|----------|--------|
 | P2P-P6-TC-001 | View GRN list page | ✅ Automated (smoke) |
+| P2P-P6-TC-002 | Accepted quantity from partial rejection updates raw material stock (DAEE-157 defect validation) | ✅ Automated (critical regression) |
+| P2P-P6-TC-003 | E2E partial rejection flow updates stock by accepted quantity only | ✅ Automated (critical E2E) |
+| P2P-P6-TC-004 | Receipt partial rejection should not fail due to quality status enum mismatch | ✅ Automated (critical negative regression) |
+| P2P-P6-TC-005 | GRN quality approval should expose inspection audit and PO traceability on detail page | ✅ Automated (audit/traceability regression) |
+| P2P-P6-TC-006 | Multiple GRNs for a PO should have cumulative accepted quantity aligned with PO received quantity | ✅ Automated (partial-delivery integrity) |
+| P2P-P6-TC-007 | GRN operator cannot mark invoices for payment (segregation of duties) | ✅ Automated (AC4 SoD regression) |
+| P2P-P6-TC-008 | Goods-first path supports invoice linkage to PO and GRN | ✅ Automated (AC5 linkage regression) |
+| P2P-P6-TC-009 | Invoice-first path supports later GRN linkage on same PO | ✅ Automated (AC5 linkage regression) |
+| P2P-P6-TC-010 | Fully rejected GRN should not create raw material stock | ✅ Automated (AC7 rejection integrity) |
 
 ### Phase 7 – Three-Way Match & Approval (DAEE-158)
 | Test ID | Scenario | Status |

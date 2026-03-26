@@ -132,6 +132,12 @@ test.describe("Phase 4 - Purchase Order Creation and Approval", () => {
     await And("the procurement request should be marked as \"Fully converted\" or equivalent status", null, { page });
   });
 
+  test("After partial PR to PO conversion, only pending quantity should be available for remaining conversion", { tag: ["@P2P-P4-TC-009", "@p1", "@regression", "@iacs-md", "@daee-149", "@po-conversion"] }, async ({ Given, page, When, Then }) => {
+    await Given("there is an approved procurement request with items awarded to multiple suppliers via quote selection", null, { page });
+    await When("I create a purchase order for the lines awarded to Supplier A from that procurement request", null, { page });
+    await Then("the remaining conversion view should exclude already converted quantity and keep conversion available for pending quantity only", null, { page });
+  });
+
 });
 
 // == technical section ==
@@ -151,4 +157,5 @@ const bddFileMeta = {
   "Approve only from Submitted and send to supplier only from Approved": {"pickleLocation":"106:3","tags":["@P2P-P4-TC-006","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P4-TC-006"]},
   "Delivery Warehouse selection shows available warehouses during PO creation": {"pickleLocation":"116:3","tags":["@P2P-P4-TC-008","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P4-TC-008"]},
   "One procurement request generates multiple purchase orders and PR is fully converted": {"pickleLocation":"140:3","tags":["@P2P-P4-TC-007","@p2","@iacs-md"],"ownTags":["@iacs-md","@p2","@P2P-P4-TC-007"]},
+  "After partial PR to PO conversion, only pending quantity should be available for remaining conversion": {"pickleLocation":"150:3","tags":["@P2P-P4-TC-009","@p1","@regression","@iacs-md","@daee-149","@po-conversion"],"ownTags":["@po-conversion","@daee-149","@iacs-md","@regression","@p1","@P2P-P4-TC-009"]},
 };

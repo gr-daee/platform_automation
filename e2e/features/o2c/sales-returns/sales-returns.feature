@@ -204,3 +204,79 @@ Feature: Sales Returns (Phases 1-7 consolidated)
   Scenario: Sales Return Order report access denied for ED when sales_orders read is absent
     When I navigate to Sales Return Order report URL for access check
     Then I should be denied access to Sales Return Order report or skip if tenant grants access
+
+  # --- Phase 8: inventory invariants ---
+  @SR-PH8-TC-001 @SR-PH8 @sales-returns @regression @p1 @iacs-md
+  Scenario: QC failed goods receipt does not change inventory available
+    Given sales return eligible invoice is resolved from database
+    And I am on the create sales return order page
+    When I select context invoice in sales return create dialog
+    Then sales return create page should show context dealer on dealer trigger
+    When I choose return reason Customer Request on sales return create page
+    And I enter sales return notes with AUTO_QA prefix
+    And I load invoice items on sales return create page
+    And I set return quantity 1 on first line on sales return create page
+    And I go to review step on sales return create page
+    And I submit sales return create order
+    Then I should be on sales return detail with Pending Receipt status
+    When sales return first line inventory available sum is stored from database before goods receipt
+    And I complete record goods receipt on sales return detail with QC failed and default warehouse
+    Then sales return receipt QC status should be failed in database
+    Then database inventory available sum should remain unchanged after QC failed goods receipt
+
+  @SR-PH8-TC-002 @SR-PH8 @sales-returns @regression @p1 @iacs-md
+  Scenario: Cancelling pending return before GRN does not change inventory available
+    Given sales return eligible invoice is resolved from database
+    And I am on the create sales return order page
+    When I select context invoice in sales return create dialog
+    Then sales return create page should show context dealer on dealer trigger
+    When I choose return reason Customer Request on sales return create page
+    And I enter sales return notes with AUTO_QA prefix
+    And I load invoice items on sales return create page
+    And I set return quantity 1 on first line on sales return create page
+    And I go to review step on sales return create page
+    And I submit sales return create order
+    Then I should be on sales return detail with Pending Receipt status
+    When sales return first line inventory available sum is stored from database before goods receipt
+    When I open cancel return order dialog on sales return detail
+    And I confirm cancel return order with AUTO_QA reason
+    Then I should be on sales return detail with Cancelled status
+    And database inventory available sum should remain unchanged after cancelling pending return
+
+  @SR-PH8-TC-003 @SR-PH8 @sales-returns @regression @p1 @iacs-md
+  Scenario: Credit memo flow does not cause additional inventory movement after goods receipt
+    Given sales return eligible invoice is resolved from database
+    And I am on the create sales return order page
+    When I select context invoice in sales return create dialog
+    Then sales return create page should show context dealer on dealer trigger
+    When I choose return reason Customer Request on sales return create page
+    And I enter sales return notes with AUTO_QA prefix
+    And I load invoice items on sales return create page
+    And I set return quantity 1 on first line on sales return create page
+    And I go to review step on sales return create page
+    And I submit sales return create order
+    Then I should be on sales return detail with Pending Receipt status
+    When sales return first line inventory available sum is stored from database before goods receipt
+    And I complete record goods receipt on sales return detail with QC passed and default warehouse
+    Then database inventory available sum should increase by first line return quantity after goods receipt
+    When I store post-receipt inventory available baseline for sales return first line
+    And I complete credit memo flow from sales return detail when applicable
+    Then credit memo outcome should be visible on return or finance page
+    And database inventory available sum should remain unchanged after credit memo flow
+
+  @SR-PH8-TC-004 @SR-PH8 @sales-returns @regression @p1 @iacs-md
+  Scenario: Multi-line goods receipt reconciles inventory increase across all return lines
+    Given sales return multi-line eligible invoice is resolved from database or created as fallback
+    And I am on the create sales return order page
+    When I select context invoice in sales return create dialog
+    Then sales return create page should show context dealer on dealer trigger
+    When I choose return reason Customer Request on sales return create page
+    And I enter sales return notes with AUTO_QA prefix
+    And I load invoice items on sales return create page
+    And I set return quantity 1 on at least two eligible lines on sales return create page or skip
+    And I go to review step on sales return create page
+    And I submit sales return create order
+    Then I should be on sales return detail with Pending Receipt status
+    When sales return multi-line inventory available sums are stored from database before goods receipt
+    And I complete record goods receipt on sales return detail with QC passed and default warehouse
+    Then database inventory available sums should increase by return quantities across all selected return lines

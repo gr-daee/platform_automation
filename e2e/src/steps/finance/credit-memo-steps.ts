@@ -7,6 +7,7 @@ import {
   getCreditMemoApplications,
   getCreditMemoById,
   getInvoiceNumberForDifferentDealer,
+  getInvoiceFinancialSnapshot,
   getInvoiceOutstandingBalance,
   getLatestDealerAdvanceForCreditMemo,
   getOutstandingInvoicesForCustomer,
@@ -15,6 +16,33 @@ import {
 } from '../../support/finance-db-helpers';
 
 const { Given, When, Then } = createBdd();
+
+function logDev(message: string): void {
+  if (process.env.TEST_EXECUTION_MODE === 'development') {
+    console.log(message);
+  }
+}
+
+function logInvoiceStage(
+  stage: 'before_creation' | 'after_creation' | 'before_apply' | 'after_apply',
+  invoice: {
+    id: string;
+    invoice_number: string;
+    total_amount: number;
+    paid_amount: number;
+    balance_amount: number;
+    updated_at: string | null;
+  } | null
+): void {
+  if (!invoice) return;
+  logDev(
+    `[CCNA-TC-001][TIMELINE] stage=${stage} invoice=${invoice.invoice_number} id=${invoice.id} total=${Number(
+      invoice.total_amount
+    ).toFixed(2)} paid=${Number(invoice.paid_amount).toFixed(2)} balance=${Number(
+      invoice.balance_amount
+    ).toFixed(2)} updated_at=${invoice.updated_at || 'null'}`
+  );
+}
 
 Given('I am on the credit memos page', async function ({ page }) {
   const creditMemosPage = new CreditMemosPage(page);
@@ -26,6 +54,21 @@ Given('I am on the credit memos page', async function ({ page }) {
 When(
   'I create a credit memo for customer {string} with amount {string} and reason {string}',
   async function ({ page }, customerName: string, amount: string, reason: string) {
+    const tenantId = await getTenantIdForFinanceE2E();
+    const dealerId = tenantId ? await getDealerIdByBusinessName(tenantId, customerName) : null;
+    if (tenantId && dealerId) {
+      const oldestOutstanding = await getOutstandingInvoicesForCustomer(dealerId, tenantId);
+      const oldest = oldestOutstanding[0];
+      if (oldest) {
+        const beforeCreateSnapshot = await getInvoiceFinancialSnapshot(oldest.id);
+        if (beforeCreateSnapshot) {
+          (this as any).preCreateInvoiceId = oldest.id;
+          (this as any).preCreateInvoiceNumber = oldest.invoice_number;
+          logInvoiceStage('before_creation', beforeCreateSnapshot);
+        }
+      }
+    }
+
     const creditMemosPage = (this as any).creditMemosPage || new CreditMemosPage(page);
     await creditMemosPage.clickNewCreditMemo();
 
@@ -50,6 +93,12 @@ When(
     (this as any).currentCreditMemoId = creditMemoId;
     (this as any).currentCreditMemoAmount = Number(amount);
     (this as any).currentCreditMemoCustomerName = customerName;
+
+    const preCreateInvoiceId = (this as any).preCreateInvoiceId as string | undefined;
+    if (preCreateInvoiceId) {
+      const afterCreateInvoiceSnapshot = await getInvoiceFinancialSnapshot(preCreateInvoiceId);
+      logInvoiceStage('after_creation', afterCreateInvoiceSnapshot);
+    }
   }
 );
 
@@ -81,8 +130,14 @@ When(
     }
 
     const targetInvoice = outstandingInvoices[0];
-    const beforeBalance = await getInvoiceOutstandingBalance(targetInvoice.id);
+    const beforeSnapshot = await getInvoiceFinancialSnapshot(targetInvoice.id);
+    const beforeBalance = beforeSnapshot?.balance_amount ?? null;
     if (beforeBalance === null) throw new Error('Target invoice not found in DB');
+    const requestedApplyAmount = Number(applyAmount);
+    logInvoiceStage('before_apply', beforeSnapshot);
+    logDev(
+      `[CCN-APPLY] Apply to Invoice Amt: ${requestedApplyAmount.toFixed(2)}`
+    );
 
     const detailPage = new CreditMemoDetailPage(page);
     await detailPage.verifyPageLoaded();
@@ -94,6 +149,7 @@ When(
     (this as any).targetInvoiceId = targetInvoice.id;
     (this as any).targetInvoiceNumber = targetInvoice.invoice_number;
     (this as any).targetInvoiceBalanceBefore = Number(beforeBalance);
+    (this as any).targetInvoicePaidBefore = Number(beforeSnapshot?.paid_amount || 0);
     (this as any).lastAppliedCreditAmount = Number(applyAmount);
   }
 );
@@ -119,13 +175,44 @@ Then('credit memo financial totals should reconcile in database', async function
 
 Then('the target invoice outstanding should decrease by applied credit amount', async function () {
   const invoiceId = (this as any).targetInvoiceId as string | undefined;
+  const invoiceNumber = (this as any).targetInvoiceNumber as string | undefined;
   const beforeBalance = Number((this as any).targetInvoiceBalanceBefore || 0);
+  const beforePaid = Number((this as any).targetInvoicePaidBefore || 0);
   const appliedAmount = Number((this as any).lastAppliedCreditAmount || 0);
 
   if (!invoiceId) throw new Error('Missing target invoice in context');
 
-  const afterBalance = await getInvoiceOutstandingBalance(invoiceId);
+  // Invoice paid_amount can update first and balance_amount may trail by 1-2s.
+  // Poll briefly before final assertion to reduce timing noise.
+  let afterSnapshot = await getInvoiceFinancialSnapshot(invoiceId);
+  const expectedAfterBalance = beforeBalance - appliedAmount;
+  const maxAttempts = 5;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (
+      afterSnapshot &&
+      Math.abs(Number(afterSnapshot.balance_amount) - expectedAfterBalance) < 0.005
+    ) {
+      break;
+    }
+    if (attempt < maxAttempts) {
+      await new Promise((r) => setTimeout(r, 1000));
+      afterSnapshot = await getInvoiceFinancialSnapshot(invoiceId);
+    }
+  }
+
+  const afterBalance = afterSnapshot?.balance_amount ?? null;
   expect(afterBalance).not.toBeNull();
+
+  const actualReduction = beforeBalance - Number(afterBalance);
+  const actualPaidIncrease = Number(afterSnapshot?.paid_amount || 0) - beforePaid;
+  logInvoiceStage('after_apply', afterSnapshot);
+  logDev(
+    `[CCN-APPLY][DEBUG] invoice=${invoiceNumber || invoiceId} requested_apply=${appliedAmount.toFixed(
+      2
+    )} actual_paid_increase=${actualPaidIncrease.toFixed(2)} actual_balance_reduction=${actualReduction.toFixed(
+      2
+    )} expected_after_balance=${expectedAfterBalance.toFixed(2)} post_snapshot=${JSON.stringify(afterSnapshot)}`
+  );
 
   expect(beforeBalance - Number(afterBalance)).toBeCloseTo(appliedAmount, 2);
 });
@@ -664,6 +751,27 @@ Then('credit memo available credit should equal total amount after reversal', as
   expect(Number(cm!.credit_applied)).toBeCloseTo(0, 2);
 });
 
+Then('target invoice outstanding should be restored after reversal', async function () {
+  const invoiceId = (this as any).targetInvoiceId as string | undefined;
+  const beforeBalance = Number((this as any).targetInvoiceBalanceBefore || 0);
+  if (!invoiceId) throw new Error('Missing target invoice context for reversal outstanding assertion');
+  if (!(beforeBalance > 0)) throw new Error('Missing pre-apply invoice balance context');
+
+  await expect
+    .poll(
+      async () => {
+        const bal = await getInvoiceOutstandingBalance(invoiceId);
+        return Number(bal ?? -1);
+      },
+      {
+        timeout: 30000,
+        intervals: [500, 1000, 1500],
+        message: `Invoice outstanding should return to pre-apply balance ${beforeBalance}`,
+      }
+    )
+    .toBeCloseTo(beforeBalance, 2);
+});
+
 // ---------------------------------------------------------------------------
 // Cycle 6 — reverse dialog guardrails + post-reversal UI
 // ---------------------------------------------------------------------------
@@ -737,6 +845,12 @@ Then(
     await detailPage.expectApplicationHistoryRowHasNoReverseButton(invoiceNumber);
   }
 );
+
+Then('credit memo detail should provide full CCN reversal action', async function ({ page }) {
+  const detailPage = new CreditMemoDetailPage(page);
+  await detailPage.verifyPageLoaded();
+  await detailPage.expectFullCreditMemoReverseActionVisible();
+});
 
 When('I attempt to open credit memos as unauthorized user', async function ({ page }) {
   await page.goto('/finance/credit-memos', { waitUntil: 'domcontentloaded' });

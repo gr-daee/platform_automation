@@ -176,6 +176,11 @@ export class InvoiceDetailPage extends BasePage {
     await this.page.waitForTimeout(500);
   }
 
+  async isCancelInvoiceHeaderButtonVisible(): Promise<boolean> {
+    const btn = this.page.getByRole('button', { name: /^cancel invoice$/i });
+    return btn.isVisible().catch(() => false);
+  }
+
   /**
    * `CancelInvoiceDialog`: default GST reason is already "Order Cancelled" (code 3); remarks are required.
    */

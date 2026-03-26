@@ -144,3 +144,10 @@ Feature: Phase 4 - Purchase Order Creation and Approval
     And I create a third purchase order for the remaining split quantities from that procurement request
     Then the procurement request should track that all its lines are covered by purchase orders
     And the procurement request should be marked as "Fully converted" or equivalent status
+
+  # --- Defect regression: remaining conversion should only show pending qty/items (DAEE-149 comment-468d1fa0) ---
+  @P2P-P4-TC-009 @p1 @regression @iacs-md @daee-149 @po-conversion
+  Scenario: After partial PR to PO conversion, only pending quantity should be available for remaining conversion
+    Given there is an approved procurement request with items awarded to multiple suppliers via quote selection
+    When I create a purchase order for the lines awarded to Supplier A from that procurement request
+    Then the remaining conversion view should exclude already converted quantity and keep conversion available for pending quantity only

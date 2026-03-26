@@ -154,10 +154,13 @@ function getProfilesToAuthenticateForCurrentRun(): string[] {
   const profiles = new Set<string>();
 
   // Map selected projects to their primary auth profiles.
+  // Default (no --project): authenticate only the primary MD profile.
   if (selectedProjects.length === 0 || selectedProjects.includes('iacs-md')) {
     if (hasProfile('iacs-md')) profiles.add('iacs-md');
   }
-  if (selectedProjects.length === 0 || selectedProjects.includes('iacs-ed')) {
+
+  // ED profile should be explicit or requirement-driven; do not authenticate by default.
+  if (selectedProjects.includes('iacs-ed')) {
     if (hasProfile('iacs-ed')) profiles.add('iacs-ed');
   }
   if (selectedProjects.includes('iacs-finance') || selectedProjects.includes('multi-user-iacs-finance')) {

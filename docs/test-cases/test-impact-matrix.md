@@ -200,6 +200,7 @@ Each entry maps:
 - `SR-PH5-TC-001`–`SR-PH5-TC-003`: Phase 5 credit memo branching + Retry E-Credit shell
 - `SR-PH6-TC-001`–`SR-PH6-TC-004`: Phase 6 cancel + wizard `alert()` validation
 - `SR-PH7-TC-001`–`SR-PH7-TC-002`: Phase 7 report shell + ED access denied (or tenant-aware skip)
+- `SR-PH8-TC-001`–`SR-PH8-TC-004`: Phase 8 inventory invariants (QC Failed GRN, pre-GRN cancel, post-credit-memo no-extra-delta, multi-line GRN reconciliation)
   - **Interaction**: POMs (`SalesReturnsListPage.ts`, `CreateSalesReturnOrderPage.ts`, `SalesReturnDetailPage.ts`, `SalesReturnReportPage.ts`), steps (`sales-returns-steps.ts`), DB helpers (`o2c-db-helpers.ts`); `playwright.config.ts` (`iacs-ed` `testMatch` includes `sales-returns.feature.spec.js`)
   - **Last Verified**: 2026-03-23
 
@@ -246,8 +247,56 @@ Each entry maps:
 - `O2C-HSR-TC-022`–`O2C-HSR-TC-024`: Export Excel disabled when no data; export with data; Exporting... state
   - **Interaction**: Client-side export (via UI Export Excel button)
   - **Last Verified**: 2026-02-18
+- `O2C-HSR-TC-029`: By Dealer sheet City column is present in exported workbook
+  - **Interaction**: Excel workbook assertion from download (`ExcelJS`)
+  - **Last Verified**: 2026-03-24
 
 **Change Risk**: 🟡 Medium - 3 tests affected
+
+---
+
+## O2C Reports - Collection Report
+
+### `../web_app/src/app/o2c/reports/collection-report/components/CollectionReportContent.tsx`
+**Affected Tests**:
+- `O2C-CR-TC-001`–`O2C-CR-TC-005`: quick period, KPI cards, breakdown parity (period/payment/region/dealer), export trigger
+  - **Interaction**: POM (`e2e/src/pages/o2c/CollectionReportPage.ts`) + steps (`e2e/src/steps/o2c/collection-report-steps.ts`)
+  - **Locators Used**: quick period combobox, Load Report, Export Excel, tabs Summary/By Period/By Region/By Dealer, "Collections vs Outstanding %" card
+  - **Last Verified**: 2026-03-24
+
+**Change Risk**: 🔴 High - 5 tests affected
+
+---
+
+### `../web_app/src/app/o2c/reports/collection-report/actions/collectionReportActions.ts`
+**Affected Tests**:
+- `O2C-CR-TC-002`–`O2C-CR-TC-005`: KPI data population, aggregation parity, and export data sections
+  - **Interaction**: Server action via UI/report exports
+  - **Last Verified**: 2026-03-24
+
+**Change Risk**: 🟡 Medium - 4 tests affected
+
+---
+
+## O2C Reports - Hierarchical Product Sales
+
+### `../web_app/src/app/o2c/reports/hierarchical-product-sales/components/HierarchicalProductSalesContent.tsx`
+**Affected Tests**:
+- `O2C-HPS-TC-001`, `O2C-HPS-TC-002`: Dealer level visibility and city badge/fallback in hierarchy
+  - **Interaction**: POM (`e2e/src/pages/o2c/HierarchicalProductSalesReportPage.ts`)
+  - **Last Verified**: 2026-03-24
+
+**Change Risk**: 🟡 Medium - 2 tests affected
+
+---
+
+### `../web_app/src/app/o2c/reports/actions/hierarchicalProductSalesActions.ts`
+**Affected Tests**:
+- `O2C-HPS-TC-003`, `O2C-HPS-TC-004`: detailed Excel sheets contain DEALER rows and City columns
+  - **Interaction**: Excel download + workbook assertions (`ExcelJS`)
+  - **Last Verified**: 2026-03-24
+
+**Change Risk**: 🟡 Medium - 2 tests affected
 
 ---
 
@@ -322,6 +371,13 @@ Each entry maps:
 
 ## Finance Module
 
+### IMPL-055 — Posting profiles / fiscal periods / journal entries (`@FIN-PP-*`, `@FIN-FP-*`, `@FIN-JE-*`, `@FIN-INV-*`, `@FIN-INVC-*`, `@FIN-CR-TC-03*`, `@FIN-VAN-TC-03*`, `@FIN-ACR-*`, `@FIN-CCN-*`, `@FIN-CCNA-*`, `@FIN-CCNR-*`, `@FIN-CRR-*`, `@FIN-UDCR-*`, `@FIN-SR-*`)
+**Automation**: POMs `PostingProfilesPage.ts`, `FiscalPeriodsPage.ts`, `JournalEntriesPage.ts`; steps `posting-profiles-steps.ts`, `fiscal-periods-steps.ts`, `journal-entry-steps.ts`, `finance-je-posting-chain-steps.ts`; DB `finance-db-helpers.ts`.
+**Web app (indicative)**: `src/app/finance/posting-profiles/**`, `fiscal-periods/**`, `journal-entries/**`, `cash-receipts/**`, `credit-memos/**`, `journal-automation` / server actions posting to `journal_entry_headers`.
+**Last Verified**: 2026-03-24
+
+---
+
 ### `../web_app/src/app/finance/cash-receipts/new/page.tsx`
 **Affected Tests**:
 - `FIN-CR-TC-011`: New cash receipt validation (amount > 0)
@@ -332,8 +388,9 @@ Each entry maps:
   - **Interaction**: POM (`e2e/src/pages/finance/NewCashReceiptPage.ts`)
   - **Locators Used**: payment method select, save button, error alert text
   - **Last Verified**: 2026-03-21
+- `FIN-CR-TC-030`–`035`: JE chain manual receipt (NEFT/cash, validation, petty cash) — `finance-je-posting-chain-steps.ts`
 
-**Change Risk**: 🔴 High - 2 tests affected
+**Change Risk**: 🔴 High - multiple tests affected
 
 ---
 
@@ -343,8 +400,9 @@ Each entry maps:
   - **Interaction**: POM (`e2e/src/pages/finance/CashReceiptDetailPage.ts`)
   - **Locators Used**: Un-apply button/dialog, receipt summary values
   - **Last Verified**: 2026-03-21
+- `FIN-CRR-TC-001`–`008`: Full / blocked cash receipt reversal — reverse dialog `#reversal_reason`, **Reverse Receipt**
 
-**Change Risk**: 🟡 Medium - 1 test affected
+**Change Risk**: 🟡 Medium - several tests affected
 
 ---
 
@@ -354,14 +412,16 @@ Each entry maps:
   - **Interaction**: POM (`e2e/src/pages/finance/CashReceiptApplyPage.ts`)
   - **Locators Used**: invoice selection checkbox, Apply Payments button
   - **Last Verified**: 2026-03-21
+- `FIN-ACR-TC-001`–`007`, `FIN-CRR-TC-004`: Apply + JE / reversal guardrails
 
-**Change Risk**: 🟡 Medium - 1 test affected
+**Change Risk**: 🟡 Medium - several tests affected
 
 ---
 
 ### `../web_app/src/app/finance/credit-memos/page.tsx`
 **Affected Tests**:
 - `FIN-CM-TC-001`–`FIN-CM-TC-008`, `FIN-CM-TC-011`–`FIN-CM-TC-022`: Create credit memo flow entry; **TC-022** RBAC deny (`/restrictedUser`) via `credit-memo-steps.ts`
+- `FIN-CCN-*`, `FIN-CCNA-*`, `FIN-CCNR-*`: CCN JE / apply / reversal (`ccn-je.feature`, `finance-je-posting-chain-steps.ts`)
   - **Interaction**: POM (`e2e/src/pages/finance/CreditMemosPage.ts`), steps (`e2e/src/steps/finance/credit-memo-steps.ts`)
   - **Locators Used**: `getByRole('button', { name: /New Credit Memo/i })`, route `/finance/credit-memos`, `ProtectedPageWrapper` `finance_credit_memos`
   - **Last Verified**: 2026-03-22
@@ -426,9 +486,10 @@ Each entry maps:
 ### `../web_app/src/app/o2c/invoices/[id]/components/InvoiceDetailsContent.tsx`
 **Affected Tests**:
 - `O2C-E2E-TC-001` (Custom E-Invoice PDF / invoice detail load); `O2C-E2E-TC-004` (**Cancel E-Invoice** trigger + `EInvoiceCancellation` AlertDialog, Sonner success toast)
+ - `O2C-E2E-TC-007` (full-line inventory restoration validation after header cancel), `O2C-E2E-TC-009` (second cancel idempotency attempt must not mutate inventory)
   - **Interaction**: POM `e2e/src/pages/o2c/InvoiceDetailPage.ts`, steps `e2e/src/steps/o2c/o2c-e2e-steps.ts`
-  - **Locators Used**: **E-Invoice Information** card; `getByRole('button', { name: /^cancel e-invoice$/i })`; `role="alertdialog"` scoped to **Cancel E-Invoice**; confirm action button; `[data-sonner-toast]`; read-only DB `invoices.einvoice_status` via `o2c-db-helpers`
-  - **Last Verified**: 2026-03-21
+  - **Locators Used**: **E-Invoice Information** card; header `getByRole('button', { name: /^cancel invoice$/i })`; `role="dialog"` scoped to **Cancel Invoice**; confirm action button; `[data-sonner-toast]`; read-only DB `invoices.einvoice_status` + package-level inventory baselines via `o2c-db-helpers`
+  - **Last Verified**: 2026-03-23
 
 **Change Risk**: 🟡 Medium - O2C E2E invoice tail + cancellation
 

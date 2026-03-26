@@ -179,6 +179,43 @@ test.describe("O2C End-to-End Flow (Indent → Sales Order → Picklist → eInv
     await Then("the invoice should have IGST and no CGST SGST in database", null, { page });
   });
 
+  test("Cancel e-invoice restores inventory across all invoice lines (full-line DB reconciliation)", { tag: ["@O2C-E2E-TC-007", "@o2c-flow", "@regression", "@p1", "@iacs-tenant", "@iacs-md"] }, async ({ When, page, Then, And }) => {
+    await When("I open an invoice with IRN from the last 24 hours or complete O2C flow to generate one", null, { page });
+    await When("I have noted invoice cancellation inventory baselines for all invoice lines from database");
+    await When("I cancel the e-invoice from the invoice detail using the default cancellation reason", null, { page });
+    await Then("the invoice e-invoice status in the database should be \"cancelled\"", null, { page });
+    await And("inventory available should increase by cancelled quantity across all invoice lines in database", null, { page });
+  });
+
+  test("SO creation reconciles package-level allocated deltas exactly", { tag: ["@O2C-E2E-TC-008", "@o2c-flow", "@regression", "@p1", "@iacs-tenant", "@iacs-md"] }, async ({ Given, page, And, When, Then }) => {
+    await Given("I have noted inventory for product \"1013\" at warehouse \"Kurnook\"", null, { page });
+    await And("I have noted dealer credit for dealer code \"IACS5509\"", null, { page });
+    await Given("I am on the O2C Indents page", null, { page });
+    await When("I create an indent for dealer \"Ramesh ningappa diggai\"", null, { page });
+    await Then("I should be on the indent detail page", null, { page });
+    await When("I click Edit on the indent detail page", null, { page });
+    await And("I add a product by searching for \"1013\"", null, { page });
+    await And("I save the indent", null, { page });
+    await Then("the indent should be saved successfully", null, { page });
+    await When("I submit the indent", null, { page });
+    await Then("the indent should be submitted successfully", null, { page });
+    await Then("the Warehouse Selection card should be visible", null, { page });
+    await Then("the Approve button should be disabled", null, { page });
+    await When("I select warehouse \"Kurnook Warehouse\" for the indent", null, { page });
+    await Then("the Approve button should be enabled", null, { page });
+    await When("I select transporter \"Just In Time Shipper\" for the indent", null, { page });
+    await When("I click Approve on the indent detail page", null, { page });
+    await And("I fill approval comments \"AUTO_QA SO allocation reconciliation\" and submit the approval dialog", null, { page });
+    await When("I confirm the stock availability warning with Approve Anyway if it appears", null, { page });
+    await Then("the indent should be approved successfully", null, { page });
+    await When("I click Process Workflow", null, { page });
+    await Then("the Process Workflow dialog should show SO and Back Order preview", null, { page });
+    await When("I confirm and process the workflow", null, { page });
+    await Then("the workflow should complete successfully", null, { page });
+    await When("I navigate to the Sales Order created from the indent", null, { page });
+    await Then("the Sales Order line allocations should exactly match inventory allocated deltas by package", null, { page });
+  });
+
   test("90+ day unpaid invoice blocks approval with toast — dealer resolved from database", { tag: ["@O2C-E2E-TC-006", "@o2c-flow", "@regression", "@p1", "@iacs-tenant", "@iacs-md"] }, async ({ Given, page, And, When, Then }) => {
     await Given("I have noted inventory for product \"1013\" at warehouse \"Kurnook\"", null, { page });
     await And("I have resolved and noted dealer credit for a dealer with unpaid invoices older than 90 days or skip the scenario");
@@ -199,6 +236,17 @@ test.describe("O2C End-to-End Flow (Indent → Sales Order → Picklist → eInv
     await Then("I should see a toast blocking indent approval for 90-day unpaid invoices with invoice and amount details", null, { page });
   });
 
+  test("Invoice cancellation is idempotent and does not double-increment inventory", { tag: ["@O2C-E2E-TC-009", "@o2c-flow", "@regression", "@p1", "@iacs-tenant", "@iacs-md"] }, async ({ When, page, Then, And }) => {
+    await When("I open an invoice with IRN from the last 24 hours or complete O2C flow to generate one", null, { page });
+    await When("I have noted invoice cancellation inventory baselines for all invoice lines from database");
+    await When("I cancel the e-invoice from the invoice detail using the default cancellation reason", null, { page });
+    await Then("the invoice e-invoice status in the database should be \"cancelled\"", null, { page });
+    await And("inventory available should increase by cancelled quantity across all invoice lines in database", null, { page });
+    await When("I note post-cancellation inventory baselines for idempotency verification");
+    await And("I attempt to cancel the same invoice again if action is available", null, { page });
+    await Then("second cancel attempt should not change inventory for the cancelled invoice lines", null, { page });
+  });
+
 });
 
 // == technical section ==
@@ -215,5 +263,8 @@ const bddFileMeta = {
   "Generate E-Invoice without E-Way bill (picklist path)": {"pickleLocation":"129:3","tags":["@O2C-E2E-TC-003","@o2c-flow","@regression","@p1","@iacs-tenant","@iacs-md"],"ownTags":["@iacs-md","@iacs-tenant","@p1","@regression","@o2c-flow","@O2C-E2E-TC-003"]},
   "Cancel e-invoice within 24 hours (recent IRN without E-Way bill, or e-invoice-only O2C setup)": {"pickleLocation":"158:3","tags":["@O2C-E2E-TC-004","@o2c-flow","@regression","@p1","@iacs-tenant","@iacs-md"],"ownTags":["@iacs-md","@iacs-tenant","@p1","@regression","@o2c-flow","@O2C-E2E-TC-004"]},
   "SRI HANUMAN AGENCIES (IACS3558) dealer flow generates IGST invoice": {"pickleLocation":"167:3","tags":["@O2C-E2E-TC-005","@o2c-flow","@regression","@p1","@iacs-tenant","@iacs-md"],"ownTags":["@iacs-md","@iacs-tenant","@p1","@regression","@o2c-flow","@O2C-E2E-TC-005"]},
-  "90+ day unpaid invoice blocks approval with toast — dealer resolved from database": {"pickleLocation":"200:3","tags":["@O2C-E2E-TC-006","@o2c-flow","@regression","@p1","@iacs-tenant","@iacs-md"],"ownTags":["@iacs-md","@iacs-tenant","@p1","@regression","@o2c-flow","@O2C-E2E-TC-006"]},
+  "Cancel e-invoice restores inventory across all invoice lines (full-line DB reconciliation)": {"pickleLocation":"198:3","tags":["@O2C-E2E-TC-007","@o2c-flow","@regression","@p1","@iacs-tenant","@iacs-md"],"ownTags":["@iacs-md","@iacs-tenant","@p1","@regression","@o2c-flow","@O2C-E2E-TC-007"]},
+  "SO creation reconciles package-level allocated deltas exactly": {"pickleLocation":"207:3","tags":["@O2C-E2E-TC-008","@o2c-flow","@regression","@p1","@iacs-tenant","@iacs-md"],"ownTags":["@iacs-md","@iacs-tenant","@p1","@regression","@o2c-flow","@O2C-E2E-TC-008"]},
+  "90+ day unpaid invoice blocks approval with toast — dealer resolved from database": {"pickleLocation":"238:3","tags":["@O2C-E2E-TC-006","@o2c-flow","@regression","@p1","@iacs-tenant","@iacs-md"],"ownTags":["@iacs-md","@iacs-tenant","@p1","@regression","@o2c-flow","@O2C-E2E-TC-006"]},
+  "Invoice cancellation is idempotent and does not double-increment inventory": {"pickleLocation":"258:3","tags":["@O2C-E2E-TC-009","@o2c-flow","@regression","@p1","@iacs-tenant","@iacs-md"],"ownTags":["@iacs-md","@iacs-tenant","@p1","@regression","@o2c-flow","@O2C-E2E-TC-009"]},
 };

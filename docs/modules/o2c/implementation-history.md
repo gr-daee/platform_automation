@@ -1,6 +1,6 @@
 # O2C Module - Implementation History
 
-**Last Updated**: 2026-03-23 (IMPL-053 Sales Returns consolidated)
+**Last Updated**: 2026-03-24 (IMPL-054 O2C reports parity/city automation)
 
 ---
 
@@ -11,6 +11,12 @@ This document tracks all test automation implementations for the Order-to-Cash (
 ---
 
 ## Implementations
+
+### [IMPL-054 - O2C Reports parity and city export automation](../../implementations/2026-03/IMPL-054_o2c-reports-collection-hps-city-parity.md) ✅
+
+- `O2C-CR-TC-001`–`005`: Collection Report quick period, KPI visibility, parity checks, export section coverage.
+- `O2C-HPS-TC-001`–`004`: Hierarchical Product Sales dealer hierarchy + city in UI and detailed Excel sheets.
+- `O2C-HSR-TC-029`: Hierarchical Sales By Dealer export city column assertion.
 
 ### [IMPL-051 - O2C E2E IACS3558 IGST + GG01 90-day approve block](../../implementations/2026-03/IMPL-051_o2c-e2e-igst-iacs3558-90day-approve-block.md) ✅
 

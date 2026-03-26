@@ -129,6 +129,39 @@ export async function getCashReceiptById(id: string): Promise<CashReceiptRow | n
 }
 
 /**
+ * Poll until cash_receipt_headers.gl_journal_id is populated (posting async).
+ */
+export async function waitCashReceiptGlJournalId(cashReceiptId: string, maxMs = 90000): Promise<string | null> {
+  const start = Date.now();
+  while (Date.now() - start < maxMs) {
+    const row = await getCashReceiptById(cashReceiptId);
+    if (row?.gl_journal_id) return row.gl_journal_id;
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+  return null;
+}
+
+/**
+ * Suspense / unknown-dealer style receipt when present (column may not exist in older DBs — returns null on error).
+ */
+export async function getSuspenseCashReceiptIdForTenant(tenantId: string): Promise<string | null> {
+  try {
+    const rows = await executeQuery<{ id: string }>(
+      `SELECT id
+       FROM cash_receipt_headers
+       WHERE tenant_id = $1
+         AND COALESCE(is_suspense, false) = true
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [tenantId]
+    );
+    return rows[0]?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Get applications for a cash receipt (active first, then by date desc).
  * Note: Column name is cash_receipt_header_id (not cash_receipt_id).
  */
@@ -209,6 +242,56 @@ export async function getInvoiceOutstandingBalance(invoiceId: string): Promise<n
   );
   if (rows.length === 0) return null;
   return Number(rows[0].balance_amount);
+}
+
+export interface InvoiceFinancialSnapshotRow {
+  id: string;
+  invoice_number: string;
+  total_amount: number;
+  paid_amount: number;
+  balance_amount: number;
+  status: string | null;
+  collection_status: string | null;
+  updated_at: string | null;
+}
+
+/**
+ * Rich invoice balance snapshot for debugging outstanding calculations in E2E.
+ */
+export async function getInvoiceFinancialSnapshot(
+  invoiceId: string
+): Promise<InvoiceFinancialSnapshotRow | null> {
+  const rows = await executeQuery<{
+    id: string;
+    invoice_number: string;
+    total_amount: string | number | null;
+    paid_amount: string | number | null;
+    balance_amount: string | number | null;
+    status: string | null;
+    collection_status: string | null;
+    updated_at: string | null;
+  }>(
+    `SELECT id, invoice_number,
+            COALESCE(total_amount, 0)::text AS total_amount,
+            COALESCE(paid_amount, 0)::text AS paid_amount,
+            COALESCE(balance_amount, 0)::text AS balance_amount,
+            status, collection_status, updated_at::text
+     FROM invoices
+     WHERE id = $1
+     LIMIT 1`,
+    [invoiceId]
+  );
+  if (rows.length === 0) return null;
+  return {
+    id: rows[0].id,
+    invoice_number: rows[0].invoice_number,
+    total_amount: Number(rows[0].total_amount || 0),
+    paid_amount: Number(rows[0].paid_amount || 0),
+    balance_amount: Number(rows[0].balance_amount || 0),
+    status: rows[0].status,
+    collection_status: rows[0].collection_status,
+    updated_at: rows[0].updated_at,
+  };
 }
 
 /**
@@ -691,4 +774,232 @@ export async function getInvoiceNumberForDifferentDealer(
     [tenantId, excludeDealerId]
   );
   return rows.length > 0 ? rows[0].invoice_number : null;
+}
+
+// =============================================================================
+// Posting profiles, fiscal periods, journal entries (Finance master plan / DAEE-236)
+// =============================================================================
+
+export interface ResolvedGLAccountRow {
+  gl_account_id: string;
+  account_code: string;
+  account_name: string | null;
+}
+
+/**
+ * Resolve first active posting profile row for module|account (highest rule_priority).
+ * Joins COA for human-readable code — use UUID in JE assertions (environment-agnostic).
+ */
+export async function getResolvedGLAccount(
+  tenantId: string,
+  moduleType: string,
+  accountType: string
+): Promise<ResolvedGLAccountRow | null> {
+  const rows = await executeQuery<ResolvedGLAccountRow>(
+    `SELECT pp.gl_account_id,
+            COALESCE(m.account_code, '') AS account_code,
+            m.account_name
+     FROM posting_profiles pp
+     LEFT JOIN master_chart_of_accounts m ON m.id = pp.gl_account_id
+     WHERE pp.tenant_id = $1
+       AND pp.module_type = $2
+       AND pp.account_type = $3
+       AND pp.is_active = true
+     ORDER BY pp.rule_priority DESC NULLS LAST
+     LIMIT 1`,
+    [tenantId, moduleType, accountType]
+  );
+  return rows.length > 0 ? rows[0] : null;
+}
+
+export interface FiscalPeriodLookupRow {
+  id: string;
+  period_name: string;
+  fiscal_year: number;
+  status: string;
+  allow_posting: boolean;
+  start_date: string;
+  end_date: string;
+}
+
+export async function getFiscalPeriodByStatus(
+  tenantId: string,
+  status: 'draft' | 'open' | 'soft_closed' | 'hard_closed'
+): Promise<FiscalPeriodLookupRow | null> {
+  const rows = await executeQuery<FiscalPeriodLookupRow>(
+    `SELECT id, period_name, fiscal_year, status, allow_posting, start_date::text, end_date::text
+     FROM fiscal_periods
+     WHERE tenant_id = $1 AND status = $2
+     ORDER BY fiscal_year DESC, period_number ASC
+     LIMIT 1`,
+    [tenantId, status]
+  );
+  return rows.length > 0 ? rows[0] : null;
+}
+
+/** Two open periods in same FY with earlier.period_number < later.period_number (sequential-close negative path). */
+export interface SequentialCloseOpenPairRow {
+  fiscal_year: number;
+  later_period_name: string;
+}
+
+export async function getSequentialCloseOpenPairForTenant(
+  tenantId: string
+): Promise<SequentialCloseOpenPairRow | null> {
+  const rows = await executeQuery<SequentialCloseOpenPairRow>(
+    `SELECT fp_later.fiscal_year::int AS fiscal_year,
+            fp_later.period_name AS later_period_name
+     FROM fiscal_periods fp_later
+     INNER JOIN fiscal_periods fp_earlier
+       ON fp_earlier.tenant_id = fp_later.tenant_id
+      AND fp_earlier.fiscal_year = fp_later.fiscal_year
+      AND fp_earlier.period_number < fp_later.period_number
+      AND fp_earlier.status = 'open'
+     WHERE fp_later.tenant_id = $1
+       AND fp_later.status = 'open'
+       AND NOT EXISTS (
+         SELECT 1
+         FROM journal_entry_headers je
+         WHERE je.tenant_id = fp_later.tenant_id
+           AND je.fiscal_period_id = fp_later.id
+           AND je.status IN ('draft', 'pending_approval')
+       )
+     ORDER BY fp_later.fiscal_year DESC, fp_later.period_number DESC
+     LIMIT 1`,
+    [tenantId]
+  );
+  return rows.length > 0 ? rows[0] : null;
+}
+
+/** @deprecated Use getFiscalPeriodByStatus(tenantId, 'open') */
+export async function getOpenFiscalPeriodName(
+  tenantId: string
+): Promise<FiscalPeriodLookupRow | null> {
+  return getFiscalPeriodByStatus(tenantId, 'open');
+}
+
+/** Draft periods are `status = draft` (UI label: Never Opened). */
+export async function getDraftFiscalPeriodName(
+  tenantId: string
+): Promise<FiscalPeriodLookupRow | null> {
+  return getFiscalPeriodByStatus(tenantId, 'draft');
+}
+
+export async function getSoftClosedFiscalPeriodName(
+  tenantId: string
+): Promise<FiscalPeriodLookupRow | null> {
+  return getFiscalPeriodByStatus(tenantId, 'soft_closed');
+}
+
+export async function getHardClosedFiscalPeriodName(
+  tenantId: string
+): Promise<FiscalPeriodLookupRow | null> {
+  return getFiscalPeriodByStatus(tenantId, 'hard_closed');
+}
+
+export interface JournalEntryHeaderRow {
+  id: string;
+  journal_number: string;
+  status: string;
+  entry_date: string;
+  description: string | null;
+  source_module: string | null;
+  source_document_type: string | null;
+  source_document_id: string | null;
+  source_document_number: string | null;
+  fiscal_period_id: string | null;
+  total_debits: number;
+  total_credits: number;
+}
+
+/**
+ * Journal headers linked to a source document (e.g. invoice, cash_receipt).
+ */
+export async function getJournalEntriesForDocument(
+  tenantId: string,
+  sourceDocType: string,
+  sourceDocId: string
+): Promise<JournalEntryHeaderRow[]> {
+  return executeQuery<JournalEntryHeaderRow>(
+    `SELECT id, journal_number, status, entry_date, description,
+            source_module, source_document_type, source_document_id, source_document_number,
+            fiscal_period_id,
+            COALESCE(total_debits, 0)::float8 AS total_debits,
+            COALESCE(total_credits, 0)::float8 AS total_credits
+     FROM journal_entry_headers
+     WHERE tenant_id = $1
+       AND source_document_type = $2
+       AND source_document_id = $3
+     ORDER BY created_at DESC`,
+    [tenantId, sourceDocType, sourceDocId]
+  );
+}
+
+/**
+ * All journal headers tied to a source document UUID (any source_document_type), oldest first.
+ * Useful for cash receipts: creation, apply, reversal may share source_document_id.
+ */
+export async function getJournalEntryHeadersBySourceDocumentId(
+  tenantId: string,
+  sourceDocumentId: string
+): Promise<JournalEntryHeaderRow[]> {
+  return executeQuery<JournalEntryHeaderRow>(
+    `SELECT id, journal_number, status, entry_date, description,
+            source_module, source_document_type, source_document_id, source_document_number,
+            fiscal_period_id,
+            COALESCE(total_debits, 0)::float8 AS total_debits,
+            COALESCE(total_credits, 0)::float8 AS total_credits
+     FROM journal_entry_headers
+     WHERE tenant_id = $1 AND source_document_id = $2
+     ORDER BY created_at ASC`,
+    [tenantId, sourceDocumentId]
+  );
+}
+
+export interface JournalEntryLineRow {
+  id: string;
+  line_number: number;
+  chart_of_account_id: string;
+  account_code: string | null;
+  account_name: string | null;
+  debit_amount: number;
+  credit_amount: number;
+  line_description: string | null;
+}
+
+export async function getJournalEntryLines(journalHeaderId: string): Promise<JournalEntryLineRow[]> {
+  return executeQuery<JournalEntryLineRow>(
+    `SELECT jel.id,
+            jel.line_number,
+            jel.chart_of_account_id,
+            m.account_code,
+            m.account_name,
+            COALESCE(jel.debit_amount, 0)::float8 AS debit_amount,
+            COALESCE(jel.credit_amount, 0)::float8 AS credit_amount,
+            jel.line_description
+     FROM journal_entry_lines jel
+     LEFT JOIN master_chart_of_accounts m ON m.id = jel.chart_of_account_id
+     WHERE jel.journal_entry_header_id = $1
+     ORDER BY jel.line_number ASC`,
+    [journalHeaderId]
+  );
+}
+
+/** Invoice row with optional GL link for fallback JE lookup. */
+export async function getInvoiceJournalContext(
+  tenantId: string,
+  invoiceId: string
+): Promise<{ invoice_number: string; status: string; journal_entry_id: string | null } | null> {
+  const rows = await executeQuery<{
+    invoice_number: string;
+    status: string;
+    journal_entry_id: string | null;
+  }>(
+    `SELECT invoice_number, status, journal_entry_id
+     FROM invoices
+     WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
+     LIMIT 1`,
+    [tenantId, invoiceId]
+  );
+  return rows.length > 0 ? rows[0] : null;
 }

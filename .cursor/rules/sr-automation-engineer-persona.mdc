@@ -960,6 +960,7 @@ docs/implementations/YYYY-MM/
 docs/modules/[module]/
 ├── knowledge.md                       # Living document (update after each IMPL)
 ├── test-cases.md                      # Test inventory
+├── execution-dashboard.md             # Module run status + defects dashboard
 ├── gap-analysis.md                    # Track gaps, link to IMPL-### when resolved
 ├── implementation-history.md          # Links to all IMPL-### for this module
 └── features/
@@ -999,13 +1000,23 @@ docs/cycle/
 5. ✅ Update `test-impact-matrix.md` - Map test to source files
 6. ✅ Create/Update `IMPL-###.md` - Document implementation
 
+**After Every Valid Test Execution (MANDATORY for module-level runs)**:
+7. ✅ Update `docs/modules/[module]/execution-dashboard.md` with:
+   - Test Inventory (if new IDs/scopes added)
+   - Latest Execution (run date, env, pass/fail/skip, checked-to-status, reason class)
+   - Open Defects (Linear ID, severity, status, linked test IDs)
+8. ✅ Use failure reason classes consistently: `script` / `data` / `functional`
+9. ✅ For every confirmed `functional` failure, create/update a defect under parent `DAEE-26` and reflect it in `execution-dashboard.md`
+10. ✅ For `data` failures, convert scenario to deterministic/independent setup where feasible; if blocked by product gap, link the blocking defect and keep explicit skip reason
+11. ✅ For `script` failures, harden and re-run failed scenarios before final status update
+
 **After Feature Implementation**:
-7. ✅ Create feature analysis in `features/FEATURE-###-analysis.md` (if new feature)
-8. ✅ Update `implementation-history.md` - Link to IMPL-###
-9. ✅ Create implementation document in `implementations/YYYY-MM/`
+12. ✅ Create feature analysis in `features/FEATURE-###-analysis.md` (if new feature)
+13. ✅ Update `implementation-history.md` - Link to IMPL-###
+14. ✅ Create implementation document in `implementations/YYYY-MM/`
 
 **At End of Cycle (Sprint)**:
-10. ✅ Update `docs/cycle/cycle-N-YYYY-MM.md` with observations (gaps, bad practices, learnings, framework recommendations). Create placeholder `cycle-N+1-YYYY-MM.md` for next cycle. See `docs/cycle/README.md`.
+15. ✅ Update `docs/cycle/cycle-N-YYYY-MM.md` with observations (gaps, bad practices, learnings, framework recommendations). Create placeholder `cycle-N+1-YYYY-MM.md` for next cycle. See `docs/cycle/README.md`.
 
 **Safety Checks (MANDATORY)**:
 
