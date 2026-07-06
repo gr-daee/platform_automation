@@ -29,7 +29,10 @@
     "test:tc": "playwright test --grep",
     "test:headed": "TEST_HEADED=true playwright test",
     "test:ui": "playwright test --ui",
-    "test:login": "playwright test login"
+    "test:login": "playwright test login",
+    "docs:site": "node scripts/docs/build-site.mjs",
+    "docs:capture": "node scripts/docs/capture.mjs",
+    "docs:login": "node scripts/docs/login-manual.mjs"
   },
   "keywords": [
     "playwright",
@@ -56,6 +59,7 @@
     "allure-playwright": "^3.4.5",
     "exceljs": "^4.4.0",
     "monocart-reporter": "^2.10.0",
+    "pdf-parse": "^2.4.5",
     "typescript": "^5.8.0"
   }
 }
