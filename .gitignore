@@ -42,3 +42,6 @@ Thumbs.db
 # Playwright
 playwright/.cache/
 /.cursor
+
+# generated docs site (regenerate with: npm run docs:site)
+docs/site/
