@@ -88,6 +88,9 @@ const DOC_ROUTE = {
   'user-guides/dealer-applications/dealer-applications.md': '/dealer-applications',
   'user-guides/dealers/README.md': '/dealers',
   'user-guides/sales-crm/README.md': '/sales-crm',
+  'user-guides/sales-crm/visits.md': '/sales-crm/visits',
+  'user-guides/sales-crm/followups.md': '/sales-crm/followups',
+  'user-guides/sales-crm/target-management.md': '/sales-crm/target-management',
   'user-guides/products/README.md': '/products',
   'user-guides/price-lists/README.md': '/price-lists',
   'user-guides/raw-materials/README.md': '/raw-materials',
@@ -211,6 +214,9 @@ const mod = (m) => { const d = byRoute[m.route]; return d ? { label: m.label, id
 const NAV_LABEL = {
   'user-guides/README.md': 'Overview',
   'user-guides/security.md': 'Security & Trust',
+  'user-guides/sales-crm/visits.md': 'Dealer Visits',
+  'user-guides/sales-crm/followups.md': 'Follow-ups',
+  'user-guides/sales-crm/target-management.md': 'Target Management',
   'user-guides/knowledge-base.md': 'Knowledge Base',
   'user-guides/knowledge-base/glossary.md': 'Glossary',
   'user-guides/knowledge-base/process-flows.md': 'Process Flows',
@@ -264,6 +270,7 @@ const NAV_LABEL = {
 const pub = (rel) => { const d = byRel[rel]; return d ? { label: NAV_LABEL[rel] || d.title, id: d.id } : null; };
 // Sub-pages shown indented under their parent module in the Modules nav.
 const SUBPAGES = {
+  '/sales-crm': ['user-guides/sales-crm/visits.md', 'user-guides/sales-crm/followups.md', 'user-guides/sales-crm/target-management.md'],
   '/knowledge-base': ['user-guides/knowledge-base/glossary.md', 'user-guides/knowledge-base/process-flows.md', 'user-guides/knowledge-base/troubleshooting.md', 'user-guides/knowledge-base/faqs.md', 'user-guides/knowledge-base/ai-assistant.md'],
   '/finance': ['user-guides/finance/chart-of-accounts.md', 'user-guides/finance/configuration.md', 'user-guides/finance/receipts-credits-discounts.md', 'user-guides/finance/accounts-payable.md', 'user-guides/finance/payroll.md', 'user-guides/finance/van.md', 'user-guides/finance/gst-compliance.md', 'user-guides/finance/posting-profiles.md', 'user-guides/finance/fixed-assets.md', 'user-guides/finance/financial-reports.md', 'user-guides/finance/screens.md'],
   '/o2c': ['user-guides/o2c/sales-indents.md', 'user-guides/o2c/sales-orders.md', 'user-guides/o2c/invoices.md', 'user-guides/o2c/back-orders.md', 'user-guides/o2c/sales-returns.md', 'user-guides/o2c/reports.md'],

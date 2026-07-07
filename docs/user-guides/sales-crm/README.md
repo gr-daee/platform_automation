@@ -109,11 +109,11 @@ The complete page inventory, matching the app sidebar. Labels are the exact **si
 | **Performance** | `/sales-crm/target-management/performance` | All | Track **actuals vs target** across the cycle. |
 | **Performance Variance** | `/sales-crm/target-management/performance-variance` | RM / SH | Analyse **variance vs plan** and act on it. |
 
-> **Coverage status.** This page lists **all 16 features**. Detailed step-by-step guides + screenshots
-> exist today for **Sales Categories, Leads, Dealer Visits, Budget Cycles/Distribution, My Sales Plan,
-> Performance, KPI Definitions**. Deep guides for **Follow-ups, Regional Allocation, My Targets, Regional
-> Consolidations, Performance Variance, SH Final Review, and Demand Forecast** are the next documentation
-> batch (see the plan).
+> **Detailed guides.** Every feature is documented step-by-step:
+> **[Dealer Visits](./visits.md)** · **[Follow-ups](./followups.md)** · **[Target Management](./target-management.md)**
+> — the full planning cascade (Budget Cycle → Distribution → Regional Allocation → My Sales Plan → RM
+> Consolidation → SH Final Review seal/re-open) plus Performance, Variance, KPI Definitions, and Demand
+> Forecast. Sales Categories & Leads are covered in **Key workflows** above.
 
 ---
 
@@ -143,4 +143,4 @@ The complete page inventory, matching the app sidebar. Labels are the exact **si
 ## Related workflows
 [Dealers](../dealers/README.md) (a promoted lead becomes a dealer) · [Order to Cash (O2C)](../o2c/order-to-cash.md) (the dealer's orders).
 
-> **Note** Target Management's exact **sign-off / seal / re-open** mechanics are still being finalised; confirm the precise approval steps with your Sales Head before a live planning cycle.
+> **Note** The Target Management **seal / re-open** flow is implemented: the Sales Head **finalizes → locks** a cycle to seal it; changing a sealed cycle needs a **re-open request** that the Sales Head **approves/rejects**. Full steps: **[Target Management → SH Final Review](./target-management.md#7-sh-final-review-seal-re-open-sales-head)**.
