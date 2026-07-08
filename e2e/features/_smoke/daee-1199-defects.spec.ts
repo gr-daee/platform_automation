@@ -78,27 +78,40 @@ test.describe('DAEE-1199 defect coverage @daee-1199-defects', () => {
     await expect(srBody).toBeVisible();
     await page.screenshot({ path: `${OUT_DIR}/1199-iwt-sent-tab.png`, fullPage: true });
 
-    // DAEE-1199 Defect 3: Current Stock Position table.
-    // The card only renders when the position rollup returned at least one
-    // group with non-zero qty. On tenants where the current warehouse-scope
-    // has zero available inventory (e.g., a scoped test user with no live
-    // stock), the card intentionally suppresses itself. Present-or-absent is
-    // fine — we just log which we saw.
-    // Scroll to find the card, then check.
-    await page.mouse.wheel(0, 800);
-    const positionCard = page.getByText(/Current Stock Position/i).first();
-    const positionCardVisible = await positionCard.isVisible({ timeout: 5_000 }).catch(() => false);
-    if (positionCardVisible) {
-      const headers = ['Material', 'Batch', 'Warehouse', 'Available', 'Reserved', 'Damaged', 'Value'];
-      for (const h of headers) {
-        await expect(
-          page.getByRole('columnheader', { name: new RegExp(`^${h}$`, 'i') }).first(),
-        ).toBeVisible();
+    // DAEE-1199 Defect 3 + Defect 5: Current Stock Position is now the 7th
+    // TAB (Defect 5 relocation) — click it and verify the position table
+    // renders with the expected columns. Empty-state is acceptable when
+    // the current scope has no available/reserved/damaged inventory.
+    const positionTab = page.getByRole('tab', { name: /Current Stock Position/i });
+    const positionTabVisible = await positionTab.isVisible({ timeout: 5_000 }).catch(() => false);
+    if (positionTabVisible) {
+      await positionTab.click();
+      // Either the position table appears (7 columns) OR the empty-state message
+      const hasTable = await page
+        .getByRole('columnheader', { name: /^Material$/i })
+        .first()
+        .isVisible({ timeout: 10_000 })
+        .catch(() => false);
+      const hasEmpty = await page
+        .getByText(/No current stock position/i)
+        .isVisible({ timeout: 5_000 })
+        .catch(() => false);
+      if (hasTable) {
+        const headers = ['Material', 'Batch', 'Warehouse', 'Available', 'Reserved', 'Damaged', 'Value'];
+        for (const h of headers) {
+          await expect(
+            page.getByRole('columnheader', { name: new RegExp(`^${h}$`, 'i') }).first(),
+          ).toBeVisible();
+        }
+        console.log('  ✅ Current Stock Position tab: 7 columns rendered');
+      } else if (hasEmpty) {
+        console.log('  ℹ️  Current Stock Position tab shows empty state — no non-zero inventory rollup rows.');
+      } else {
+        throw new Error('Current Stock Position tab clicked but neither table nor empty state visible');
       }
       await page.screenshot({ path: `${OUT_DIR}/1199-current-stock-position.png`, fullPage: true });
-      console.log('  ✅ Current Stock Position table rendered with expected columns');
     } else {
-      console.log('  ℹ️  Current Stock Position card not visible — no non-zero inventory rollup rows in current scope. Snapshot correctly suppresses empty state per spec.');
+      console.log('  ℹ️  Current Stock Position tab not visible — likely no data at all in scope.');
     }
   });
 });
