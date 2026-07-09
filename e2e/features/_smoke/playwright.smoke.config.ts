@@ -8,7 +8,7 @@ import * as path from 'path';
  */
 export default defineConfig({
   testDir: __dirname,
-  testMatch: /(daee-6tix-smoke|daee-fresh-login|daee-1207-.*|daee-1208-.*|daee-1204-.*|daee-1214-.*|daee-1199-.*|daee-wave4-.*)\.spec\.ts$/,
+  testMatch: /(daee-6tix-smoke|daee-fresh-login|daee-1207-.*|daee-1208-.*|daee-1204-.*|daee-1214-.*|daee-1199-.*|daee-wave4-.*|daee-wave5-.*)\.spec\.ts$/,
   timeout: 90_000,
   expect: { timeout: 20_000 },
   fullyParallel: false,
