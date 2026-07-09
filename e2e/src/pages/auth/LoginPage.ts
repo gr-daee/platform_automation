@@ -157,8 +157,19 @@ export class LoginPage extends BasePage {
    */
   async fillTOTPCode(code: string): Promise<void> {
     // Try both possible inputs (setup or verify)
-    const visibleInput = await this.totpCodeInput.or(this.setupTotpCodeInput).first();
-    await visibleInput.fill(code);
+    const visibleInput = this.totpCodeInput.or(this.setupTotpCodeInput).first();
+    // React-controlled OTP inputs often revert a programmatic .fill() (the value
+    // doesn't stick → Verify button stays disabled). Type as real keystrokes so
+    // each digit fires the input/keydown events React listens for.
+    await visibleInput.click();
+    await visibleInput.fill('');
+    await visibleInput.pressSequentially(code, { delay: 60 });
+    // Sanity: ensure the value actually landed before we try to submit.
+    await visibleInput.evaluate((el: HTMLInputElement, c: string) => {
+      if ((el.value || '').replace(/\s/g, '') !== c) {
+        throw new Error(`TOTP input did not accept the code (value="${el.value}")`);
+      }
+    }, code).catch((e) => { throw e; });
   }
   
   /**
